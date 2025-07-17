@@ -16,7 +16,7 @@ export default function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/register`, {
+      await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/register`, {
         nombre,
         correo_institucional: correo,
         contrasena,
