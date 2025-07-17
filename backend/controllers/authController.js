@@ -36,7 +36,7 @@ const registrarUsuario = async (req, res) => {
     );
 
     // ✅ URL del frontend en producción
-    const frontendUrl = process.env.FRONTEND_URL || 'https://tu-frontend.onrender.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
     await sendEmail(
       correo_institucional,
       'Verifica tu cuenta',
@@ -109,7 +109,7 @@ const forgotPassword = async (req, res) => {
     const token = jwt.sign({ correo_institucional }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
     // ✅ URL del frontend en producción
-    const frontendUrl = process.env.FRONTEND_URL || 'https://tu-frontend.onrender.com';
+    const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
     await sendEmail(
       correo_institucional,
       'Restablece tu contraseña',
