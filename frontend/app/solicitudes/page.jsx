@@ -120,10 +120,10 @@ export default function Solicitudes() {
         else if (usuario?.rol === 'almacen') endpoint = '/materials/solicitudes/aprobadas';
         else endpoint = '/materials/solicitudes';
 
-        const response = await axios.get(
-          `${process.env.NEXT_PUBLIC_API_URL}${endpoint}`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
+     const response = await axios.get(
+  `${process.env.NEXT_PUBLIC_API_URL}/api${endpoint}`,  
+  { headers: { Authorization: `Bearer ${token}` } }
+);
 
         const generarFolio = () => Math.random().toString(36).substr(2, 4).toUpperCase();
 
@@ -262,11 +262,11 @@ export default function Solicitudes() {
     const token = localStorage.getItem('token');
     
     try {
-      await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitud/${id}/${accion}`,
-        {},
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
+await axios.post(
+  `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitud/${id}/${accion}`,
+  {},
+  { headers: { Authorization: `Bearer ${token}` } }
+);
       
       if (accion === 'cancelar') {
         setSolicitudes(prev => prev.filter(sol => sol.id !== id));
