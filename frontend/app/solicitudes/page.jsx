@@ -263,7 +263,7 @@ export default function Solicitudes() {
     
     try {
       await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/materials/solicitud/${id}/${accion}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitud/${id}/${accion}`,
         {},
         { headers: { Authorization: `Bearer ${token}` } }
       );
