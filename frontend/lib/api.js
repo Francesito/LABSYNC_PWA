@@ -2,7 +2,7 @@
 import axios from 'axios';
 
 const API = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_API_URL,  // <-- quitar el "/api" extra
+  baseURL: `${process.env.NEXT_PUBLIC_API_URL}/api`, 
 });
 
 // --- Solicitudes (alumno/docente) ---
