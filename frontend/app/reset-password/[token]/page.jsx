@@ -20,7 +20,7 @@ export default function ResetPassword() {
 
     try {
       const response = await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/auth/reset-password/${token}`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/reset-password/${token}`,
         { contrasena }
       );
       setMensaje(response.data.mensaje);
