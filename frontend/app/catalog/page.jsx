@@ -29,9 +29,9 @@ export default function Catalog() {
       try {
         setLoading(true);
         const [liquidoRes, solidoRes, equipoRes] = await Promise.all([
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/materials/tipo/liquidos`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/materials/tipo/solidos`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/materials/tipo/equipos`),
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/liquidos`),
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/solidos`),
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/equipos`),
         ]);
 
         const liquidos = liquidoRes.data.map((m) => ({
@@ -128,7 +128,7 @@ export default function Catalog() {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/materials/solicitudes`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes`,
         {
           materiales: selectedCart.map((item) => ({
             material_id: item.id,
@@ -173,7 +173,7 @@ export default function Catalog() {
     try {
       const token = localStorage.getItem('token');
       await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/materials/material/${materialToAdjust.id}/ajustar`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/material/${materialToAdjust.id}/ajustar`,
         {
           cantidad: amountNum,
           tipo: materialToAdjust.tipo
