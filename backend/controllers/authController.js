@@ -35,10 +35,12 @@ const registrarUsuario = async (req, res) => {
       [nombre, correo_institucional, hash, rol_id]
     );
 
+    // ✅ URL del frontend en producción
+    const frontendUrl = process.env.FRONTEND_URL || 'https://tu-frontend.onrender.com';
     await sendEmail(
       correo_institucional,
       'Verifica tu cuenta',
-      `Haz clic aquí para verificar: http://localhost:3000/verificar/${token}`
+      `Haz clic aquí para verificar: ${frontendUrl}/verificar/${token}`
     );
 
     res.status(201).json({ mensaje: 'Usuario registrado. Verifica tu correo.' });
@@ -106,10 +108,12 @@ const forgotPassword = async (req, res) => {
 
     const token = jwt.sign({ correo_institucional }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
+    // ✅ URL del frontend en producción
+    const frontendUrl = process.env.FRONTEND_URL || 'https://tu-frontend.onrender.com';
     await sendEmail(
       correo_institucional,
       'Restablece tu contraseña',
-      `Haz clic aquí para restablecer tu contraseña: http://localhost:3000/reset-password/${token}`
+      `Haz clic aquí para restablecer tu contraseña: ${frontendUrl}/reset-password/${token}`
     );
 
     res.json({ mensaje: 'Enlace de restablecimiento enviado a tu correo.' });
