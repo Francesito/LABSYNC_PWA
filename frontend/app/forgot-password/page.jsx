@@ -12,7 +12,7 @@ export default function ForgotPassword() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/auth/forgot-password`, {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/forgot-password`, {
         correo_institucional: correo,
       });
       setMessage(response.data.mensaje || 'Enlace de restablecimiento enviado a tu correo.');
