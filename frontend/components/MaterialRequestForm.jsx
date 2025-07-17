@@ -62,7 +62,7 @@ export default function MaterialRequestForm({ material, onClose }) {
       const usuario_id = decoded.id;
 
       await axios.post(
-        `${process.env.NEXT_PUBLIC_API_URL}/solicitudes`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/solicitudes`,
         {
           usuario_id,
           material_id: material.id,
