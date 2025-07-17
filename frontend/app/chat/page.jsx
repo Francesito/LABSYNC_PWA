@@ -56,7 +56,7 @@ export default function Chat() {
       setError('');
 
       const { data } = await axios.get(
-        `${BASE}/messages/users`,
+        `${BASE}/api/messages/users`,
         {
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -104,7 +104,7 @@ export default function Chat() {
       setError('');
 
       const { data } = await axios.get(
-        `${BASE}/messages/${selectedUser.id}`,
+        `${BASE}/api/messages/${selectedUser.id}`,
         { 
           headers: { 
             'Authorization': `Bearer ${token}`,
@@ -159,7 +159,7 @@ export default function Chat() {
       setError('');
       
       const { data } = await axios.post(
-        `${BASE}/messages/send`,
+        `${BASE}/api/messages/send`,
         { 
           contenido: nuevoMensaje.trim(), 
           receptor_id: selectedUser.id 
