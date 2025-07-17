@@ -11,7 +11,7 @@ export default function VerificarCuenta() {
   useEffect(() => {
     const verificarCuenta = async () => {
       try {
-        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/auth/verify/${token}`);
+        const response = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/verify/${token}`);
         setMessage(response.data.mensaje || 'Cuenta verificada exitosamente. Redirigiendo al login...');
         setTimeout(() => router.push('/login'), 3000);
       } catch (error) {
