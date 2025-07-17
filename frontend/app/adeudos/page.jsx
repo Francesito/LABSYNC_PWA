@@ -1,0 +1,304 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { useAuth } from '../../lib/auth';
+import { obtenerAdeudos, obtenerAdeudosConFechaEntrega } from '../../lib/api';
+
+// Iconos SVG
+const FileTextIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+  </svg>
+);
+
+const PackageIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+  </svg>
+);
+
+const HashIcon = () => (
+  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 20l4-16m2 16l4-16M6 9h14M4 15h14" />
+  </svg>
+);
+
+const AlertTriangleIcon = () => (
+  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.664-.833-2.464 0L3.34 16.5c-.77.833.192 2.5 1.732 2.5z" />
+  </svg>
+);
+
+const CheckCircleIcon = () => (
+  <svg className="w-16 h-16 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+  </svg>
+);
+
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center p-8">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+  </div>
+);
+
+export default function Adeudos() {
+  const { usuario } = useAuth();
+  const [adeudos, setAdeudos] = useState([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+
+  useEffect(() => {
+    if (usuario === null) return; // Espera a que cargue auth
+
+    if (!usuario) {
+      router.push('/login');
+      return;
+    }
+
+    if (!['alumno', 'docente'].includes(usuario.rol)) {
+      setError('Acceso denegado');
+      setLoading(false);
+      return;
+    }
+
+    const loadAdeudos = async () => {
+      try {
+        setLoading(true);
+        
+        // Intentamos primero obtener adeudos con fecha de entrega
+        let data;
+        try {
+          data = await obtenerAdeudosConFechaEntrega();
+          console.log('Adeudos obtenidos con fechas:', data); // Debug
+        } catch (error) {
+          console.warn('No se pudo obtener adeudos con fecha, usando método básico:', error);
+          data = await obtenerAdeudos();
+          console.log('Adeudos obtenidos (método básico):', data); // Debug
+        }
+        
+        setAdeudos(data);
+        setError('');
+      } catch (err) {
+        console.error('Error al cargar adeudos:', err);
+        setError('No se pudo cargar adeudos');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAdeudos();
+  }, [usuario, router]);
+
+  const isOverdue = (dateString) => {
+    if (!dateString) return false;
+    const today = new Date();
+    const dueDate = new Date(dateString);
+    return dueDate < today;
+  };
+
+  if (loading) {
+    return (
+      <div className="ml-64 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  return (
+    <div className="ml-64 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* Header */}
+        <div className="mb-8">
+          <div className="flex items-center space-x-3 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <FileTextIcon />
+            </div>
+            <h1 className="text-4xl font-bold text-gray-900">Adeudos Pendientes</h1>
+          </div>
+          <p className="text-gray-600 text-lg">
+            Gestiona y visualiza todos tus adeudos de materiales pendientes
+          </p>
+        </div>
+
+        {/* Error State */}
+        {error && (
+          <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-lg mb-6 animate-fadeIn">
+            <div className="flex items-center">
+              <AlertTriangleIcon />
+              <div className="ml-3">
+                <h3 className="text-red-800 font-medium">Error</h3>
+                <p className="text-red-700">{error}</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Empty State */}
+        {!error && adeudos.length === 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center animate-fadeIn">
+            <CheckCircleIcon />
+            <h3 className="text-2xl font-semibold text-gray-900 mb-2">
+              ¡Excelente trabajo!
+            </h3>
+            <p className="text-gray-600 text-lg">
+              No tienes adeudos pendientes en este momento.
+            </p>
+          </div>
+        )}
+
+        {/* Adeudos Table */}
+        {!error && adeudos.length > 0 && (
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden animate-fadeIn">
+            {/* Stats Header */}
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-4">
+                  <div className="bg-blue-100 p-2 rounded-lg">
+                    <PackageIcon />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Total de Adeudos
+                    </h3>
+                    <p className="text-blue-600 font-medium">
+                      {adeudos.length} {adeudos.length === 1 ? 'elemento' : 'elementos'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Table */}
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="flex items-center space-x-2">
+                        <HashIcon />
+                        <span>Folio</span>
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <div className="flex items-center space-x-2">
+                        <PackageIcon />
+                        <span>Material</span>
+                      </div>
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Cantidad
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Unidad
+                    </th>
+                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Estado
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {adeudos.map((a, index) => (
+                    <tr
+                      key={`${a.solicitud_id}-${a.solicitud_item_id}`}
+                      className={`hover:bg-gray-50 transition-colors duration-200 animate-slideIn ${
+                        isOverdue(a.fecha_entrega) ? 'bg-red-50' : ''
+                      }`}
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center">
+                          <div className="bg-blue-100 p-2 rounded-lg mr-3">
+                            <FileTextIcon />
+                          </div>
+                          <div className="text-sm font-medium text-gray-900">
+                            {a.folio}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm font-medium text-gray-900">
+                          {a.nombre_material}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+                          {a.cantidad}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        <span className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">
+                          {a.unidad}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 text-center">
+                        {a.fecha_entrega ? (
+                          isOverdue(a.fecha_entrega) ? (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                              </svg>
+                              Vencido
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                              </svg>
+                              Pendiente devolución
+                            </span>
+                          )
+                        ) : (
+                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
+                            </svg>
+                            Pendiente entrega
+                          </span>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Custom Styles */}
+      <style jsx>{`
+        @keyframes fadeIn {
+          from {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
+        @keyframes slideIn {
+          from {
+            opacity: 0;
+            transform: translateX(-20px);
+          }
+          to {
+            opacity: 1;
+            transform: translateX(0);
+          }
+        }
+
+        .animate-fadeIn {
+          animation: fadeIn 0.6s ease-out;
+        }
+
+        .animate-slideIn {
+          animation: slideIn 0.5s ease-out;
+        }
+      `}</style>
+    </div>
+  );
+}
