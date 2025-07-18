@@ -291,7 +291,7 @@ export default function Catalog() {
         }
 
         .header-section {
-          background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+          background: #1e293b;
           color: white;
           padding: 2rem;
         }
@@ -455,7 +455,7 @@ export default function Catalog() {
         }
 
         .cart-header {
-          background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+          background: #1e293b;
           color: white;
           padding: 1.5rem;
         }
@@ -611,7 +611,7 @@ export default function Catalog() {
         }
 
         .modal-header-custom {
-          background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+          background: #1e293b;
           color: white;
           padding: 1.5rem;
           border-bottom: none;
@@ -934,34 +934,6 @@ export default function Catalog() {
                 <p style={{ margin: '0.5rem 0 0 0', opacity: '0.9', fontSize: '0.95rem' }}>
                   Clasificación según Sistema Globalmente Armonizado de Clasificación y Etiquetado
                 </p>
-              </div>
-
-              {/* Estadísticas */}
-              <div className="stats-container">
-                <div className="stat-card">
-                  <div className="stat-number">{stats.total}</div>
-                  <div className="stat-label">Total Materiales</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number">{stats.inflamables}</div>
-                  <div className="stat-label">🔥 Inflamables</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number">{stats.toxicos}</div>
-                  <div className="stat-label">☠️ Tóxicos</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number">{stats.cancerigenos}</div>
-                  <div className="stat-label">⚠️ Cancerígenos</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number">{stats.corrosivos}</div>
-                  <div className="stat-label">🧪 Corrosivos</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-number">{stats.ambientales}</div>
-                  <div className="stat-label">🐟 Ambientales</div>
-                </div>
               </div>
 
               {/* Búsqueda y filtros */}
