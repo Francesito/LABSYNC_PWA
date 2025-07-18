@@ -79,14 +79,12 @@ export default function Chat() {
             const ultimoMensaje = mensajesContacto[mensajesContacto.length - 1];
             return {
               ...contacto,
-              ultimoMensaje: ultimoMensaje || null,
-              mensajesNoLeidos: ultimoMensaje && ultimoMensaje.emisor_id !== usuario?.id ? 1 : 0 // Solo mostrar si es de otro usuario
+              ultimoMensaje: ultimoMensaje || null
             };
           } catch (error) {
             return {
               ...contacto,
-              ultimoMensaje: null,
-              mensajesNoLeidos: 0
+              ultimoMensaje: null
             };
           }
         })
@@ -216,8 +214,7 @@ export default function Chat() {
           if (contacto.id === selectedUser.id) {
             return {
               ...contacto,
-              ultimoMensaje: data,
-              mensajesNoLeidos: 0 // Reset counter cuando es mi mensaje
+              ultimoMensaje: data
             };
           }
           return contacto;
@@ -404,23 +401,11 @@ export default function Chat() {
                         <div className="flex items-center justify-between mt-0.5">
                           <p className="text-xs text-gray-600 truncate">
                             {contacto.ultimoMensaje ? (
-                              <>
-                                {contacto.ultimoMensaje.emisor_id === usuario?.id && (
-                                  <span className="text-green-600 mr-1">✓</span>
-                                )}
-                                {truncarMensaje(contacto.ultimoMensaje.contenido)}
-                              </>
+                              truncarMensaje(contacto.ultimoMensaje.contenido)
                             ) : (
                               <span className="text-gray-400 italic">Sin mensajes</span>
                             )}
                           </p>
-                          
-                          {/* Solo mostrar badge si hay mensajes nuevos no leídos */}
-                          {contacto.mensajesNoLeidos > 0 && (
-                            <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full ml-2 min-w-[18px] text-center">
-                              {contacto.mensajesNoLeidos}
-                            </span>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -506,17 +491,12 @@ export default function Chat() {
                                 }`}
                               >
                                 <p className="text-sm leading-relaxed">{mensaje.contenido}</p>
-                                <div className={`flex items-center justify-end mt-1 space-x-1 ${
+                                <div className={`flex items-center justify-end mt-1 ${
                                   esMio ? 'text-green-100' : 'text-gray-500'
                                 }`}>
                                   <span className="text-xs">
                                     {formatearHoraMensaje(mensaje.fecha_envio)}
                                   </span>
-                                  {esMio && (
-                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                                    </svg>
-                                  )}
                                 </div>
                               </div>
                             </div>
@@ -539,27 +519,27 @@ export default function Chat() {
                 </div>
 
                 {/* Input de mensaje */}
-                <div className="bg-white border-t border-gray-200 p-3 flex-shrink-0">
-                  <div className="flex items-end space-x-2">
+                <div className="bg-white border-t border-gray-200 p-4 flex-shrink-0">
+                  <div className="flex items-end space-x-3">
                     <div className="flex-1 relative">
                       <textarea
                         rows={1}
-                        className="w-full px-3 py-2.5 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500 text-sm"
+                        className="w-full px-4 py-3 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500 text-sm"
                         placeholder="Escribe un mensaje..."
                         value={nuevoMensaje}
                         onChange={(e) => {
                           setNuevoMensaje(e.target.value);
                           // Auto-resize textarea
                           e.target.style.height = 'inherit';
-                          e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
+                          e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
                         }}
                         onKeyPress={handleKeyPress}
                         disabled={loadingMensajes || enviandoMensaje}
-                        style={{ minHeight: '40px', maxHeight: '100px' }}
+                        style={{ minHeight: '48px', maxHeight: '120px' }}
                       />
                     </div>
                     <button
-                      className={`p-2.5 rounded-full transition-all duration-200 flex-shrink-0 ${
+                      className={`p-3 rounded-full transition-all duration-200 flex-shrink-0 ${
                         nuevoMensaje.trim() && !enviandoMensaje
                           ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -568,9 +548,9 @@ export default function Chat() {
                       disabled={!nuevoMensaje.trim() || loadingMensajes || enviandoMensaje}
                     >
                       {enviandoMensaje ? (
-                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
                       ) : (
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
                       )}
