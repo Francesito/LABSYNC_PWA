@@ -263,16 +263,6 @@ export default function Catalog() {
     }
   };
 
-  // Estadísticas
-  const stats = {
-    total: allMaterials.length,
-    inflamables: allMaterials.filter(m => m.riesgos_fisicos?.includes('Inflamable')).length,
-    toxicos: allMaterials.filter(m => m.riesgos_salud?.includes('Tóxico agudo')).length,
-    cancerigenos: allMaterials.filter(m => m.riesgos_salud?.includes('Cancerígeno')).length,
-    corrosivos: allMaterials.filter(m => m.riesgos_salud?.includes('Corrosivo para la piel')).length,
-    ambientales: allMaterials.filter(m => m.riesgos_ambientales?.includes('Peligroso para el medio ambiente acuático')).length
-  };
-
   return (
     <>
       <style jsx>{`
