@@ -80,13 +80,13 @@ export default function Chat() {
             return {
               ...contacto,
               ultimoMensaje: ultimoMensaje || null,
-              cantidadMensajes: mensajesContacto.length
+              mensajesNoLeidos: ultimoMensaje && ultimoMensaje.emisor_id !== usuario?.id ? 1 : 0 // Solo mostrar si es de otro usuario
             };
           } catch (error) {
             return {
               ...contacto,
               ultimoMensaje: null,
-              cantidadMensajes: 0
+              mensajesNoLeidos: 0
             };
           }
         })
@@ -217,7 +217,7 @@ export default function Chat() {
             return {
               ...contacto,
               ultimoMensaje: data,
-              cantidadMensajes: contacto.cantidadMensajes + 1
+              mensajesNoLeidos: 0 // Reset counter cuando es mi mensaje
             };
           }
           return contacto;
@@ -304,27 +304,27 @@ export default function Chat() {
           {/* Panel de contactos - Estilo WhatsApp */}
           <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
             {/* Header del panel de contactos */}
-            <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+            <div className="bg-gray-50 px-4 py-2.5 border-b border-gray-200">
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
-                    <span className="text-white font-semibold text-sm">
+                <div className="flex items-center space-x-2">
+                  <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
+                    <span className="text-white font-semibold text-xs">
                       {usuario?.nombre?.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <h2 className="font-semibold text-gray-900 text-lg">Chats</h2>
+                    <h2 className="font-semibold text-gray-900 text-base">Chats</h2>
                     <p className="text-xs text-gray-500">
                       {usuario?.rol === 'alumno' ? 'Almacenistas' : 'Alumnos'}
                     </p>
                   </div>
                 </div>
                 <button 
-                  className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
+                  className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
                   onClick={cargarContactos}
                   disabled={loading}
                 >
-                  <svg className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                   </svg>
                 </button>
@@ -373,25 +373,25 @@ export default function Chat() {
                   {contactos.map((contacto) => (
                     <div
                       key={contacto.id}
-                      className={`flex items-center p-3 hover:bg-gray-50 cursor-pointer transition-colors ${
+                      className={`flex items-center p-2.5 hover:bg-gray-50 cursor-pointer transition-colors ${
                         selectedUser?.id === contacto.id ? 'bg-green-50 border-r-4 border-green-500' : ''
                       }`}
                       onClick={() => setSelectedUser(contacto)}
                     >
                       <div className="relative">
-                        <div className="w-12 h-12 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white font-semibold">
+                        <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
+                          <span className="text-white font-semibold text-sm">
                             {contacto.nombre.charAt(0).toUpperCase()}
                           </span>
                         </div>
                         {contacto.rol === 'almacen' && (
-                          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 rounded-full border-2 border-white"></div>
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         )}
                       </div>
                       
                       <div className="ml-3 flex-1 min-w-0">
                         <div className="flex items-center justify-between">
-                          <h3 className="font-semibold text-gray-900 truncate">
+                          <h3 className="font-semibold text-gray-900 truncate text-sm">
                             {contacto.nombre}
                           </h3>
                           {contacto.ultimoMensaje && (
@@ -401,8 +401,8 @@ export default function Chat() {
                           )}
                         </div>
                         
-                        <div className="flex items-center justify-between mt-1">
-                          <p className="text-sm text-gray-600 truncate">
+                        <div className="flex items-center justify-between mt-0.5">
+                          <p className="text-xs text-gray-600 truncate">
                             {contacto.ultimoMensaje ? (
                               <>
                                 {contacto.ultimoMensaje.emisor_id === usuario?.id && (
@@ -415,9 +415,10 @@ export default function Chat() {
                             )}
                           </p>
                           
-                          {contacto.cantidadMensajes > 0 && (
-                            <span className="bg-green-100 text-green-800 text-xs px-2 py-1 rounded-full ml-2">
-                              {contacto.cantidadMensajes}
+                          {/* Solo mostrar badge si hay mensajes nuevos no leídos */}
+                          {contacto.mensajesNoLeidos > 0 && (
+                            <span className="bg-green-500 text-white text-xs px-1.5 py-0.5 rounded-full ml-2 min-w-[18px] text-center">
+                              {contacto.mensajesNoLeidos}
                             </span>
                           )}
                         </div>
@@ -434,16 +435,16 @@ export default function Chat() {
             {selectedUser ? (
               <>
                 {/* Header del chat */}
-                <div className="bg-gray-50 px-6 py-4 border-b border-gray-200">
+                <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex-shrink-0">
                   <div className="flex items-center">
-                    <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center mr-3">
-                      <span className="text-white font-semibold">
+                    <div className="w-9 h-9 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center mr-3">
+                      <span className="text-white font-semibold text-sm">
                         {selectedUser.nombre.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{selectedUser.nombre}</h3>
-                      <p className="text-sm text-gray-500 capitalize">{selectedUser.rol}</p>
+                      <h3 className="font-semibold text-gray-900 text-sm">{selectedUser.nombre}</h3>
+                      <p className="text-xs text-gray-500 capitalize">{selectedUser.rol}</p>
                     </div>
                   </div>
                 </div>
@@ -451,7 +452,7 @@ export default function Chat() {
                 {/* Área de mensajes */}
                 <div
                   ref={chatContainerRef}
-                  className="flex-1 overflow-y-auto p-4 bg-gray-50"
+                  className="flex-1 overflow-y-auto p-3 bg-gray-50"
                   style={{ 
                     backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f0f0f0' fill-opacity='0.3'%3E%3Cpath d='M20 20c0-11.046-8.954-20-20-20s-20 8.954-20 20 8.954 20 20 20 20-8.954 20-20zm-30 0c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10-10-4.477-10-10z'/%3E%3C/g%3E%3C/svg%3E")` 
                   }}
@@ -475,7 +476,7 @@ export default function Chat() {
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                       {mensajes.map((mensaje, index) => {
                         const esMio = mensaje.emisor_id === usuario?.id;
                         const mostrarFecha = index === 0 || 
@@ -484,8 +485,8 @@ export default function Chat() {
                         return (
                           <div key={mensaje.id}>
                             {mostrarFecha && (
-                              <div className="flex justify-center my-4">
-                                <span className="bg-white px-3 py-1 rounded-full text-xs text-gray-500 shadow-sm">
+                              <div className="flex justify-center my-3">
+                                <span className="bg-white px-2.5 py-1 rounded-full text-xs text-gray-500 shadow-sm">
                                   {new Date(mensaje.fecha_envio).toLocaleDateString('es-ES', {
                                     weekday: 'long',
                                     year: 'numeric',
@@ -498,7 +499,7 @@ export default function Chat() {
                             
                             <div className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
                               <div
-                                className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg shadow-sm ${
+                                className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg shadow-sm ${
                                   esMio
                                     ? 'bg-green-500 text-white rounded-br-none'
                                     : 'bg-white text-gray-900 rounded-bl-none border'
@@ -512,7 +513,7 @@ export default function Chat() {
                                     {formatearHoraMensaje(mensaje.fecha_envio)}
                                   </span>
                                   {esMio && (
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                                    <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
                                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                                     </svg>
                                   )}
@@ -525,7 +526,7 @@ export default function Chat() {
                       
                       {enviandoMensaje && (
                         <div className="flex justify-end">
-                          <div className="max-w-xs lg:max-w-md px-4 py-2 rounded-lg rounded-br-none bg-green-500 text-white shadow-sm opacity-70">
+                          <div className="max-w-xs lg:max-w-md px-3 py-2 rounded-lg rounded-br-none bg-green-500 text-white shadow-sm opacity-70">
                             <p className="text-sm">{nuevoMensaje}</p>
                             <div className="flex items-center justify-end mt-1">
                               <div className="animate-spin rounded-full h-3 w-3 border-b border-white"></div>
@@ -538,27 +539,27 @@ export default function Chat() {
                 </div>
 
                 {/* Input de mensaje */}
-                <div className="bg-white border-t border-gray-200 p-4">
+                <div className="bg-white border-t border-gray-200 p-3 flex-shrink-0">
                   <div className="flex items-end space-x-2">
                     <div className="flex-1 relative">
                       <textarea
                         rows={1}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500"
+                        className="w-full px-3 py-2.5 border border-gray-300 rounded-full resize-none focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent bg-gray-50 text-gray-900 placeholder-gray-500 text-sm"
                         placeholder="Escribe un mensaje..."
                         value={nuevoMensaje}
                         onChange={(e) => {
                           setNuevoMensaje(e.target.value);
                           // Auto-resize textarea
                           e.target.style.height = 'inherit';
-                          e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
+                          e.target.style.height = `${Math.min(e.target.scrollHeight, 100)}px`;
                         }}
                         onKeyPress={handleKeyPress}
                         disabled={loadingMensajes || enviandoMensaje}
-                        style={{ minHeight: '48px', maxHeight: '120px' }}
+                        style={{ minHeight: '40px', maxHeight: '100px' }}
                       />
                     </div>
                     <button
-                      className={`p-3 rounded-full transition-all duration-200 ${
+                      className={`p-2.5 rounded-full transition-all duration-200 flex-shrink-0 ${
                         nuevoMensaje.trim() && !enviandoMensaje
                           ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed'
@@ -567,9 +568,9 @@ export default function Chat() {
                       disabled={!nuevoMensaje.trim() || loadingMensajes || enviandoMensaje}
                     >
                       {enviandoMensaje ? (
-                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                       ) : (
-                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
                         </svg>
                       )}
