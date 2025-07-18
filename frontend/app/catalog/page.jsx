@@ -18,6 +18,8 @@ export default function Catalog() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedRiesgoFisico, setSelectedRiesgoFisico] = useState('');
+  const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
 
   useEffect(() => {
     if (!usuario) {
@@ -48,6 +50,9 @@ export default function Catalog() {
           ...m,
           tipo: 'equipo',
           cantidad: m.cantidad_disponible_u ?? 0,
+          riesgos_fisicos: '',
+          riesgos_salud: '',
+          riesgos_ambientales: ''
         }));
 
         let all = [];
@@ -83,6 +88,69 @@ export default function Catalog() {
     if (tipo === 'liquido') return 'ml';
     if (tipo === 'solido') return 'g';
     return 'unidades';
+  };
+
+  const parseRiesgos = (riesgosString) => {
+    if (!riesgosString) return [];
+    return riesgosString.split(';').filter(r => r.trim());
+  };
+
+  const getRiesgoColor = (riesgo) => {
+    const colorMap = {
+      // Riesgos físicos
+      'Inflamable': 'bg-red-100 text-red-800',
+      'Oxidante': 'bg-orange-100 text-orange-800',
+      'Corrosivo para metales': 'bg-gray-100 text-gray-800',
+      'Reacciona violentamente con agua': 'bg-purple-100 text-purple-800',
+      
+      // Riesgos para la salud
+      'Tóxico agudo': 'bg-red-200 text-red-900',
+      'Cancerígeno': 'bg-black text-white',
+      'Corrosivo para la piel': 'bg-yellow-100 text-yellow-800',
+      'Irritante': 'bg-blue-100 text-blue-800',
+      'Sensibilizante': 'bg-pink-100 text-pink-800',
+      
+      // Riesgos ambientales
+      'Peligroso para el medio ambiente acuático': 'bg-green-100 text-green-800',
+      'Persistente': 'bg-teal-100 text-teal-800'
+    };
+    return colorMap[riesgo] || 'bg-gray-100 text-gray-600';
+  };
+
+  const getRiesgoIcon = (riesgo) => {
+    const iconMap = {
+      // Riesgos físicos
+      'Inflamable': '🔥',
+      'Oxidante': '⚗️',
+      'Corrosivo para metales': '🛠️',
+      'Reacciona violentamente con agua': '💥',
+      
+      // Riesgos para la salud
+      'Tóxico agudo': '☠️',
+      'Cancerígeno': '⚠️',
+      'Corrosivo para la piel': '🧪',
+      'Irritante': '⚡',
+      'Sensibilizante': '🤧',
+      
+      // Riesgos ambientales
+      'Peligroso para el medio ambiente acuático': '🐟',
+      'Persistente': '🌱'
+    };
+    return iconMap[riesgo] || '⚪';
+  };
+
+  const getMaxRiesgoLevel = (material) => {
+    const allRiesgos = [
+      ...parseRiesgos(material.riesgos_fisicos),
+      ...parseRiesgos(material.riesgos_salud),
+      ...parseRiesgos(material.riesgos_ambientales)
+    ];
+
+    if (allRiesgos.includes('Cancerígeno') || allRiesgos.includes('Tóxico agudo')) return 4;
+    if (allRiesgos.includes('Corrosivo para la piel') || allRiesgos.includes('Inflamable')) return 3;
+    if (allRiesgos.includes('Irritante') || allRiesgos.includes('Oxidante')) return 2;
+    if (allRiesgos.length > 0) return 1;
+    return 0;
   };
 
   const addToCart = (material, cantidad) => {
@@ -151,9 +219,15 @@ export default function Catalog() {
     }
   };
 
-  const filteredMaterials = allMaterials.filter((m) =>
-    formatName(m.nombre).toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredMaterials = allMaterials.filter((m) => {
+    const matchesSearch = formatName(m.nombre).toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRiesgoFisico = selectedRiesgoFisico === '' || 
+      (m.riesgos_fisicos && m.riesgos_fisicos.includes(selectedRiesgoFisico));
+    const matchesRiesgoSalud = selectedRiesgoSalud === '' || 
+      (m.riesgos_salud && m.riesgos_salud.includes(selectedRiesgoSalud));
+    
+    return matchesSearch && matchesRiesgoFisico && matchesRiesgoSalud;
+  });
 
   const handleAdjustClick = (material) => {
     setMaterialToAdjust(material);
@@ -189,6 +263,16 @@ export default function Catalog() {
     }
   };
 
+  // Estadísticas
+  const stats = {
+    total: allMaterials.length,
+    inflamables: allMaterials.filter(m => m.riesgos_fisicos?.includes('Inflamable')).length,
+    toxicos: allMaterials.filter(m => m.riesgos_salud?.includes('Tóxico agudo')).length,
+    cancerigenos: allMaterials.filter(m => m.riesgos_salud?.includes('Cancerígeno')).length,
+    corrosivos: allMaterials.filter(m => m.riesgos_salud?.includes('Corrosivo para la piel')).length,
+    ambientales: allMaterials.filter(m => m.riesgos_ambientales?.includes('Peligroso para el medio ambiente acuático')).length
+  };
+
   return (
     <>
       <style jsx>{`
@@ -207,7 +291,7 @@ export default function Catalog() {
         }
 
         .header-section {
-          background: #1e3a8a;
+          background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
           color: white;
           padding: 2rem;
         }
@@ -218,23 +302,25 @@ export default function Catalog() {
           margin: 0;
         }
 
-        .search-container {
+        .search-filter-container {
           padding: 1.5rem;
           background: #fafbfc;
           border-bottom: 1px solid #e5e7eb;
+          display: grid;
+          grid-template-columns: 2fr 1fr 1fr;
+          gap: 1rem;
         }
 
-        .search-input {
+        .search-input, .filter-select {
           border: 1px solid #d1d5db;
           border-radius: 6px;
           padding: 0.75rem 1rem;
           font-size: 0.95rem;
           background: white;
           transition: all 0.2s ease;
-          width: 100%;
         }
 
-        .search-input:focus {
+        .search-input:focus, .filter-select:focus {
           outline: none;
           border-color: #1e3a8a;
           box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
@@ -300,6 +386,23 @@ export default function Catalog() {
           color: #065f46;
         }
 
+        .riesgo-badge {
+          display: inline-block;
+          padding: 0.125rem 0.375rem;
+          border-radius: 4px;
+          font-size: 0.625rem;
+          font-weight: 500;
+          margin: 0.125rem;
+          white-space: nowrap;
+        }
+
+        .riesgos-container {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.25rem;
+          max-width: 200px;
+        }
+
         .stock-display {
           font-weight: 500;
           color: #4b5563;
@@ -342,7 +445,7 @@ export default function Catalog() {
           background: white;
           border-radius: 8px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          width: 380px;
+          width: 400px;
           position: sticky;
           top: 2rem;
           max-height: calc(100vh - 4rem);
@@ -352,7 +455,7 @@ export default function Catalog() {
         }
 
         .cart-header {
-          background: #1e3a8a;
+          background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
           color: white;
           padding: 1.5rem;
         }
@@ -392,6 +495,7 @@ export default function Catalog() {
         .cart-item-quantity {
           color: #6b7280;
           font-size: 0.813rem;
+          margin-bottom: 0.5rem;
         }
 
         .btn-remove {
@@ -459,6 +563,41 @@ export default function Catalog() {
           cursor: not-allowed;
         }
 
+        .stats-container {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+          gap: 1rem;
+          padding: 1rem 1.5rem;
+          background: #f8f9fa;
+          border-bottom: 1px solid #e5e7eb;
+        }
+
+        .stat-card {
+          background: white;
+          border-radius: 6px;
+          padding: 1rem;
+          text-align: center;
+          border: 1px solid #e5e7eb;
+          transition: transform 0.2s ease;
+        }
+
+        .stat-card:hover {
+          transform: translateY(-2px);
+        }
+
+        .stat-number {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #1f2937;
+        }
+
+        .stat-label {
+          font-size: 0.75rem;
+          color: #6b7280;
+          font-weight: 500;
+          margin-top: 0.25rem;
+        }
+
         .modal-overlay {
           background: rgba(0, 0, 0, 0.5);
         }
@@ -472,7 +611,7 @@ export default function Catalog() {
         }
 
         .modal-header-custom {
-          background: #1e3a8a;
+          background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
           color: white;
           padding: 1.5rem;
           border-bottom: none;
@@ -613,8 +752,14 @@ export default function Catalog() {
           font-size: 0.875rem;
         }
 
-        .info-alert strong {
-          font-weight: 600;
+        .security-alert {
+          background: #fef3c7;
+          border: 1px solid #fbbf24;
+          border-radius: 6px;
+          padding: 0.875rem 1rem;
+          color: #92400e;
+          font-size: 0.875rem;
+          margin-bottom: 1rem;
         }
 
         .form-label {
@@ -662,6 +807,102 @@ export default function Catalog() {
           gap: 1.5rem;
         }
 
+        .d-flex {
+          display: flex;
+        }
+
+        .justify-content-between {
+          justify-content: space-between;
+        }
+
+        .align-items-center {
+          align-items: center;
+        }
+
+        .align-items-start {
+          align-items: flex-start;
+        }
+
+        .flex-grow-1 {
+          flex-grow: 1;
+        }
+
+        .fw-semibold {
+          font-weight: 600;
+        }
+
+        .fw-bold {
+          font-weight: 700;
+        }
+
+        .mt-4 {
+          margin-top: 1.5rem;
+        }
+
+        .mb-3 {
+          margin-bottom: 1rem;
+        }
+
+        .mb-4 {
+          margin-bottom: 1.5rem;
+        }
+
+        .mx-4 {
+          margin-left: 1.5rem;
+          margin-right: 1.5rem;
+        }
+
+        .mt-3 {
+          margin-top: 1rem;
+        }
+
+        .p-0 {
+          padding: 0;
+        }
+
+        .p-4 {
+          padding: 1.5rem;
+        }
+
+        .table-responsive {
+          overflow-x: auto;
+        }
+
+        .min-w-full {
+          min-width: 100%;
+        }
+
+        .mb-0 {
+          margin-bottom: 0;
+        }
+
+        .show {
+          display: block !important;
+        }
+
+        .d-block {
+          display: block;
+        }
+
+        .btn-close {
+          background: none;
+          border: none;
+          font-size: 1.5rem;
+          color: white;
+          cursor: pointer;
+          padding: 0;
+          width: 24px;
+          height: 24px;
+        }
+
+        .btn-close-white {
+          color: white;
+        }
+
+        .btn-close:before {
+          content: '×';
+        }
+
         @media (max-width: 1200px) {
           .catalog-container {
             margin-left: 0;
@@ -677,6 +918,10 @@ export default function Catalog() {
             max-height: none;
             margin-top: 2rem;
           }
+
+          .search-filter-container {
+            grid-template-columns: 1fr;
+          }
         }
       `}</style>
 
@@ -685,10 +930,42 @@ export default function Catalog() {
           <div className="flex-grow-1">
             <div className="main-card">
               <div className="header-section">
-                <h1>Catálogo de Materiales</h1>
+                <h1>Catálogo de Materiales - Sistema GHS</h1>
+                <p style={{ margin: '0.5rem 0 0 0', opacity: '0.9', fontSize: '0.95rem' }}>
+                  Clasificación según Sistema Globalmente Armonizado de Clasificación y Etiquetado
+                </p>
               </div>
 
-              <div className="search-container">
+              {/* Estadísticas */}
+              <div className="stats-container">
+                <div className="stat-card">
+                  <div className="stat-number">{stats.total}</div>
+                  <div className="stat-label">Total Materiales</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">{stats.inflamables}</div>
+                  <div className="stat-label">🔥 Inflamables</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">{stats.toxicos}</div>
+                  <div className="stat-label">☠️ Tóxicos</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">{stats.cancerigenos}</div>
+                  <div className="stat-label">⚠️ Cancerígenos</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">{stats.corrosivos}</div>
+                  <div className="stat-label">🧪 Corrosivos</div>
+                </div>
+                <div className="stat-card">
+                  <div className="stat-number">{stats.ambientales}</div>
+                  <div className="stat-label">🐟 Ambientales</div>
+                </div>
+              </div>
+
+              {/* Búsqueda y filtros */}
+              <div className="search-filter-container">
                 <input
                   type="text"
                   className="form-control search-input"
@@ -696,6 +973,29 @@ export default function Catalog() {
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
+                <select
+                  className="filter-select"
+                  value={selectedRiesgoFisico}
+                  onChange={(e) => setSelectedRiesgoFisico(e.target.value)}
+                >
+                  <option value="">Todos los riesgos físicos</option>
+                  <option value="Inflamable">🔥 Inflamable</option>
+                  <option value="Oxidante">⚗️ Oxidante</option>
+                  <option value="Corrosivo para metales">🛠️ Corrosivo para metales</option>
+                  <option value="Reacciona violentamente con agua">💥 Reactivo con agua</option>
+                </select>
+                <select
+                  className="filter-select"
+                  value={selectedRiesgoSalud}
+                  onChange={(e) => setSelectedRiesgoSalud(e.target.value)}
+                >
+                  <option value="">Todos los riesgos de salud</option>
+                  <option value="Tóxico agudo">☠️ Tóxico agudo</option>
+                  <option value="Cancerígeno">⚠️ Cancerígeno</option>
+                  <option value="Corrosivo para la piel">🧪 Corrosivo</option>
+                  <option value="Irritante">⚡ Irritante</option>
+                  <option value="Sensibilizante">🤧 Sensibilizante</option>
+                </select>
               </div>
 
               <div className="p-0">
@@ -717,6 +1017,7 @@ export default function Catalog() {
                           <tr className="table-header">
                             <th>Material</th>
                             <th>Tipo</th>
+                            <th>Riesgos GHS</th>
                             <th>Descripción</th>
                             <th>Stock</th>
                             {usuario?.rol !== 'almacen' && <th>Cantidad</th>}
@@ -735,6 +1036,25 @@ export default function Catalog() {
                                 <span className={`material-type type-${material.tipo}`}>
                                   {material.tipo}
                                 </span>
+                              </td>
+                              <td>
+                                <div className="riesgos-container">
+                                  {parseRiesgos(material.riesgos_fisicos).map((riesgo, idx) => (
+                                    <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                      {getRiesgoIcon(riesgo)} {riesgo}
+                                    </span>
+                                  ))}
+                                  {parseRiesgos(material.riesgos_salud).map((riesgo, idx) => (
+                                    <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                      {getRiesgoIcon(riesgo)} {riesgo}
+                                    </span>
+                                  ))}
+                                  {parseRiesgos(material.riesgos_ambientales).map((riesgo, idx) => (
+                                    <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                      {getRiesgoIcon(riesgo)} {riesgo}
+                                    </span>
+                                  ))}
+                                </div>
                               </td>
                               <td className="text-muted">
                                 {material.descripcion || 'Material de laboratorio'}
@@ -809,6 +1129,18 @@ export default function Catalog() {
                             <div className="cart-item-quantity">
                               {item.cantidad} {getUnidad(item.tipo)}
                             </div>
+                            <div className="riesgos-container">
+                              {parseRiesgos(item.riesgos_fisicos).slice(0, 2).map((riesgo, idx) => (
+                                <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                  {getRiesgoIcon(riesgo)}
+                                </span>
+                              ))}
+                              {parseRiesgos(item.riesgos_salud).slice(0, 2).map((riesgo, idx) => (
+                                <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                  {getRiesgoIcon(riesgo)}
+                                </span>
+                              ))}
+                            </div>
                           </div>
                           <button 
                             className="btn-remove"
@@ -869,6 +1201,20 @@ export default function Catalog() {
                         <div className="flex-grow-1">
                           <div className="fw-semibold">{formatName(item.nombre)}</div>
                           <small className="text-muted">{item.tipo}</small>
+                          <div style={{ marginTop: '0.5rem' }}>
+                            <div className="riesgos-container">
+                              {parseRiesgos(item.riesgos_fisicos).map((riesgo, ridx) => (
+                                <span key={ridx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                  {getRiesgoIcon(riesgo)} {riesgo}
+                                </span>
+                              ))}
+                              {parseRiesgos(item.riesgos_salud).map((riesgo, ridx) => (
+                                <span key={ridx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                  {getRiesgoIcon(riesgo)} {riesgo}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                         <div className="fw-bold">
                           {item.cantidad} {getUnidad(item.tipo)}
@@ -877,8 +1223,20 @@ export default function Catalog() {
                     ))}
                   </div>
                 </div>
+                
+                {/* Alerta de seguridad si hay materiales peligrosos */}
+                {selectedCart.some(item => 
+                  item.riesgos_salud?.includes('Cancerígeno') || 
+                  item.riesgos_salud?.includes('Tóxico agudo') ||
+                  item.riesgos_fisicos?.includes('Inflamable')
+                ) && (
+                  <div className="security-alert">
+                    <strong>⚠️ ATENCIÓN - MATERIALES PELIGROSOS:</strong> Esta solicitud incluye materiales de alto riesgo según GHS. Asegúrate de seguir todos los protocolos de seguridad, usar EPP adecuado y cumplir con las medidas de almacenamiento y manipulación requeridas.
+                  </div>
+                )}
+                
                 <div className="info-alert">
-                  <strong>Nota:</strong> Una vez creado el vale, será enviado para {usuario.rol === 'docente' ? 'aprobación automática' : 'revisión y aprobación'}.
+                  <strong>Nota:</strong> Una vez creado el vale, será enviado para {usuario.rol === 'docente' ? 'aprobación automática' : 'revisión y aprobación'}. Los materiales con clasificación GHS requieren manejo especial.
                 </div>
               </div>
               <div className="modal-footer modal-footer-custom">
@@ -918,6 +1276,37 @@ export default function Catalog() {
               <div className="modal-body p-4">
                 <div className="mb-3">
                   <h5>{formatName(materialToAdjust.nombre)}</h5>
+                  
+                  {/* Mostrar clasificación GHS del material */}
+                  <div style={{ marginBottom: '1rem' }}>
+                    <div className="riesgos-container">
+                      {parseRiesgos(materialToAdjust.riesgos_fisicos).map((riesgo, idx) => (
+                        <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                          {getRiesgoIcon(riesgo)} {riesgo}
+                        </span>
+                      ))}
+                      {parseRiesgos(materialToAdjust.riesgos_salud).map((riesgo, idx) => (
+                        <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                          {getRiesgoIcon(riesgo)} {riesgo}
+                        </span>
+                      ))}
+                      {parseRiesgos(materialToAdjust.riesgos_ambientales).map((riesgo, idx) => (
+                        <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                          {getRiesgoIcon(riesgo)} {riesgo}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Alerta de seguridad para materiales peligrosos */}
+                  {(materialToAdjust.riesgos_salud?.includes('Cancerígeno') || 
+                    materialToAdjust.riesgos_salud?.includes('Tóxico agudo') ||
+                    materialToAdjust.riesgos_fisicos?.includes('Inflamable')) && (
+                    <div className="security-alert">
+                      <strong>⚠️ Material Peligroso:</strong> Este material requiere precauciones especiales de seguridad durante su manipulación y almacenamiento.
+                    </div>
+                  )}
+                  
                   <p className="text-muted mb-3">
                     Stock actual: <strong>{materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}</strong>
                   </p>
@@ -932,6 +1321,9 @@ export default function Catalog() {
                       onChange={(e) => setAdjustAmount(e.target.value)}
                       placeholder={`Cantidad en ${getUnidad(materialToAdjust.tipo)}`}
                     />
+                    <small className="text-muted">
+                      Usa números positivos para agregar stock, negativos para reducir
+                    </small>
                   </div>
                   {error && (
                     <div className="alert-custom">
