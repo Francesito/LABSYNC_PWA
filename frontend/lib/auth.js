@@ -47,16 +47,19 @@ export function AuthProvider({ children }) {
         });
 
         // Redirecciones por rol
-        if (pathname === '/login' || pathname === '/register') {
-          router.push('/catalog');
-        } else if (rolNombre === 'docente' && pathname === '/chat') {
-          router.push('/catalog');
-        } else if (
-          (rolNombre === 'alumno' || rolNombre === 'almacen') &&
-          pathname === '/solicitudes/pendientes'
-        ) {
-          router.push('/solicitudes');
-        }
+      if (pathname === '/login' || pathname === '/register') {
+  router.push('/catalog');
+} else if (pathname.startsWith('/reset-password') || pathname === '/forgot-password' || pathname.startsWith('/verificar')) {
+  // No redirigir estas páginas públicas
+  return;
+} else if (rolNombre === 'docente' && pathname === '/chat') {
+  router.push('/catalog');
+} else if (
+  (rolNombre === 'alumno' || rolNombre === 'almacen') &&
+  pathname === '/solicitudes/pendientes'
+) {
+  router.push('/solicitudes');
+}
       } catch (error) {
         console.error('Error decodificando token:', error);
         localStorage.removeItem('token');
@@ -65,9 +68,9 @@ export function AuthProvider({ children }) {
           router.push('/login');
         }
       }
-    } else if (!['/login', '/register'].includes(pathname)) {
-      router.push('/login');
-    }
+   } else if (!['/login', '/register', '/forgot-password', '/reset-password', '/verificar'].includes(pathname)) {
+  router.push('/login');
+}
   }, [pathname, router]);
 
   return (
