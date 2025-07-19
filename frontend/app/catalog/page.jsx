@@ -992,10 +992,7 @@ export default function Catalog() {
           <div className="flex-grow-1">
             <div className="main-card">
               <div className="header-section">
-                <h1>Catálogo de Materiales - Sistema GHS</h1>
-                <p style={{ margin: '0.5rem 0 0 0', opacity: '0.9', fontSize: '0.95rem' }}>
-                  Clasificación según Sistema Globalmente Armonizado de Clasificación y Etiquetado
-                </p>
+                <h1>Catálogo de Reactivos</h1>
               </div>
 
               {/* Alertas de stock bajo solo para almacenistas */}
