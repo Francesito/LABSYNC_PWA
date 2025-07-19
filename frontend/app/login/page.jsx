@@ -49,8 +49,8 @@ export default function Login() {
         <div className="col-12 col-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
           <div className="w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
             <div className="mb-4">
-              <h2 className="fw-bold text-white mb-1">Inicia Sesión</h2>
-              <p className="text-white-50 small">Introduce tus credenciales para ingresar a tu cuenta.</p>
+              <h2 className="fw-bold text-dark mb-1">Inicia Sesión</h2>
+              <p className="text-muted small">Introduce tus credenciales para ingresar a tu cuenta.</p>
             </div>
 
             {error && (
@@ -63,20 +63,20 @@ export default function Login() {
             <form onSubmit={handleSubmit}>
               {/* Email Address */}
               <div className="mb-4">
-                <label htmlFor="correo" className="form-label fw-semibold text-white mb-2">Correo Electrónico</label>
+                <label htmlFor="correo" className="form-label fw-semibold text-dark mb-2">Correo Electrónico</label>
                 <input
                   type="email"
                   id="correo"
                   value={correo}
                   onChange={(e) => setCorreo(e.target.value)}
-                  className="form-control bg-transparent border-white text-white"
-                  style={{
-                    backgroundColor: 'rgba(255,255,255,0.1) !important',
-                    borderColor: 'rgba(255,255,255,0.3)',
-                    color: 'white',
-                    padding: '12px 16px',
-                    fontSize: '16px'
-                  }}
+                  className="form-control bg-transparent border-dark text-dark"
+                 style={{
+  backgroundColor: 'rgba(255,255,255,0.8) !important',
+  borderColor: 'rgba(0,0,0,0.3)',
+  color: 'black',
+  padding: '12px 16px',
+  fontSize: '16px'
+}}
                   placeholder="ejemplo@utsjr.edu.mx"
                   required
                 />
@@ -84,21 +84,21 @@ export default function Login() {
 
               {/* Password */}
               <div className="mb-4">
-                <label htmlFor="contrasena" className="form-label fw-semibold text-white mb-2">Contraseña</label>
+               <label htmlFor="contrasena" className="form-label fw-semibold text-dark mb-2">Contraseña</label>
                 <div className="position-relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     id="contrasena"
                     value={contrasena}
                     onChange={(e) => setContrasena(e.target.value)}
-                    className="form-control bg-transparent border-white text-white pe-5"
-                    style={{
-                      backgroundColor: 'rgba(255,255,255,0.1) !important',
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      color: 'white',
-                      padding: '12px 16px',
-                      fontSize: '16px'
-                    }}
+                    className="form-control bg-transparent border-dark text-dark pe-5"
+                   style={{
+  backgroundColor: 'rgba(255,255,255,0.8) !important',
+  borderColor: 'rgba(0,0,0,0.3)',
+  color: 'black',
+  padding: '12px 16px',
+  fontSize: '16px'
+}}
                     placeholder="Ingresa tu contraseña"
                     required
                   />
@@ -106,7 +106,7 @@ export default function Login() {
                     type="button"
                     className="btn position-absolute top-50 end-0 translate-middle-y me-3 p-0 border-0 bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ color: 'rgba(255,255,255,0.7)' }}
+                    style={{ color: 'rgba(0,0,0,0.7)' }}
                   >
                     <i className={`bi ${showPassword ? 'bi-eye-fill' : 'bi-eye-slash-fill'}`}></i>
                   </button>
@@ -130,30 +130,30 @@ export default function Login() {
             </form>
 
             <div className="text-center mb-4">
-              <Link href="/forgot-password" className="text-white text-decoration-none">
+              <Link href="/forgot-password" className="text-dark text-decoration-none">
                 ¿Olvidaste tu contraseña?
               </Link>
             </div>
 
-            <p className="text-center text-white-50">
+            <p className="text-center text-muted">
               ¿No tienes cuenta?{' '}
-              <Link href="/register" className="text-white fw-bold text-decoration-none">Regístrate</Link>
+             <Link href="/register" className="text-dark fw-bold text-decoration-none">Regístrate</Link>
             </p>
           </div>
         </div>
       </div>
 
       <style jsx>{`
-        .form-control:focus {
-          background-color: rgba(255,255,255,0.1) !important;
-          border-color: rgba(255,255,255,0.5) !important;
-          color: white !important;
-          box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.25) !important;
-        }
+       .form-control:focus {
+  background-color: rgba(255,255,255,0.9) !important;
+  border-color: rgba(0,0,0,0.5) !important;
+  color: black !important;
+  box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.25) !important;
+}
         
-        .form-control::placeholder {
-          color: rgba(255,255,255,0.5) !important;
-        }
+       .form-control::placeholder {
+  color: rgba(0,0,0,0.5) !important;
+}
         
         .form-check-input:checked {
           background-color: #d4634a !important;
