@@ -39,15 +39,6 @@ export default function Register() {
     }}>
 
       <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
-        {/* Sección izquierda - Bienvenida */}
-        <div className="col-12 col-md-6 d-flex flex-column justify-content-center align-items-center p-4 p-md-5 text-white">
-          <div className="text-center" style={{ maxWidth: '480px' }}>
-            <h1 className="display-4 fw-bold mb-4 text-white">Únete a<br />LabSync</h1>
-            <p className="lead mb-4 text-white-50">
-              Crea tu cuenta para acceder a todas las funcionalidades que LabSync tiene para ti.
-            </p>
-          </div>
-        </div>
 
         {/* Sección derecha - Formulario */}
        <div className="col-12 col-md-6 offset-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
