@@ -72,9 +72,11 @@ export default function Catalog() {
 
         // Verificar stock bajo solo para almacenistas
         if (usuario.rol === 'almacen') {
-          const lowStock = all.filter(material => 
-            material.cantidad > 0 && material.cantidad <= LOW_STOCK_THRESHOLD
-          );
+         const lowStock = all.filter(material => 
+  material.cantidad > 0 && 
+  material.cantidad <= LOW_STOCK_THRESHOLD &&
+  (material.tipo === 'liquido' || material.tipo === 'solido')
+);
           setLowStockMaterials(lowStock);
         }
 
