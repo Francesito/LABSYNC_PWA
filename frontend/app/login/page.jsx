@@ -35,15 +35,6 @@ export default function Login() {
     }}>
 
       <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
-        {/* Sección izquierda - Welcome Back */}
-        <div className="col-12 col-md-6 d-flex flex-column justify-content-center align-items-center p-4 p-md-5 text-white">
-          <div className="text-center" style={{ maxWidth: '480px' }}>
-            <h1 className="display-4 fw-bold mb-4 text-white">Bienvenido<br /></h1>
-            <p className="lead mb-4 text-white-50">
-              Inicia sesión para acceder a tu cuenta y disfrutar de todos los servicios que LabSync tiene para ti.
-            </p>
-          </div>
-        </div>
 
         {/* Sección derecha - Formulario */}
         <div className="col-12 col-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
