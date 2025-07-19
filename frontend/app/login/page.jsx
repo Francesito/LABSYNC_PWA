@@ -37,7 +37,7 @@ export default function Login() {
       <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
 
         {/* Sección derecha - Formulario */}
-        <div className="col-12 col-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
+       <div className="col-12 col-md-6 offset-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
           <div className="w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
             <div className="mb-4">
               <h2 className="fw-bold text-dark mb-1">Inicia Sesión</h2>
