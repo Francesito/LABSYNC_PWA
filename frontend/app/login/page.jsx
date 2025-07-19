@@ -33,11 +33,6 @@ export default function Login() {
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat'
     }}>
-      {/* Overlay oscuro */}
-      <div className="position-absolute top-0 start-0 w-100 h-100" style={{
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 100%)',
-        zIndex: 1
-      }}></div>
 
       <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
         {/* Sección izquierda - Welcome Back */}
