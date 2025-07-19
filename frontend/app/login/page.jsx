@@ -30,50 +30,52 @@ export default function Login() {
   return (
     <div className="position-relative" style={{
       minHeight: '100vh',
-      background: '#334155',
-      overflow: 'hidden'
+      background: '#2d3748',
+      overflow: 'hidden',
+      display: 'flex',
+      alignItems: 'center',
+      justifyContent: 'center',
+      padding: '40px 20px'
     }}>
-      
-      {/* Logo en la esquina superior izquierda */}
-      <div className="position-absolute" style={{
-        top: '40px',
-        left: '40px',
-        zIndex: 10
-      }}>
-        <img 
-          src="/logo.png" 
-          alt="Logo" 
-          style={{
-            height: '40px',
-            width: 'auto'
-          }}
-        />
-      </div>
 
-      {/* Contenedor principal */}
-      <div className="d-flex align-items-center justify-content-center" style={{
-        minHeight: '100vh',
-        padding: '20px'
+      {/* Contenedor principal con perspectiva */}
+      <div style={{
+        width: '100%',
+        maxWidth: '600px',
+        perspective: '1200px'
       }}>
         
-        {/* Card principal */}
+        {/* Card principal con distorsión/perspectiva */}
         <div style={{
           background: 'white',
-          borderRadius: '16px',
-          padding: '48px 40px 40px 40px',
+          borderRadius: '20px',
+          padding: '60px 50px 50px 50px',
           width: '100%',
-          maxWidth: '400px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
-          position: 'relative',
-          transform: 'perspective(1000px) rotateX(-2deg)',
-          transformOrigin: 'center top'
+          boxShadow: '0 50px 100px -20px rgba(0, 0, 0, 0.25)',
+          transform: 'perspective(1200px) rotateX(-8deg) rotateY(2deg)',
+          transformOrigin: 'center center',
+          position: 'relative'
         }}>
           
+          {/* Logo centrado en la parte superior */}
+          <div className="text-center" style={{
+            marginBottom: '40px'
+          }}>
+            <img 
+              src="/logo.png" 
+              alt="Logo" 
+              style={{
+                height: '60px',
+                width: 'auto'
+              }}
+            />
+          </div>
+
           <h1 style={{
-            fontSize: '48px',
+            fontSize: '54px',
             fontWeight: '300',
-            color: '#1f2937',
-            marginBottom: '32px',
+            color: '#1a202c',
+            marginBottom: '40px',
             marginTop: '0',
             lineHeight: '1.1',
             fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
@@ -87,7 +89,7 @@ export default function Login() {
               borderColor: '#fecaca',
               color: '#dc2626',
               border: '1px solid #fecaca',
-              borderRadius: '6px',
+              borderRadius: '8px',
               padding: '12px'
             }}>
               <i className="bi bi-exclamation-triangle-fill me-2"></i>
@@ -97,13 +99,13 @@ export default function Login() {
 
           <form onSubmit={handleSubmit}>
             {/* Email Address */}
-            <div className="mb-3">
+            <div className="mb-4">
               <label style={{
                 display: 'block',
-                fontSize: '14px',
+                fontSize: '16px',
                 fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px',
+                color: '#2d3748',
+                marginBottom: '8px',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
               }}>
                 Correo Electrónico
@@ -114,9 +116,9 @@ export default function Login() {
                 onChange={(e) => setCorreo(e.target.value)}
                 style={{
                   width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #d1d5db',
-                  borderRadius: '8px',
+                  padding: '16px 20px',
+                  border: '2px solid #e2e8f0',
+                  borderRadius: '10px',
                   fontSize: '16px',
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                   outline: 'none',
@@ -124,11 +126,11 @@ export default function Login() {
                   backgroundColor: '#ffffff'
                 }}
                 onFocus={(e) => {
-                  e.target.style.borderColor = '#3b82f6';
-                  e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                  e.target.style.borderColor = '#4299e1';
+                  e.target.style.boxShadow = '0 0 0 3px rgba(66, 153, 225, 0.1)';
                 }}
                 onBlur={(e) => {
-                  e.target.style.borderColor = '#d1d5db';
+                  e.target.style.borderColor = '#e2e8f0';
                   e.target.style.boxShadow = 'none';
                 }}
                 required
@@ -139,10 +141,10 @@ export default function Login() {
             <div className="mb-4">
               <label style={{
                 display: 'block',
-                fontSize: '14px',
+                fontSize: '16px',
                 fontWeight: '500',
-                color: '#374151',
-                marginBottom: '6px',
+                color: '#2d3748',
+                marginBottom: '8px',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
               }}>
                 Contraseña
@@ -154,10 +156,10 @@ export default function Login() {
                   onChange={(e) => setContrasena(e.target.value)}
                   style={{
                     width: '100%',
-                    padding: '12px 16px',
-                    paddingRight: '48px',
-                    border: '2px solid #d1d5db',
-                    borderRadius: '8px',
+                    padding: '16px 20px',
+                    paddingRight: '56px',
+                    border: '2px solid #e2e8f0',
+                    borderRadius: '10px',
                     fontSize: '16px',
                     fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                     outline: 'none',
@@ -165,11 +167,11 @@ export default function Login() {
                     backgroundColor: '#ffffff'
                   }}
                   onFocus={(e) => {
-                    e.target.style.borderColor = '#3b82f6';
-                    e.target.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.1)';
+                    e.target.style.borderColor = '#4299e1';
+                    e.target.style.boxShadow = '0 0 0 3px rgba(66, 153, 225, 0.1)';
                   }}
                   onBlur={(e) => {
-                    e.target.style.borderColor = '#d1d5db';
+                    e.target.style.borderColor = '#e2e8f0';
                     e.target.style.boxShadow = 'none';
                   }}
                   required
@@ -179,12 +181,12 @@ export default function Login() {
                   onClick={() => setShowPassword(!showPassword)}
                   style={{
                     position: 'absolute',
-                    right: '12px',
+                    right: '16px',
                     top: '50%',
                     transform: 'translateY(-50%)',
                     background: 'none',
                     border: 'none',
-                    color: '#6b7280',
+                    color: '#718096',
                     cursor: 'pointer',
                     padding: '4px'
                   }}
@@ -195,7 +197,7 @@ export default function Login() {
             </div>
 
             {/* Keep me signed in */}
-            <div className="mb-4">
+            <div className="mb-5">
               <div className="d-flex align-items-center">
                 <input
                   type="checkbox"
@@ -203,15 +205,15 @@ export default function Login() {
                   checked={keepSignedIn}
                   onChange={(e) => setKeepSignedIn(e.target.checked)}
                   style={{
-                    width: '16px',
-                    height: '16px',
-                    marginRight: '8px',
-                    accentColor: '#3b82f6'
+                    width: '18px',
+                    height: '18px',
+                    marginRight: '12px',
+                    accentColor: '#4299e1'
                   }}
                 />
                 <label htmlFor="keepSignedIn" style={{
-                  fontSize: '14px',
-                  color: '#374151',
+                  fontSize: '16px',
+                  color: '#2d3748',
                   fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                   cursor: 'pointer'
                 }}>
@@ -224,32 +226,32 @@ export default function Login() {
               type="submit" 
               style={{
                 width: '100%',
-                padding: '12px 24px',
-                backgroundColor: '#3b82f6',
+                padding: '16px 32px',
+                backgroundColor: '#4299e1',
                 color: 'white',
                 border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: '500',
+                borderRadius: '10px',
+                fontSize: '18px',
+                fontWeight: '600',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
                 cursor: 'pointer',
                 transition: 'background-color 0.15s ease-in-out',
-                marginBottom: '24px'
+                marginBottom: '32px'
               }}
-              onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-              onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+              onMouseOver={(e) => e.target.style.backgroundColor = '#3182ce'}
+              onMouseOut={(e) => e.target.style.backgroundColor = '#4299e1'}
             >
               Iniciar Sesión
             </button>
           </form>
 
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <Link 
               href="/forgot-password"
               style={{
-                color: '#3b82f6',
+                color: '#4299e1',
                 textDecoration: 'none',
-                fontSize: '14px',
+                fontSize: '16px',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
               }}
             >
@@ -257,19 +259,19 @@ export default function Login() {
             </Link>
           </div>
 
-          <div style={{ marginBottom: '16px' }}>
+          <div style={{ marginBottom: '20px' }}>
             <span style={{
-              color: '#374151',
-              fontSize: '14px',
+              color: '#2d3748',
+              fontSize: '16px',
               fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
             }}>
               ¿No tienes cuenta? </span>
             <Link 
               href="/register"
               style={{
-                color: '#3b82f6',
+                color: '#4299e1',
                 textDecoration: 'none',
-                fontSize: '14px',
+                fontSize: '16px',
                 fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
               }}
             >
@@ -281,10 +283,10 @@ export default function Login() {
             <Link 
               href="/privacy-policy"
               style={{
-                color: '#9ca3af',
+                color: '#a0aec0',
                 textDecoration: 'none',
-                fontSize: '12px',
-                fontFamily: '-apple-system, BlinkMacSystemFont, "Segue UI", Roboto, sans-serif'
+                fontSize: '14px',
+                fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif'
               }}
             >
               Política de privacidad ↗
