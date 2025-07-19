@@ -37,11 +37,6 @@ export default function Register() {
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat'
     }}>
-      {/* Overlay oscuro */}
-      <div className="position-absolute top-0 start-0 w-100 h-100" style={{
-        background: 'linear-gradient(135deg, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.4) 100%)',
-        zIndex: 1
-      }}></div>
 
       <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
         {/* Sección izquierda - Bienvenida */}
@@ -55,7 +50,7 @@ export default function Register() {
         </div>
 
         {/* Sección derecha - Formulario */}
-        <div className="col-12 col-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
+       <div className="col-12 col-md-6 offset-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
           <div className="w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
             <div className="mb-4">
               <h2 className="fw-bold text-white mb-1">Crear cuenta</h2>
