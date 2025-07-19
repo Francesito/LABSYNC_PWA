@@ -20,6 +20,10 @@ export default function Catalog() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRiesgoFisico, setSelectedRiesgoFisico] = useState('');
   const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
+  const [lowStockMaterials, setLowStockMaterials] = useState([]);
+
+  // Umbral para considerar stock bajo (ajustable según necesidades)
+  const LOW_STOCK_THRESHOLD = 50;
 
   useEffect(() => {
     if (!usuario) {
@@ -65,6 +69,15 @@ export default function Catalog() {
         }
 
         setAllMaterials(all);
+
+        // Verificar stock bajo solo para almacenistas
+        if (usuario.rol === 'almacen') {
+          const lowStock = all.filter(material => 
+            material.cantidad > 0 && material.cantidad <= LOW_STOCK_THRESHOLD
+          );
+          setLowStockMaterials(lowStock);
+        }
+
       } catch (err) {
         console.error(err);
         setError('Error al cargar el catálogo');
@@ -151,6 +164,29 @@ export default function Catalog() {
     if (allRiesgos.includes('Irritante') || allRiesgos.includes('Oxidante')) return 2;
     if (allRiesgos.length > 0) return 1;
     return 0;
+  };
+
+  // Función para mostrar stock según el rol
+  const displayStock = (material) => {
+    if (usuario?.rol === 'almacen') {
+      // Almacenista ve el stock exacto
+      return `${material.cantidad} ${getUnidad(material.tipo)}`;
+    } else {
+      // Docente y alumno solo ven disponibilidad
+      return material.cantidad > 0 ? 'Disponible' : 'Agotado';
+    }
+  };
+
+  // Función para obtener el color del stock
+  const getStockColor = (material) => {
+    if (usuario?.rol !== 'almacen') {
+      return material.cantidad > 0 ? 'text-green-600' : 'text-red-600';
+    }
+    
+    // Para almacenistas: colores según cantidad
+    if (material.cantidad === 0) return 'text-red-600';
+    if (material.cantidad <= LOW_STOCK_THRESHOLD) return 'text-orange-600';
+    return 'text-green-600';
   };
 
   const addToCart = (material, cantidad) => {
@@ -263,6 +299,12 @@ export default function Catalog() {
     }
   };
 
+  const dismissLowStockAlert = (materialId, tipo) => {
+    setLowStockMaterials(prev => 
+      prev.filter(material => !(material.id === materialId && material.tipo === tipo))
+    );
+  };
+
   return (
     <>
       <style jsx>{`
@@ -290,6 +332,58 @@ export default function Catalog() {
           font-size: 1.75rem;
           font-weight: 600;
           margin: 0;
+        }
+
+        .low-stock-alerts {
+          background: #fef3c7;
+          border-left: 4px solid #f59e0b;
+          padding: 1rem 1.5rem;
+          margin-bottom: 1rem;
+        }
+
+        .low-stock-item {
+          display: flex;
+          justify-content: between;
+          align-items: center;
+          background: white;
+          border: 1px solid #fbbf24;
+          border-radius: 6px;
+          padding: 0.75rem 1rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .low-stock-item:last-child {
+          margin-bottom: 0;
+        }
+
+        .low-stock-content {
+          flex-grow: 1;
+        }
+
+        .low-stock-material {
+          font-weight: 600;
+          color: #92400e;
+          font-size: 0.875rem;
+        }
+
+        .low-stock-quantity {
+          color: #b45309;
+          font-size: 0.75rem;
+          margin-top: 0.25rem;
+        }
+
+        .dismiss-btn {
+          background: none;
+          border: none;
+          color: #92400e;
+          cursor: pointer;
+          padding: 0.25rem;
+          border-radius: 4px;
+          transition: background-color 0.15s ease;
+        }
+
+        .dismiss-btn:hover {
+          background: #fef3c7;
         }
 
         .search-filter-container {
@@ -395,7 +489,6 @@ export default function Catalog() {
 
         .stock-display {
           font-weight: 500;
-          color: #4b5563;
         }
 
         .quantity-input {
@@ -551,41 +644,6 @@ export default function Catalog() {
         .btn-clear:disabled {
           opacity: 0.5;
           cursor: not-allowed;
-        }
-
-        .stats-container {
-          display: grid;
-          grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
-          gap: 1rem;
-          padding: 1rem 1.5rem;
-          background: #f8f9fa;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .stat-card {
-          background: white;
-          border-radius: 6px;
-          padding: 1rem;
-          text-align: center;
-          border: 1px solid #e5e7eb;
-          transition: transform 0.2s ease;
-        }
-
-        .stat-card:hover {
-          transform: translateY(-2px);
-        }
-
-        .stat-number {
-          font-size: 1.5rem;
-          font-weight: 600;
-          color: #1f2937;
-        }
-
-        .stat-label {
-          font-size: 0.75rem;
-          color: #6b7280;
-          font-weight: 500;
-          margin-top: 0.25rem;
         }
 
         .modal-overlay {
@@ -778,6 +836,18 @@ export default function Catalog() {
           font-size: 0.875rem;
         }
 
+        .text-red-600 {
+          color: #dc2626;
+        }
+
+        .text-orange-600 {
+          color: #ea580c;
+        }
+
+        .text-green-600 {
+          color: #16a34a;
+        }
+
         .modal-body h5 {
           color: #1f2937;
           font-size: 1.125rem;
@@ -926,6 +996,54 @@ export default function Catalog() {
                 </p>
               </div>
 
+              {/* Alertas de stock bajo solo para almacenistas */}
+              {usuario?.rol === 'almacen' && lowStockMaterials.length > 0 && (
+                <div className="low-stock-alerts">
+                  <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
+                    <div style={{ 
+                      width: '24px', 
+                      height: '24px', 
+                      background: '#f59e0b', 
+                      borderRadius: '50%', 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      justifyContent: 'center', 
+                      marginRight: '0.75rem' 
+                    }}>
+                      <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>!</span>
+                    </div>
+                    <div>
+                      <h4 style={{ margin: 0, color: '#92400e', fontSize: '1rem', fontWeight: '600' }}>
+                        Advertencia de Stock Bajo
+                      </h4>
+                      <p style={{ margin: 0, color: '#b45309', fontSize: '0.875rem' }}>
+                        Los siguientes materiales tienen stock por debajo del umbral mínimo ({LOW_STOCK_THRESHOLD} unidades):
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {lowStockMaterials.map((material) => (
+                    <div key={`${material.tipo}-${material.id}`} className="low-stock-item">
+                      <div className="low-stock-content">
+                        <div className="low-stock-material">
+                          {formatName(material.nombre)} ({material.tipo})
+                        </div>
+                        <div className="low-stock-quantity">
+                          Stock actual: {material.cantidad} {getUnidad(material.tipo)}
+                        </div>
+                      </div>
+                      <button
+                        className="dismiss-btn"
+                        onClick={() => dismissLowStockAlert(material.id, material.tipo)}
+                        title="Descartar alerta"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
               {/* Búsqueda y filtros */}
               <div className="search-filter-container">
                 <input
@@ -981,7 +1099,7 @@ export default function Catalog() {
                             <th>Tipo</th>
                             <th>Riesgos GHS</th>
                             <th>Descripción</th>
-                            <th>Stock</th>
+                            <th>{usuario?.rol === 'almacen' ? 'Stock' : 'Disponibilidad'}</th>
                             {usuario?.rol !== 'almacen' && <th>Cantidad</th>}
                             {usuario?.rol === 'almacen' && <th>Acciones</th>}
                           </tr>
@@ -1022,8 +1140,11 @@ export default function Catalog() {
                                 {material.descripcion || 'Material de laboratorio'}
                               </td>
                               <td>
-                                <div className="stock-display">
-                                  {material.cantidad} {getUnidad(material.tipo)}
+                                <div className={`stock-display ${getStockColor(material)}`}>
+                                  {displayStock(material)}
+                                  {usuario?.rol === 'almacen' && material.cantidad <= LOW_STOCK_THRESHOLD && material.cantidad > 0 && (
+                                    <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>⚠️</span>
+                                  )}
                                 </div>
                               </td>
                               {usuario?.rol !== 'almacen' && (
