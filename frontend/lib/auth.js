@@ -68,7 +68,7 @@ export function AuthProvider({ children }) {
           router.push('/login');
         }
       }
-   } else if (!['/login', '/register', '/forgot-password', '/reset-password', '/verificar'].includes(pathname)) {
+  } else if (!['/login', '/register', '/forgot-password', '/verificar'].includes(pathname) && !pathname.startsWith('/reset-password')) {
   router.push('/login');
 }
   }, [pathname, router]);
