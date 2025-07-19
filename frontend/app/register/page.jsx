@@ -44,8 +44,8 @@ export default function Register() {
        <div className="col-12 col-md-6 offset-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
           <div className="w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
             <div className="mb-4">
-              <h2 className="fw-bold text-white mb-1">Crear cuenta</h2>
-              <p className="text-white-50 small">Completa los datos para crear tu cuenta en LabSync</p>
+              <h2 className="fw-bold text-dark mb-1">Crear cuenta</h2>
+              <p className="text-dark-50 small">Completa los datos para crear tu cuenta en LabSync</p>
             </div>
 
             {error && (
@@ -58,13 +58,13 @@ export default function Register() {
             <form onSubmit={handleSubmit}>
               {/* Nombre */}
               <div className="mb-4">
-                <label htmlFor="nombre" className="form-label fw-semibold text-white mb-2">Nombre Completo</label>
+                <label htmlFor="nombre" className="form-label fw-semibold text-dark mb-2">Nombre Completo</label>
                 <input
                   type="text"
                   id="nombre"
                   value={nombre}
                   onChange={(e) => setNombre(e.target.value)}
-                  className="form-control bg-transparent border-white text-white"
+                  className="form-control bg-white border-dark text-dark"
                   style={{
                     backgroundColor: 'rgba(255,255,255,0.1) !important',
                     borderColor: 'rgba(255,255,255,0.3)',
@@ -79,13 +79,13 @@ export default function Register() {
 
               {/* Correo */}
               <div className="mb-4">
-                <label htmlFor="correo" className="form-label fw-semibold text-white mb-2">Correo Institucional</label>
+                <label htmlFor="correo" className="form-label fw-semibold text-dark mb-2">Correo Institucional</label>
                 <input
                   type="email"
                   id="correo"
                   value={correo}
                   onChange={(e) => setCorreo(e.target.value)}
-                  className="form-control bg-transparent border-white text-white"
+                  className="form-control bg-white border-dark text-dark"
                   style={{
                     backgroundColor: 'rgba(255,255,255,0.1) !important',
                     borderColor: 'rgba(255,255,255,0.3)',
@@ -100,14 +100,14 @@ export default function Register() {
 
               {/* Contraseña */}
               <div className="mb-4">
-                <label htmlFor="contrasena" className="form-label fw-semibold text-white mb-2">Contraseña</label>
+                <label htmlFor="contrasena" className="form-label fw-semibold text-dark mb-2">Contraseña</label>
                 <div className="position-relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
                     id="contrasena"
                     value={contrasena}
                     onChange={(e) => setContrasena(e.target.value)}
-                    className="form-control bg-transparent border-white text-white pe-5"
+                    className="form-control bg-white border-dark text-dark pe-5"
                     style={{
                       backgroundColor: 'rgba(255,255,255,0.1) !important',
                       borderColor: 'rgba(255,255,255,0.3)',
@@ -131,7 +131,7 @@ export default function Register() {
 
               {/* Rol */}
               <div className="mb-4">
-                <label className="form-label fw-semibold text-white mb-3">Selecciona tu rol</label>
+                <label className="form-label fw-semibold text-dark mb-3">Selecciona tu rol</label>
                 <div className="d-flex gap-2">
                   {[
                     { value: 'alumno', label: 'Alumno', color: 'primary' },
@@ -185,9 +185,9 @@ export default function Register() {
               </button>
             </form>
 
-            <p className="text-center text-white-50">
+            <p className="text-center text-dark-50">
               ¿Ya tienes cuenta?{' '}
-              <Link href="/login" className="text-white fw-bold text-decoration-none">Inicia sesión</Link>
+              <Link href="/login" className="text-dark fw-bold text-decoration-none">Inicia sesión</Link>
             </p>
           </div>
         </div>
