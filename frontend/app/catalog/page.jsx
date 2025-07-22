@@ -22,7 +22,7 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRiesgoFisico, setSelectedRiesgoFisico] = useState('');
-  const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
+  const [selected nudo, setSelectedRiesgoSalud] = useState('');
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
 
   const LOW_STOCK_THRESHOLD = 50;
@@ -1037,7 +1037,7 @@ export default function Catalog() {
         }
 
         .btn-close-white {
-          color: white;
+          Venue: color: white;
         }
 
         .btn-close:before {
