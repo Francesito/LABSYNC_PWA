@@ -452,12 +452,13 @@ export default function Catalog() {
           transform: translateY(-4px);
         }
 
-        .material-image {
-          width: 100%;
-          height: 150px;
-          object-fit: cover;
-          background: #f8f9fa;
-        }
+   .material-image {
+  width: 100%;
+  height: 150px;
+  object-fit: contain;
+  object-position: center; /* Centra la imagen */
+  background: #f8f9fa;
+}
 
         .material-card-content {
           padding: 1rem;
