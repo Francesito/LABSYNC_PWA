@@ -47,11 +47,14 @@ export default function Catalog() {
           tipo: 'liquido',
           cantidad: m.cantidad_disponible_ml ?? 0,
         }));
-        const solidos = solidoRes.data.map((m) => ({
-          ...m,
-          tipo: 'solido',
-          cantidad: m.cantidad_disponible_g ?? 0,
-        }));
+        const solidos = solidoRes.data.map((m) => {
+          console.log(`Material: ${m.nombre}, Riesgos Fisicos: ${m.riesgos_fisicos}, Riesgos Salud: ${m.riesgos_salud}, Riesgos Ambientales: ${m.riesgos_ambientales}`);
+          return {
+            ...m,
+            tipo: 'solido',
+            cantidad: m.cantidad_disponible_g ?? 0,
+          };
+        });
         const equipos = equipoRes.data.map((m) => ({
           ...m,
           tipo: 'equipo',
@@ -107,7 +110,7 @@ export default function Catalog() {
   };
 
   const parseRiesgos = (riesgosString) => {
-    if (!riesgosString) return [];
+    if (!riesgosString || riesgosString.trim() === '') return [];
     return riesgosString.split(';').filter(r => r.trim());
   };
 
@@ -266,6 +269,7 @@ export default function Catalog() {
   };
 
   const handleDetailClick = (material) => {
+    console.log(`Selected Material: ${material.nombre}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
     setSelectedMaterial(material);
     setDetailAmount('');
     setShowDetailModal(true);
@@ -1040,6 +1044,12 @@ export default function Catalog() {
           content: '×';
         }
 
+        .no-risks {
+          color: #6b7280;
+          font-size: 0.875rem;
+          font-style: italic;
+        }
+
         @media (max-width: 1200px) {
           .catalog-container {
             margin-left: 0;
@@ -1186,6 +1196,7 @@ export default function Catalog() {
                                   alt={formatName(material.nombre)}
                                   className="material-image"
                                   onError={(e) => {
+                                    console.log(`Image not found for ${material.nombre}`);
                                     e.target.src = '/materialSolido/placeholder.jpg';
                                   }}
                                 />
@@ -1231,9 +1242,13 @@ export default function Catalog() {
                                 .map((material) => (
                                   <tr key={`${material.tipo}-${material.id}`} className="table-row">
                                     <td>
-                                      <div className="material-name">
+                                      <span 
+                                        className="material-name" 
+                                        style={{ cursor: 'pointer' }} 
+                                        onClick={() => handleDetailClick(material)}
+                                      >
                                         {formatName(material.nombre)}
-                                      </div>
+                                      </span>
                                     </td>
                                     <td>
                                       <span className={`material-type type-${material.tipo}`}>
@@ -1242,55 +1257,59 @@ export default function Catalog() {
                                     </td>
                                     <td>
                                       <div className="riesgos-container">
-                                        {parseRiesgos(material.riesgos_fisicos).map((riesgo, idx) => (
-                                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                            {getRiesgoIcon(riesgo)} {riesgo}
-                                          </span>
-                                        ))}
-                                        {parseRiesgos(material.riesgos_salud).map((riesgo, idx) => (
-                                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                            {getRiesgoIcon(riesgo)} {riesgo}
-                                          </span>
-                                        ))}
-                                        {parseRiesgos(material.riesgos_ambientales).map((riesgo, idx) => (
-                                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                            {getRiesgoIcon(riesgo)} {riesgo}
-                                          </span>
-                                        ))}
-                                      </div>
-                                    </td>
-                                    <td className="text-muted">
-                                      {material.descripcion || 'Material de laboratorio'}
-                                    </td>
-                                    <td>
-                                      <div className={`stock-display ${getStockColor(material)}`}>
-                                        {displayStock(material)}
-                                        {usuario?.rol === 'almacen' && material.cantidad <= LOW_STOCK_THRESHOLD && material.cantidad > 0 && (
-                                          <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>⚠️</span>
+                                        {[
+                                          ...parseRiesgos(material.riesgos_fisicos),
+                                          ...parseRiesgos(material.riesgos_salud),
+                                          ...parseRiesgos(material.riesgos_ambientales)
+                                        ].length > 0 ? (
+                                          [
+                                            ...parseRiesgos(material.riesgos_fisicos),
+                                            ...parseRiesgos(material.riesgos_salud),
+                                            ...parseRiesgos(material.riesgos_ambientales)
+                                          ].map((riesgo, index) => (
+                                            <span 
+                                              key={`${material.id}-riesgo-${index}`}
+                                              className={`riesgo-badge ${getRiesgoColor(riesgo)}`}
+                                            >
+                                              {getRiesgoIcon(riesgo)} {riesgo}
+                                            </span>
+                                          ))
+                                        ) : (
+                                          <span className="no-risks">Sin riesgos especificados</span>
                                         )}
                                       </div>
+                                    </td>
+                                    <td className="text-muted">{material.descripcion || 'Sin descripción'}</td>
+                                    <td>
+                                      <span className={`stock-display ${getStockColor(material)}`}>
+                                        {displayStock(material)}
+                                      </span>
                                     </td>
                                     {usuario?.rol !== 'almacen' && (
                                       <td>
                                         <input
                                           type="number"
-                                          min="1"
-                                          max={material.cantidad}
+                                          min="0"
                                           className="quantity-input"
-                                          value={
-                                            selectedCart.find((item) => item.id === material.id && item.tipo === material.tipo)?.cantidad || ''
-                                          }
-                                          onChange={(e) => addToCart(material, e.target.value)}
-                                          disabled={material.cantidad === 0}
                                           placeholder="0"
+                                          onClick={(e) => e.stopPropagation()}
+                                          onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (value && parseInt(value) > 0) {
+                                              addToCart(material, value);
+                                            }
+                                          }}
                                         />
                                       </td>
                                     )}
                                     {usuario?.rol === 'almacen' && (
                                       <td>
-                                        <button 
+                                        <button
                                           className="btn-adjust"
-                                          onClick={() => handleAdjustClick(material)}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleAdjustClick(material);
+                                          }}
                                         >
                                           Ajustar
                                         </button>
@@ -1309,348 +1328,239 @@ export default function Catalog() {
             </div>
           </div>
 
-          {usuario?.rol !== 'almacen' && (
-            <div className="cart-container">
-              <div className="cart-header">
-                <h4>Vale de Solicitud</h4>
-                <small>
-                  {selectedCart.length} material{selectedCart.length !== 1 ? 'es' : ''} seleccionado{selectedCart.length !== 1 ? 's' : ''}
-                </small>
-              </div>
-
-              <div className="cart-body">
-                {selectedCart.length === 0 ? (
-                  <div className="empty-cart">
-                    <div className="empty-cart-icon">📋</div>
-                    <p>No hay materiales seleccionados</p>
-                    <small>Agrega materiales del catálogo</small>
-                  </div>
-                ) : (
-                  <div className="cart-items">
-                    {selectedCart.map((item, idx) => (
-                      <div key={idx} className="cart-item">
-                        <div className="d-flex justify-content-between align-items-start">
-                          <div className="flex-grow-1">
-                            <div className="cart-item-name">
-                              {formatName(item.nombre)}
-                            </div>
-                            <div className="cart-item-quantity">
-                              {item.cantidad} {getUnidad(item.tipo)}
-                            </div>
-                            <div className="riesgos-container">
-                              {parseRiesgos(item.riesgos_fisicos).slice(0, 2).map((riesgo, idx) => (
-                                <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                  {getRiesgoIcon(riesgo)}
-                                </span>
-                              ))}
-                              {parseRiesgos(item.riesgos_salud).slice(0, 2).map((riesgo, idx) => (
-                                <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                  {getRiesgoIcon(riesgo)}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                          <button 
-                            className="btn-remove"
-                            onClick={() => removeFromCart(item.id, item.tipo)}
-                          >
-                            ×
-                          </button>
+          <div className="cart-container">
+            <div className="cart-header">
+              <h4>Carrito de Solicitud</h4>
+              <small>{totalItems} {totalItems === 1 ? 'material' : 'materiales'} seleccionados</small>
+            </div>
+            <div className="cart-body">
+              {selectedCart.length === 0 ? (
+                <div className="empty-cart">
+                  <div className="empty-cart-icon">🛒</div>
+                  <p>Carrito vacío</p>
+                  <small>Selecciona materiales para crear un vale</small>
+                </div>
+              ) : (
+                <>
+                  {selectedCart.map((item) => (
+                    <div key={`${item.tipo}-${item.id}`} className="cart-item">
+                      <div>
+                        <div className="cart-item-name">{formatName(item.nombre)}</div>
+                        <div className="cart-item-quantity">
+                          {item.cantidad} {getUnidad(item.tipo)} ({item.tipo})
                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-
-                <div className="mt-4 d-grid gap-2">
-                  <button
-                    onClick={() =>
-                      selectedCart.length > 0 ? setShowRequestModal(true) : setError('Selecciona al menos un material')
-                    }
-                    className="btn-create-vale"
-                    disabled={selectedCart.length === 0}
-                  >
-                    Crear Vale de Solicitud
-                  </button>
-                  <button
-                    onClick={vaciarSeleccion}
-                    className="btn-clear"
-                    disabled={selectedCart.length === 0}
-                  >
-                    Limpiar Selección
-                  </button>
-                </div>
-              </div>
+                      <button
+                        className="btn-remove"
+                        onClick={() => removeFromCart(item.id, item.tipo)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </>
+              )}
             </div>
-          )}
+            {selectedCart.length > 0 && (
+              <div className="p-4">
+                <button
+                  className="btn-create-vale"
+                  onClick={() => setShowRequestModal(true)}
+                  disabled={selectedCart.length === 0 || totalItems === 0}
+                >
+                  Crear Vale
+                </button>
+                <button
+                  className="btn-clear mt-3"
+                  onClick={vaciarSeleccion}
+                  disabled={selectedCart.length === 0}
+                >
+                  Vaciar Selección
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      {showRequestModal && (
-        <div className="modal show d-block modal-overlay" style={{ zIndex: 1050 }}>
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content modal-content-custom">
-              <div className="modal-header modal-header-custom">
-                <h4 className="modal-title">
-                  Confirmar Solicitud de Vale
-                </h4>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
+        {showRequestModal && (
+          <div className="modal-overlay">
+            <div className="modal-content-custom">
+              <div className="modal-header-custom">
+                <h5 className="modal-title">Confirmar Solicitud</h5>
+                <button
+                  className="btn-close btn-close-white"
                   onClick={() => setShowRequestModal(false)}
                 ></button>
               </div>
               <div className="modal-body p-4">
-                <div className="mb-3">
-                  <h5>Materiales solicitados:</h5>
-                  <div className="request-summary">
-                    {selectedCart.map((item, idx) => (
-                      <div key={idx} className="request-item">
-                        <div className="flex-grow-1">
-                          <div className="fw-semibold">{formatName(item.nombre)}</div>
-                          <small className="text-muted">{item.tipo}</small>
-                          <div style={{ marginTop: '0.5rem' }}>
-                            <div className="riesgos-container">
-                              {parseRiesgos(item.riesgos_fisicos).map((riesgo, ridx) => (
-                                <span key={ridx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                  {getRiesgoIcon(riesgo)} {riesgo}
-                                </span>
-                              ))}
-                              {parseRiesgos(item.riesgos_salud).map((riesgo, ridx) => (
-                                <span key={ridx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                  {getRiesgoIcon(riesgo)} {riesgo}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="fw-bold">
-                          {item.cantidad} {getUnidad(item.tipo)}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
+                <div className="info-alert mb-4">
+                  Estás a punto de crear un vale con los siguientes materiales:
                 </div>
-                
-                {selectedCart.some(item => 
-                  item.riesgos_salud?.includes('Cancerígeno') || 
-                  item.riesgos_salud?.includes('Tóxico agudo') ||
-                  item.riesgos_fisicos?.includes('Inflamable')
-                ) && (
-                  <div className="security-alert">
-                    <strong>⚠️ ATENCIÓN - MATERIALES PELIGROSOS:</strong> Esta solicitud incluye materiales de alto riesgo según GHS. Asegúrate de seguir todos los protocolos de seguridad, usar EPP adecuado y cumplir con las medidas de almacenamiento y manipulación requeridas.
+                <div className="request-summary">
+                  {selectedCart.map((item, index) => (
+                    <div key={`${item.tipo}-${item.id}-${index}`} className="request-item">
+                      <div>
+                        <span className="fw-semibold">{formatName(item.nombre)}</span>
+                        <small className="d-block">{item.tipo}</small>
+                      </div>
+                      <span className="fw-bold">{item.cantidad} {getUnidad(item.tipo)}</span>
+                    </div>
+                  ))}
+                </div>
+                {usuario?.rol !== 'docente' && (
+                  <div className="security-alert mt-4">
+                    Esta solicitud será revisada por un docente antes de ser aprobada.
                   </div>
                 )}
-                
-                <div className="info-alert">
-                  <strong>Nota:</strong> Una vez creado el vale, será enviado para {usuario.rol === 'docente' ? 'aprobación automática' : 'revisión y aprobación'}. Los materiales con clasificación GHS requieren manejo especial.
-                </div>
               </div>
-              <div className="modal-footer modal-footer-custom custom">
-                <button 
+              <div className="modal-footer-custom">
+                <button
                   className="btn-secondary-custom"
                   onClick={() => setShowRequestModal(false)}
                 >
                   Cancelar
                 </button>
-                <button 
+                <button
                   className="btn-create-vale"
                   onClick={handleSubmitRequest}
-                  style={{ width: 'auto' }}
                 >
-                  Confirmar y Crear Vale
+                  Confirmar
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {showAdjustModal && materialToAdjust && (
-        <div className="modal show d-block modal-overlay" style={{ zIndex: 1050 }}>
-          <div className="modal-dialog modal-dialog-centered">
-            <div className="modal-content modal-content-custom">
-              <div className="modal-header modal-header-custom">
-                <h4 className="modal-title">
-                  Ajustar Inventario
-                </h4>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
+        {showAdjustModal && materialToAdjust && (
+          <div className="modal-overlay">
+            <div className="modal-content-custom">
+              <div className="modal-header-custom">
+                <h5 className="modal-title">Ajustar Inventario: {formatName(materialToAdjust.nombre)}</h5>
+                <button
+                  className="btn-close btn-close-white"
                   onClick={() => setShowAdjustModal(false)}
                 ></button>
               </div>
               <div className="modal-body p-4">
+                {error && <div className="alert-custom mb-3">{error}</div>}
                 <div className="mb-3">
-                  <h5>{formatName(materialToAdjust.nombre)}</h5>
-                  <div style={{ marginBottom: '1rem' }}>
-                    <div className="riesgos-container">
-                      {parseRiesgos(materialToAdjust.riesgos_fisicos).map((riesgo, idx) => (
-                        <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                          {getRiesgoIcon(riesgo)} {riesgo}
-                        </span>
-                      ))}
-                      {parseRiesgos(materialToAdjust.riesgos_salud).map((riesgo, idx) => (
-                        <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                          {getRiesgoIcon(riesgo)} {riesgo}
-                        </span>
-                      ))}
-                      {parseRiesgos(materialToAdjust.riesgos_ambientales).map((riesgo, idx) => (
-                        <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                          {getRiesgoIcon(riesgo)} {riesgo}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                  {(materialToAdjust.riesgos_salud?.includes('Cancerígeno') || 
-                    materialToAdjust.riesgos_salud?.includes('Tóxico agudo') ||
-                    materialToAdjust.riesgos_fisicos?.includes('Inflamable')) && (
-                    <div className="security-alert">
-                      <strong>⚠️ Material Peligroso:</strong> Este material requiere precauciones especiales de seguridad durante su manipulación y almacenamiento.
-                    </div>
-                  )}
-                  <p className="text-muted mb-3">
-                    Stock actual: <strong>{materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}</strong>
-                  </p>
-                  <div className="mb-3">
-                    <label className="form-label">
-                      Agrega o resta stock ({getUnidad(materialToAdjust.tipo)}):
-                    </label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      value={adjustAmount}
-                      onChange={(e) => setAdjustAmount(e.target.value)}
-                      placeholder={`Cantidad en ${getUnidad(materialToAdjust.tipo)}`}
-                    />
-                    <small className="text-muted">
-                      Usa números positivos para agregar stock, negativos para reducir
-                    </small>
-                  </div>
-                  {error && (
-                    <div className="alert-custom">
-                      {error}
-                    </div>
-                  )}
+                  <label className="form-label">
+                    Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
+                  </label>
+                  <input
+                    type="number"
+                    className="form-control"
+                    placeholder="Nueva cantidad"
+                    value={adjustAmount}
+                    onChange={(e) => setAdjustAmount(e.target.value)}
+                  />
                 </div>
               </div>
-              <div className="modal-footer modal-footer-custom">
-                <button 
+              <div className="modal-footer-custom">
+                <button
                   className="btn-secondary-custom"
                   onClick={() => setShowAdjustModal(false)}
                 >
                   Cancelar
                 </button>
-                <button 
-                  className="btn-adjust"
+                <button
+                  className="btn-create-vale"
                   onClick={handleAdjustSubmit}
-                  style={{ width: 'auto' }}
                 >
-                  Guardar Ajuste
+                  Ajustar
                 </button>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {showDetailModal && selectedMaterial && (
-        <div className="modal show d-block modal-overlay" style={{ zIndex: 1050 }}>
-          <div className="modal-dialog modal-dialog-centered modal-lg">
-            <div className="modal-content modal-content-custom">
-              <div className="modal-header modal-header-custom">
-                <h4 className="modal-title">
-                  {formatName(selectedMaterial.nombre)}
-                </h4>
-                <button 
-                  type="button" 
-                  className="btn-close btn-close-white" 
+        {showDetailModal && selectedMaterial && (
+          <div className="modal-overlay">
+            <div className="modal-content-custom">
+              <div className="modal-header-custom">
+                <h5 className="modal-title">{formatName(selectedMaterial.nombre)}</h5>
+                <button
+                  className="btn-close btn-close-white"
                   onClick={() => setShowDetailModal(false)}
                 ></button>
               </div>
               <div className="modal-body p-4">
-                <div className="d-flex gap-4">
-                  <div>
-                    <img
-                      src={`/materialSolido/${selectedMaterial.nombre}.jpg`}
-                      alt={formatName(selectedMaterial.nombre)}
-                      className="detail-image"
-                      onError={(e) => {
-                        e.target.src = '/materialSolido/placeholder.jpg';
-                      }}
+                <img
+                  src={`/materialSolido/${selectedMaterial.nombre}.jpg`}
+                  alt={formatName(selectedMaterial.nombre)}
+                  className="detail-image"
+                  onError={(e) => {
+                    console.log(`Image not found for ${selectedMaterial.nombre}`);
+                    e.target.src = '/materialSolido/placeholder.jpg';
+                  }}
+                />
+                <h5>Detalles</h5>
+                <p>
+                  <strong>Tipo:</strong>{' '}
+                  <span className={`material-type type-${selectedMaterial.tipo}`}>
+                    {selectedMaterial.tipo}
+                  </span>
+                </p>
+                <p>
+                  <strong>Descripción:</strong>{' '}
+                  {selectedMaterial.descripcion || 'Sin descripción'}
+                </p>
+                <p>
+                  <strong>Stock:</strong>{' '}
+                  <span className={getStockColor(selectedMaterial)}>
+                    {displayStock(selectedMaterial)}
+                  </span>
+                </p>
+                <h5>Riesgos GHS</h5>
+                <div className="riesgos-container mb-3">
+                  {[
+                    ...parseRiesgos(selectedMaterial.riesgos_fisicos),
+                    ...parseRiesgos(selectedMaterial.riesgos_salud),
+                    ...parseRiesgos(selectedMaterial.riesgos_ambientales)
+                  ].length > 0 ? (
+                    [
+                      ...parseRiesgos(selectedMaterial.riesgos_fisicos),
+                      ...parseRiesgos(selectedMaterial.riesgos_salud),
+                      ...parseRiesgos(selectedMaterial.riesgos_ambientales)
+                    ].map((riesgo, index) => (
+                      <span 
+                        key={`${selectedMaterial.id}-riesgo-${index}`}
+                        className={`riesgo-badge ${getRiesgoColor(riesgo)}`}
+                      >
+                        {getRiesgoIcon(riesgo)} {riesgo}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="no-risks">Sin riesgos especificados</span>
+                  )}
+                </div>
+                {usuario?.rol !== 'almacen' && (
+                  <div className="mb-3">
+                    <label className="form-label">
+                      Cantidad a solicitar ({getUnidad(selectedMaterial.tipo)}):
+                    </label>
+                    <input
+                      type="number"
+                      min="0"
+                      className="form-control"
+                      value={detailAmount}
+                      onChange={(e) => setDetailAmount(e.target.value)}
                     />
                   </div>
-                  <div className="flex-grow-1">
-                    <div className="mb-3">
-                      <h5>Descripción</h5>
-                      <p className="text-muted">
-                        {selectedMaterial.descripcion || 'Material de laboratorio'}
-                      </p>
-                    </div>
-                    <div className="mb-3">
-                      <h5>Riesgos GHS</h5>
-                      <div className="riesgos-container">
-                        {parseRiesgos(selectedMaterial.riesgos_fisicos).map((riesgo, idx) => (
-                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                            {getRiesgoIcon(riesgo)} {riesgo}
-                          </span>
-                        ))}
-                        {parseRiesgos(selectedMaterial.riesgos_salud).map((riesgo, idx) => (
-                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                            {getRiesgoIcon(riesgo)} {riesgo}
-                          </span>
-                        ))}
-                        {parseRiesgos(selectedMaterial.riesgos_ambientales).map((riesgo, idx) => (
-                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                            {getRiesgoIcon(riesgo)} {riesgo}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="mb-3">
-                      <h5>Disponibilidad</h5>
-                      <p className={`text-${selectedMaterial.cantidad > 0 ? 'green' : 'red'}-600`}>
-                        {displayStock(selectedMaterial)}
-                      </p>
-                    </div>
-                    {usuario?.rol !== 'almacen' && (
-                      <div className="mb-3">
-                        <label className="form-label">
-                          Cantidad requerida ({getUnidad(selectedMaterial.tipo)}):
-                        </label>
-                        <input
-                          type="number"
-                          min="1"
-                          max={selectedMaterial.cantidad}
-                          className="form-control"
-                          value={detailAmount}
-                          onChange={(e) => setDetailAmount(e.target.value)}
-                          placeholder={`Cantidad en ${getUnidad(selectedMaterial.tipo)}`}
-                          disabled={selectedMaterial.cantidad === 0}
-                        />
-                      </div>
-                    )}
-                    {error && (
-                      <div className="alert-custom">
-                        {error}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                )}
               </div>
-              <div className="modal-footer modal-footer-custom">
-                <button 
+              <div className="modal-footer-custom">
+                <button
                   className="btn-secondary-custom"
                   onClick={() => setShowDetailModal(false)}
                 >
                   Cerrar
                 </button>
                 {usuario?.rol !== 'almacen' && (
-                  <button 
+                  <button
                     className="btn-add-to-cart"
                     onClick={() => addToCart(selectedMaterial, detailAmount)}
-                    disabled={selectedMaterial.cantidad === 0 || !detailAmount}
-                    style={{ width: 'auto' }}
+                    disabled={!detailAmount || parseInt(detailAmount) <= 0}
                   >
                     Agregar al carrito
                   </button>
@@ -1658,8 +1568,8 @@ export default function Catalog() {
               </div>
             </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </>
   );
 }
