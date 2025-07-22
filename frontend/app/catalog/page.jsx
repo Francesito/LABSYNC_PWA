@@ -103,6 +103,15 @@ export default function Catalog() {
           .join(' ')
       : '';
 
+  const normalizeImageName = (name) =>
+    name
+      ? name
+          .replace(/[,]/g, '') // Eliminar comas
+          .replace(/\s+/g, '_') // Reemplazar espacios por guiones bajos
+          .replace(/[^a-zA-Z0-9_]/g, '') // Eliminar caracteres especiales
+          .toLowerCase()
+      : '';
+
   const getUnidad = (tipo) => {
     if (tipo === 'liquido') return 'ml';
     if (tipo === 'solido') return 'g';
@@ -116,7 +125,8 @@ export default function Catalog() {
       'equipo': 'materialEquipo'
     };
     const folder = typeMap[material.tipo] || 'materialSolido';
-    return `/${folder}/${material.nombre}.jpg`;
+    const normalizedName = normalizeImageName(material.nombre);
+    return `/${folder}/${normalizedName}.jpg`;
   };
 
   const parseRiesgos = (riesgosString) => {
@@ -278,11 +288,13 @@ export default function Catalog() {
     setError('');
   };
 
-  const handleDetailClick = (material) => {
-    console.log(`Selected Material: ${material.nombre}, Tipo: ${material.tipo}, Image Path: ${getImagePath(material)}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
+  const handleDetailClick = (material, e) => {
+    e.stopPropagation();
+    console.log(`Clic en material: ${material.nombre}, ID: ${material.id}, Tipo: ${material.tipo}, Image Path: ${getImagePath(material)}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
     setSelectedMaterial(material);
     setDetailAmount('');
     setShowDetailModal(true);
+    console.log(`Abriendo modal de detalles para ${material.nombre}, showDetailModal: ${true}`);
     setError('');
   };
 
@@ -730,7 +742,16 @@ export default function Catalog() {
         }
 
         .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
           background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 1000;
         }
 
         .modal-content-custom {
@@ -739,6 +760,8 @@ export default function Catalog() {
           box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
           border: none;
           overflow: hidden;
+          max-width: 500px;
+          width: 100%;
         }
 
         .modal-header-custom {
@@ -1199,14 +1222,14 @@ export default function Catalog() {
                               <div 
                                 key={`${material.tipo}-${material.id}`} 
                                 className="material-card"
-                                onClick={() => handleDetailClick(material)}
+                                onClick={(e) => handleDetailClick(material, e)}
                               >
                                 <img
                                   src={getImagePath(material)}
                                   alt={formatName(material.nombre)}
                                   className="material-image"
                                   onError={(e) => {
-                                    console.log(`Image not found for ${material.nombre} at ${getImagePath(material)}`);
+                                    console.log(`Imagen no encontrada para ${material.nombre} (Tipo: ${material.tipo}) en la ruta: ${getImagePath(material)}, Nombre normalizado: ${normalizeImageName(material.nombre)}`);
                                     e.target.src = '/placeholder.jpg';
                                   }}
                                 />
@@ -1485,7 +1508,7 @@ export default function Catalog() {
         )}
 
         {showDetailModal && selectedMaterial && (
-          <div className="modal-overlay">
+          <div className="modal-overlay show">
             <div className="modal-content-custom">
               <div className="modal-header-custom">
                 <h5 className="modal-title">{formatName(selectedMaterial.nombre)}</h5>
@@ -1500,7 +1523,7 @@ export default function Catalog() {
                   alt={formatName(selectedMaterial.nombre)}
                   className="detail-image"
                   onError={(e) => {
-                    console.log(`Image not found for ${selectedMaterial.nombre} at ${getImagePath(selectedMaterial)}`);
+                    console.log(`Imagen no encontrada para ${selectedMaterial.nombre} (Tipo: ${selectedMaterial.tipo}) en la ruta: ${getImagePath(selectedMaterial)}, Nombre normalizado: ${normalizeImageName(selectedMaterial.nombre)}`);
                     e.target.src = '/placeholder.jpg';
                   }}
                 />
