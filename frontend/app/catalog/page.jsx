@@ -22,7 +22,7 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRiesgoFisico, setSelectedRiesgoFisico] = useState('');
-  const [selected nudo, setSelectedRiesgoSalud] = useState('');
+  const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
 
   const LOW_STOCK_THRESHOLD = 50;
@@ -107,6 +107,16 @@ export default function Catalog() {
     if (tipo === 'liquido') return 'ml';
     if (tipo === 'solido') return 'g';
     return 'unidades';
+  };
+
+  const getImagePath = (material) => {
+    const typeMap = {
+      'solido': 'materialSolido',
+      'liquido': 'materialLiquido',
+      'equipo': 'materialEquipo'
+    };
+    const folder = typeMap[material.tipo] || 'materialSolido';
+    return `/${folder}/${material.nombre}.jpg`;
   };
 
   const parseRiesgos = (riesgosString) => {
@@ -269,7 +279,7 @@ export default function Catalog() {
   };
 
   const handleDetailClick = (material) => {
-    console.log(`Selected Material: ${material.nombre}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
+    console.log(`Selected Material: ${material.nombre}, Tipo: ${material.tipo}, Image Path: ${getImagePath(material)}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
     setSelectedMaterial(material);
     setDetailAmount('');
     setShowDetailModal(true);
@@ -1037,7 +1047,7 @@ export default function Catalog() {
         }
 
         .btn-close-white {
-          Venue: color: white;
+          color: white;
         }
 
         .btn-close:before {
@@ -1192,12 +1202,12 @@ export default function Catalog() {
                                 onClick={() => handleDetailClick(material)}
                               >
                                 <img
-                                  src={`/materialSolido/${material.nombre}.jpg`}
+                                  src={getImagePath(material)}
                                   alt={formatName(material.nombre)}
                                   className="material-image"
                                   onError={(e) => {
-                                    console.log(`Image not found for ${material.nombre}`);
-                                    e.target.src = '/materialSolido/placeholder.jpg';
+                                    console.log(`Image not found for ${material.nombre} at ${getImagePath(material)}`);
+                                    e.target.src = '/placeholder.jpg';
                                   }}
                                 />
                                 <div className="material-card-content">
@@ -1486,12 +1496,12 @@ export default function Catalog() {
               </div>
               <div className="modal-body p-4">
                 <img
-                  src={`/materialSolido/${selectedMaterial.nombre}.jpg`}
+                  src={getImagePath(selectedMaterial)}
                   alt={formatName(selectedMaterial.nombre)}
                   className="detail-image"
                   onError={(e) => {
-                    console.log(`Image not found for ${selectedMaterial.nombre}`);
-                    e.target.src = '/materialSolido/placeholder.jpg';
+                    console.log(`Image not found for ${selectedMaterial.nombre} at ${getImagePath(selectedMaterial)}`);
+                    e.target.src = '/placeholder.jpg';
                   }}
                 />
                 <h5>Detalles</h5>
