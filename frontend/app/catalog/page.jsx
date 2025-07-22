@@ -13,8 +13,11 @@ export default function Catalog() {
   const [selectedCart, setSelectedCart] = useState([]);
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [materialToAdjust, setMaterialToAdjust] = useState(null);
   const [adjustAmount, setAdjustAmount] = useState('');
+  const [detailAmount, setDetailAmount] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -22,7 +25,6 @@ export default function Catalog() {
   const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
 
-  // Umbral para considerar stock bajo (ajustable según necesidades)
   const LOW_STOCK_THRESHOLD = 50;
 
   useEffect(() => {
@@ -70,13 +72,12 @@ export default function Catalog() {
 
         setAllMaterials(all);
 
-        // Verificar stock bajo solo para almacenistas
         if (usuario.rol === 'almacen') {
-         const lowStock = all.filter(material => 
-  material.cantidad > 0 && 
-  material.cantidad <= LOW_STOCK_THRESHOLD &&
-  (material.tipo === 'liquido' || material.tipo === 'solido')
-);
+          const lowStock = all.filter(material => 
+            material.cantidad > 0 && 
+            material.cantidad <= LOW_STOCK_THRESHOLD &&
+            (material.tipo === 'liquido' || material.tipo === 'solido')
+          );
           setLowStockMaterials(lowStock);
         }
 
@@ -112,20 +113,15 @@ export default function Catalog() {
 
   const getRiesgoColor = (riesgo) => {
     const colorMap = {
-      // Riesgos físicos
       'Inflamable': 'bg-red-100 text-red-800',
       'Oxidante': 'bg-orange-100 text-orange-800',
       'Corrosivo para metales': 'bg-gray-100 text-gray-800',
       'Reacciona violentamente con agua': 'bg-purple-100 text-purple-800',
-      
-      // Riesgos para la salud
       'Tóxico agudo': 'bg-red-200 text-red-900',
       'Cancerígeno': 'bg-black text-white',
       'Corrosivo para la piel': 'bg-yellow-100 text-yellow-800',
       'Irritante': 'bg-blue-100 text-blue-800',
       'Sensibilizante': 'bg-pink-100 text-pink-800',
-      
-      // Riesgos ambientales
       'Peligroso para el medio ambiente acuático': 'bg-green-100 text-green-800',
       'Persistente': 'bg-teal-100 text-teal-800'
     };
@@ -134,20 +130,15 @@ export default function Catalog() {
 
   const getRiesgoIcon = (riesgo) => {
     const iconMap = {
-      // Riesgos físicos
       'Inflamable': '🔥',
       'Oxidante': '⚗️',
       'Corrosivo para metales': '🛠️',
       'Reacciona violentamente con agua': '💥',
-      
-      // Riesgos para la salud
       'Tóxico agudo': '☠️',
       'Cancerígeno': '⚠️',
       'Corrosivo para la piel': '🧪',
       'Irritante': '⚡',
       'Sensibilizante': '🤧',
-      
-      // Riesgos ambientales
       'Peligroso para el medio ambiente acuático': '🐟',
       'Persistente': '🌱'
     };
@@ -168,24 +159,19 @@ export default function Catalog() {
     return 0;
   };
 
-  // Función para mostrar stock según el rol
   const displayStock = (material) => {
     if (usuario?.rol === 'almacen') {
-      // Almacenista ve el stock exacto
       return `${material.cantidad} ${getUnidad(material.tipo)}`;
     } else {
-      // Docente y alumno solo ven disponibilidad
-      return material.cantidad > 0 ? 'Disponible' : 'Agotado';
+      return material.cantalidad > 0 ? 'Disponible' : 'Agotado';
     }
   };
 
-  // Función para obtener el color del stock
   const getStockColor = (material) => {
     if (usuario?.rol !== 'almacen') {
       return material.cantidad > 0 ? 'text-green-600' : 'text-red-600';
     }
     
-    // Para almacenistas: colores según cantidad
     if (material.cantidad === 0) return 'text-red-600';
     if (material.cantidad <= LOW_STOCK_THRESHOLD) return 'text-orange-600';
     return 'text-green-600';
@@ -193,7 +179,10 @@ export default function Catalog() {
 
   const addToCart = (material, cantidad) => {
     const cantidadNum = parseInt(cantidad) || 0;
-    if (cantidadNum <= 0) return;
+    if (cantidadNum <= 0) {
+      setError(`Ingresa una cantidad válida para ${formatName(material.nombre)}`);
+      return;
+    }
 
     if (cantidadNum > material.cantidad) {
       setError(`No hay suficiente stock de ${formatName(material.nombre)}`);
@@ -212,6 +201,8 @@ export default function Catalog() {
       return [...prev, { ...material, cantidad: cantidadNum }];
     });
     setError('');
+    setShowDetailModal(false);
+    setDetailAmount('');
   };
 
   const removeFromCart = (id, tipo) => {
@@ -271,6 +262,13 @@ export default function Catalog() {
     setMaterialToAdjust(material);
     setAdjustAmount('');
     setShowAdjustModal(true);
+    setError('');
+  };
+
+  const handleDetailClick = (material) => {
+    setSelectedMaterial(material);
+    setDetailAmount('');
+    setShowDetailModal(true);
     setError('');
   };
 
@@ -345,17 +343,13 @@ export default function Catalog() {
 
         .low-stock-item {
           display: flex;
-          justify-content: between;
+          justify-content: space-between;
           align-items: center;
           background: white;
           border: 1px solid #fbbf24;
           border-radius: 6px;
           padding: 0.75rem 1rem;
           margin-bottom: 0.5rem;
-        }
-
-        .low-stock-item:last-child {
-          margin-bottom: 0;
         }
 
         .low-stock-content {
@@ -410,6 +404,57 @@ export default function Catalog() {
           outline: none;
           border-color: #1e3a8a;
           box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+        }
+
+        .material-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 1.5rem;
+          padding: 1.5rem;
+        }
+
+        .material-card {
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          overflow: hidden;
+          transition: transform 0.2s ease;
+          cursor: pointer;
+        }
+
+        .material-card:hover {
+          transform: translateY(-4px);
+        }
+
+        .material-image {
+          width: 100%;
+          height: 150px;
+          object-fit: cover;
+          background: #f8f9fa;
+        }
+
+        .material-card-content {
+          padding: 1rem;
+        }
+
+        .material-card-name {
+          font-weight: 600;
+          color: #1f2937;
+          font-size: 0.95rem;
+          margin-bottom: 0.5rem;
+        }
+
+        .material-card-type {
+          padding: 0.25rem 0.625rem;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          text-transform: capitalize;
+        }
+
+        .material-card-stock {
+          font-size: 0.85rem;
+          margin-top: 0.5rem;
         }
 
         .table {
@@ -524,6 +569,28 @@ export default function Catalog() {
 
         .btn-adjust:hover {
           background: #d97706;
+        }
+
+        .btn-add-to-cart {
+          background: #1e3a8a;
+          border: none;
+          border-radius: 4px;
+          color: white;
+          font-weight: 500;
+          padding: 0.5rem 1rem;
+          font-size: 0.875rem;
+          transition: background-color 0.15s ease;
+          cursor: pointer;
+          width: 100%;
+        }
+
+        .btn-add-to-cart:hover {
+          background: #1e40af;
+        }
+
+        .btn-add-to-cart:disabled {
+          background: #d1d5db;
+          cursor: not-allowed;
         }
 
         .cart-container {
@@ -833,6 +900,14 @@ export default function Catalog() {
           box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
         }
 
+        .detail-image {
+          max-width: 200px;
+          max-height: 200px;
+          object-fit: contain;
+          border-radius: 8px;
+          margin-bottom: 1rem;
+        }
+
         .text-muted {
           color: #6b7280 !important;
           font-size: 0.875rem;
@@ -984,6 +1059,10 @@ export default function Catalog() {
           .search-filter-container {
             grid-template-columns: 1fr;
           }
+
+          .material-grid {
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+          }
         }
       `}</style>
 
@@ -995,7 +1074,6 @@ export default function Catalog() {
                 <h1>Catálogo de Reactivos</h1>
               </div>
 
-              {/* Alertas de stock bajo solo para almacenistas */}
               {usuario?.rol === 'almacen' && lowStockMaterials.length > 0 && (
                 <div className="low-stock-alerts">
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
@@ -1043,7 +1121,6 @@ export default function Catalog() {
                 </div>
               )}
 
-              {/* Búsqueda y filtros */}
               <div className="search-filter-container">
                 <input
                   type="text"
@@ -1089,95 +1166,144 @@ export default function Catalog() {
                     <div className="spinner"></div>
                   </div>
                 ) : (
-                  <div className="materials-table">
-                    <div className="table-responsive">
-                      <table className="table table-hover mb-0">
-                        <thead>
-                          <tr className="table-header">
-                            <th>Material</th>
-                            <th>Tipo</th>
-                            <th>Riesgos GHS</th>
-                            <th>Descripción</th>
-                            <th>{usuario?.rol === 'almacen' ? 'Stock' : 'Disponibilidad'}</th>
-                            {usuario?.rol !== 'almacen' && <th>Cantidad</th>}
-                            {usuario?.rol === 'almacen' && <th>Acciones</th>}
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {filteredMaterials.map((material) => (
-                            <tr key={`${material.tipo}-${material.id}`} className="table-row">
-                              <td>
-                                <div className="material-name">
-                                  {formatName(material.nombre)}
+                  <>
+                    {filteredMaterials.some(m => m.tipo === 'solido') && (
+                      <div>
+                        <h2 style={{ padding: '1rem 1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>
+                          Materiales Sólidos
+                        </h2>
+                        <div className="material-grid">
+                          {filteredMaterials
+                            .filter(m => m.tipo === 'solido')
+                            .map((material) => (
+                              <div 
+                                key={`${material.tipo}-${material.id}`} 
+                                className="material-card"
+                                onClick={() => handleDetailClick(material)}
+                              >
+                                <img
+                                  src={`/materialSolido/${material.nombre}.jpg`}
+                                  alt={formatName(material.nombre)}
+                                  className="material-image"
+                                  onError={(e) => {
+                                    e.target.src = '/materialSolido/placeholder.jpg';
+                                  }}
+                                />
+                                <div className="material-card-content">
+                                  <div className="material-card-name">
+                                    {formatName(material.nombre)}
+                                  </div>
+                                  <span className={`material-card-type type-${material.tipo}`}>
+                                    {material.tipo}
+                                  </span>
+                                  <div className={`material-card-stock ${getStockColor(material)}`}>
+                                    {displayStock(material)}
+                                  </div>
                                 </div>
-                              </td>
-                              <td>
-                                <span className={`material-type type-${material.tipo}`}>
-                                  {material.tipo}
-                                </span>
-                              </td>
-                              <td>
-                                <div className="riesgos-container">
-                                  {parseRiesgos(material.riesgos_fisicos).map((riesgo, idx) => (
-                                    <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                      {getRiesgoIcon(riesgo)} {riesgo}
-                                    </span>
-                                  ))}
-                                  {parseRiesgos(material.riesgos_salud).map((riesgo, idx) => (
-                                    <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                      {getRiesgoIcon(riesgo)} {riesgo}
-                                    </span>
-                                  ))}
-                                  {parseRiesgos(material.riesgos_ambientales).map((riesgo, idx) => (
-                                    <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
-                                      {getRiesgoIcon(riesgo)} {riesgo}
-                                    </span>
-                                  ))}
-                                </div>
-                              </td>
-                              <td className="text-muted">
-                                {material.descripcion || 'Material de laboratorio'}
-                              </td>
-                              <td>
-                                <div className={`stock-display ${getStockColor(material)}`}>
-                                  {displayStock(material)}
-                                  {usuario?.rol === 'almacen' && material.cantidad <= LOW_STOCK_THRESHOLD && material.cantidad > 0 && (
-                                    <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>⚠️</span>
-                                  )}
-                                </div>
-                              </td>
-                              {usuario?.rol !== 'almacen' && (
-                                <td>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max={material.cantidad}
-                                    className="quantity-input"
-                                    value={
-                                      selectedCart.find((item) => item.id === material.id && item.tipo === material.tipo)?.cantidad || ''
-                                    }
-                                    onChange={(e) => addToCart(material, e.target.value)}
-                                    disabled={material.cantidad === 0}
-                                    placeholder="0"
-                                  />
-                                </td>
-                              )}
-                              {usuario?.rol === 'almacen' && (
-                                <td>
-                                  <button 
-                                    className="btn-adjust"
-                                    onClick={() => handleAdjustClick(material)}
-                                  >
-                                    Ajustar
-                                  </button>
-                                </td>
-                              )}
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
+                              </div>
+                            ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(filteredMaterials.some(m => m.tipo === 'liquido') || 
+                      filteredMaterials.some(m => m.tipo === 'equipo')) && (
+                      <div className="materials-table">
+                        <h2 style={{ padding: '1rem 1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>
+                          Otros Materiales
+                        </h2>
+                        <div className="table-responsive">
+                          <table className="table table-hover mb-0">
+                            <thead>
+                              <tr className="table-header">
+                                <th>Material</th>
+                                <th>Tipo</th>
+                                <th>Riesgos GHS</th>
+                                <th>Descripción</th>
+                                <th>{usuario?.rol === 'almacen' ? 'Stock' : 'Disponibilidad'}</th>
+                                {usuario?.rol !== 'almacen' && <th>Cantidad</th>}
+                                {usuario?.rol === 'almacen' && <th>Acciones</th>}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredMaterials
+                                .filter(m => m.tipo !== 'solido')
+                                .map((material) => (
+                                  <tr key={`${material.tipo}-${material.id}`} className="table-row">
+                                    <td>
+                                      <div className="material-name">
+                                        {formatName(material.nombre)}
+                                      </div>
+                                    </td>
+                                    <td>
+                                      <span className={`material-type type-${material.tipo}`}>
+                                        {material.tipo}
+                                      </span>
+                                    </td>
+                                    <td>
+                                      <div className="riesgos-container">
+                                        {parseRiesgos(material.riesgos_fisicos).map((riesgo, idx) => (
+                                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                            {getRiesgoIcon(riesgo)} {riesgo}
+                                          </span>
+                                        ))}
+                                        {parseRiesgos(material.riesgos_salud).map((riesgo, idx) => (
+                                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                            {getRiesgoIcon(riesgo)} {riesgo}
+                                          </span>
+                                        ))}
+                                        {parseRiesgos(material.riesgos_ambientales).map((riesgo, idx) => (
+                                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                                            {getRiesgoIcon(riesgo)} {riesgo}
+                                          </span>
+                                        ))}
+                                      </div>
+                                    </td>
+                                    <td className="text-muted">
+                                      {material.descripcion || 'Material de laboratorio'}
+                                    </td>
+                                    <td>
+                                      <div className={`stock-display ${getStockColor(material)}`}>
+                                        {displayStock(material)}
+                                        {usuario?.rol === 'almacen' && material.cantidad <= LOW_STOCK_THRESHOLD && material.cantidad > 0 && (
+                                          <span style={{ marginLeft: '0.5rem', fontSize: '0.75rem' }}>⚠️</span>
+                                        )}
+                                      </div>
+                                    </td>
+                                    {usuario?.rol !== 'almacen' && (
+                                      <td>
+                                        <input
+                                          type="number"
+                                          min="1"
+                                          max={material.cantidad}
+                                          className="quantity-input"
+                                          value={
+                                            selectedCart.find((item) => item.id === material.id && item.tipo === material.tipo)?.cantidad || ''
+                                          }
+                                          onChange={(e) => addToCart(material, e.target.value)}
+                                          disabled={material.cantidad === 0}
+                                          placeholder="0"
+                                        />
+                                      </td>
+                                    )}
+                                    {usuario?.rol === 'almacen' && (
+                                      <td>
+                                        <button 
+                                          className="btn-adjust"
+                                          onClick={() => handleAdjustClick(material)}
+                                        >
+                                          Ajustar
+                                        </button>
+                                      </td>
+                                    )}
+                                  </tr>
+                                ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
             </div>
@@ -1306,7 +1432,6 @@ export default function Catalog() {
                   </div>
                 </div>
                 
-                {/* Alerta de seguridad si hay materiales peligrosos */}
                 {selectedCart.some(item => 
                   item.riesgos_salud?.includes('Cancerígeno') || 
                   item.riesgos_salud?.includes('Tóxico agudo') ||
@@ -1358,8 +1483,6 @@ export default function Catalog() {
               <div className="modal-body p-4">
                 <div className="mb-3">
                   <h5>{formatName(materialToAdjust.nombre)}</h5>
-                  
-                  {/* Mostrar clasificación GHS del material */}
                   <div style={{ marginBottom: '1rem' }}>
                     <div className="riesgos-container">
                       {parseRiesgos(materialToAdjust.riesgos_fisicos).map((riesgo, idx) => (
@@ -1379,8 +1502,6 @@ export default function Catalog() {
                       ))}
                     </div>
                   </div>
-
-                  {/* Alerta de seguridad para materiales peligrosos */}
                   {(materialToAdjust.riesgos_salud?.includes('Cancerígeno') || 
                     materialToAdjust.riesgos_salud?.includes('Tóxico agudo') ||
                     materialToAdjust.riesgos_fisicos?.includes('Inflamable')) && (
@@ -1388,7 +1509,6 @@ export default function Catalog() {
                       <strong>⚠️ Material Peligroso:</strong> Este material requiere precauciones especiales de seguridad durante su manipulación y almacenamiento.
                     </div>
                   )}
-                  
                   <p className="text-muted mb-3">
                     Stock actual: <strong>{materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}</strong>
                   </p>
@@ -1428,6 +1548,113 @@ export default function Catalog() {
                 >
                   Guardar Ajuste
                 </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showDetailModal && selectedMaterial && (
+        <div className="modal show d-block modal-overlay" style={{ zIndex: 1050 }}>
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content modal-content-custom">
+              <div className="modal-header modal-header-custom">
+                <h4 className="modal-title">
+                  {formatName(selectedMaterial.nombre)}
+                </h4>
+                <button 
+                  type="button" 
+                  className="btn-close btn-close-white" 
+                  onClick={() => setShowDetailModal(false)}
+                ></button>
+              </div>
+              <div className="modal-body p-4">
+                <div className="d-flex gap-4">
+                  <div>
+                    <img
+                      src={`/materialSolido/${selectedMaterial.nombre}.jpg`}
+                      alt={formatName(selectedMaterial.nombre)}
+                      className="detail-image"
+                      onError={(e) => {
+                        e.target.src = '/materialSolido/placeholder.jpg';
+                      }}
+                    />
+                  </div>
+                  <div className="flex-grow-1">
+                    <div className="mb-3">
+                      <h5>Descripción</h5>
+                      <p className="text-muted">
+                        {selectedMaterial.descripcion || 'Material de laboratorio'}
+                      </p>
+                    </div>
+                    <div className="mb-3">
+                      <h5>Riesgos GHS</h5>
+                      <div className="riesgos-container">
+                        {parseRiesgos(selectedMaterial.riesgos_fisicos).map((riesgo, idx) => (
+                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                            {getRiesgoIcon(riesgo)} {riesgo}
+                          </span>
+                        ))}
+                        {parseRiesgos(selectedMaterial.riesgos_salud).map((riesgo, idx) => (
+                          <span key={idx} className=`riesgo-badge ${getRiesgoColor(riesgo)}`>
+                            {getRiesgoIcon(riesgo)} {riesgo}
+                          </span>
+                        ))}
+                        {parseRiesgos(selectedMaterial.riesgos_ambientales).map((riesgo, idx) => (
+                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                            {getRiesgoIcon(riesgo)} {riesgo}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="mb-3">
+                      <h5>Disponibilidad</h5>
+                      <p className={`text-${selectedMaterial.cantidad > 0 ? 'green' : 'red'}-600`}>
+                        {displayStock(selectedMaterial)}
+                      </p>
+                    </div>
+                    {usuario?.rol !== 'almacen' && (
+                      <div className="mb-3">
+                        <label className="form-label">
+                          Cantidad requerida ({getUnidad(selectedMaterial.tipo)}):
+                        </label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={selectedMaterial.cantidad}
+                          className="form-control"
+                          value={detailAmount}
+                          onChange={(e) => setDetailAmount(e.target.value)}
+                          placeholder={`Cantidad en ${getUnidad(selectedMaterial.tipo)}`}
+                          disabled={selectedMaterial.cantidad === 0}
+                        />
+                      </div>
+                    )}
+                    {error && (
+                      <div className="alert-custom">
+                        {error}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+              <div className="modal-footer modal-footer-custom">
+                <button 
+                  className="btn-secondary-custom"
+                  onClick={() => setShowDetailModal(false)}
+                >
+                  Cerrar
+                </button>
+                {usuario?.rol !== 'almacen' && (
+                  <button 
+                    className="btn-add-to-cart"
+                    onClick={() => addToCart(selectedMaterial, detailAmount)}
+                    disabled={selectedMaterial.cantidad === 0 || !detailAmount}
+                    style={{ width: 'auto' }}
+                  >
+                    Agregar al carrito
+                  </button>
+                )}
               </div>
             </div>
           </div>
