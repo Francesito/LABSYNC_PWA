@@ -741,30 +741,34 @@ export default function Catalog() {
           cursor: not-allowed;
         }
 
- .modal-overlay {
+.modal-overlay {
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
   width: 100vw;
   height: 100vh;
   background: rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
-  z-index: 10000; /* Aumentado para asegurar que esté por encima de otros elementos */
+  z-index: 10000;
+  overflow: auto; /* Permite desplazamiento si el modal es más grande que la pantalla */
 }
 
-        .modal-content-custom {
-          background: white;
-          border-radius: 8px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-          border: none;
-          overflow: hidden;
-          max-width: 500px;
-          width: 100%;
-        }
+ .modal-content-custom {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+  border: none;
+  overflow: hidden;
+  max-width: 500px;
+  width: 90%;
+  margin: 0 auto; /* Centrado horizontal */
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%); /* Centrado perfecto */
+}
 
         .modal-header-custom {
           background: #1e293b;
