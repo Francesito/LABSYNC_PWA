@@ -163,7 +163,7 @@ export default function Catalog() {
     if (usuario?.rol === 'almacen') {
       return `${material.cantidad} ${getUnidad(material.tipo)}`;
     } else {
-      return material.cantalidad > 0 ? 'Disponible' : 'Agotado';
+      return material.cantidad > 0 ? 'Disponible' : 'Agotado';
     }
   };
 
@@ -1446,7 +1446,7 @@ export default function Catalog() {
                   <strong>Nota:</strong> Una vez creado el vale, será enviado para {usuario.rol === 'docente' ? 'aprobación automática' : 'revisión y aprobación'}. Los materiales con clasificación GHS requieren manejo especial.
                 </div>
               </div>
-              <div className="modal-footer modal-footer-custom">
+              <div className="modal-footer modal-footer-custom custom">
                 <button 
                   className="btn-secondary-custom"
                   onClick={() => setShowRequestModal(false)}
@@ -1596,7 +1596,7 @@ export default function Catalog() {
                           </span>
                         ))}
                         {parseRiesgos(selectedMaterial.riesgos_salud).map((riesgo, idx) => (
-                          <span key={idx} className=`riesgo-badge ${getRiesgoColor(riesgo)}`>
+                          <span key={idx} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
                             {getRiesgoIcon(riesgo)} {riesgo}
                           </span>
                         ))}
