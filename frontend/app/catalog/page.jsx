@@ -36,9 +36,9 @@ export default function Catalog() {
     const fetchData = async () => {
       try {
         setLoading(true);
-        const [liquidoRes, solidoRes, equipoRes] = await Promise.all([
+        const [liquidoRes, laboratorioRes, equipoRes] = await Promise.all([
           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/liquidos`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/solidos`),
+          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/laboratorio`),
           axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/equipos`),
         ]);
 
@@ -47,14 +47,11 @@ export default function Catalog() {
           tipo: 'liquido',
           cantidad: m.cantidad_disponible_ml ?? 0,
         }));
-        const solidos = solidoRes.data.map((m) => {
-          console.log(`Material: ${m.nombre}, Riesgos Fisicos: ${m.riesgos_fisicos}, Riesgos Salud: ${m.riesgos_salud}, Riesgos Ambientales: ${m.riesgos_ambientales}`);
-          return {
-            ...m,
-            tipo: 'solido',
-            cantidad: m.cantidad_disponible_g ?? 0,
-          };
-        });
+        const laboratorio = laboratorioRes.data.map((m) => ({
+          ...m,
+          tipo: 'laboratorio',
+          cantidad: m.cantidad_disponible ?? 0,
+        }));
         const equipos = equipoRes.data.map((m) => ({
           ...m,
           tipo: 'equipo',
@@ -66,11 +63,11 @@ export default function Catalog() {
 
         let all = [];
         if (usuario.rol === 'alumno') {
-          all = [...liquidos, ...solidos];
+          all = [...liquidos, ...laboratorio];
         } else if (usuario.rol === 'docente') {
-          all = [...liquidos, ...solidos, ...equipos];
+          all = [...liquidos, ...laboratorio, ...equipos];
         } else if (usuario.rol === 'almacen') {
-          all = [...liquidos, ...solidos, ...equipos];
+          all = [...liquidos, ...laboratorio, ...equipos];
         }
 
         setAllMaterials(all);
@@ -79,7 +76,7 @@ export default function Catalog() {
           const lowStock = all.filter(material => 
             material.cantidad > 0 && 
             material.cantidad <= LOW_STOCK_THRESHOLD &&
-            (material.tipo === 'liquido' || material.tipo === 'solido')
+            (material.tipo === 'liquido' || material.tipo === 'laboratorio')
           );
           setLowStockMaterials(lowStock);
         }
@@ -115,6 +112,7 @@ export default function Catalog() {
   const getUnidad = (tipo) => {
     if (tipo === 'liquido') return 'ml';
     if (tipo === 'solido') return 'g';
+    if (tipo === 'laboratorio') return 'unidades';
     return 'unidades';
   };
 
@@ -122,6 +120,7 @@ export default function Catalog() {
     const typeMap = {
       'solido': 'materialSolido',
       'liquido': 'materialLiquido',
+      'laboratorio': 'materialLaboratorio',
       'equipo': 'materialEquipo'
     };
     const folder = typeMap[material.tipo] || 'materialSolido';
@@ -452,13 +451,13 @@ export default function Catalog() {
           transform: translateY(-4px);
         }
 
-   .material-image {
-  width: 100%;
-  height: 150px;
-  object-fit: contain;
-  object-position: center; /* Centra la imagen */
-  background: #f8f9fa;
-}
+        .material-image {
+          width: 100%;
+          height: 150px;
+          object-fit: contain;
+          object-position: center;
+          background: #f8f9fa;
+        }
 
         .material-card-content {
           padding: 1rem;
@@ -537,6 +536,11 @@ export default function Catalog() {
         .type-solido {
           background: #fef3c7;
           color: #92400e;
+        }
+
+        .type-laboratorio {
+          background: #e0e7ff;
+          color: #4338ca;
         }
 
         .type-equipo {
@@ -742,34 +746,34 @@ export default function Catalog() {
           cursor: not-allowed;
         }
 
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  background: rgba(0, 0, 0, 0.5);
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  z-index: 10000;
-  overflow: auto; /* Permite desplazamiento si el modal es más grande que la pantalla */
-}
+        .modal-overlay {
+          position: fixed;
+          top: 0;
+          left: 0;
+          width: 100vw;
+          height: 100vh;
+          background: rgba(0, 0, 0, 0.5);
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          z-index: 10000;
+          overflow: auto;
+        }
 
- .modal-content-custom {
-  background: white;
-  border-radius: 8px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
-  border: none;
-  overflow: hidden;
-  max-width: 500px;
-  width: 90%;
-  margin: 0 auto; /* Centrado horizontal */
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  transform: translate(-50%, -50%); /* Centrado perfecto */
-}
+        .modal-content-custom {
+          background: white;
+          border-radius: 8px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+          border: none;
+          overflow: hidden;
+          max-width: 500px;
+          width: 90%;
+          margin: 0 auto;
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+        }
 
         .modal-header-custom {
           background: #1e293b;
@@ -1217,14 +1221,14 @@ export default function Catalog() {
                   </div>
                 ) : (
                   <>
-                    {filteredMaterials.some(m => m.tipo === 'solido') && (
+                    {filteredMaterials.some(m => m.tipo === 'solido' || m.tipo === 'liquido' || m.tipo === 'laboratorio') && (
                       <div>
                         <h2 style={{ padding: '1rem 1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>
-                          Materiales Sólidos
+                          Materiales en Recuadros
                         </h2>
                         <div className="material-grid">
                           {filteredMaterials
-                            .filter(m => m.tipo === 'solido')
+                            .filter(m => m.tipo === 'solido' || m.tipo === 'liquido' || m.tipo === 'laboratorio')
                             .map((material) => (
                               <div 
                                 key={`${material.tipo}-${material.id}`} 
@@ -1257,11 +1261,10 @@ export default function Catalog() {
                       </div>
                     )}
 
-                    {(filteredMaterials.some(m => m.tipo === 'liquido') || 
-                      filteredMaterials.some(m => m.tipo === 'equipo')) && (
+                    {filteredMaterials.some(m => m.tipo === 'equipo') && (
                       <div className="materials-table">
                         <h2 style={{ padding: '1rem 1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>
-                          Otros Materiales
+                          Equipos
                         </h2>
                         <div className="table-responsive">
                           <table className="table table-hover mb-0">
@@ -1278,7 +1281,7 @@ export default function Catalog() {
                             </thead>
                             <tbody>
                               {filteredMaterials
-                                .filter(m => m.tipo !== 'solido')
+                                .filter(m => m.tipo === 'equipo')
                                 .map((material) => (
                                   <tr key={`${material.tipo}-${material.id}`} className="table-row">
                                     <td>
