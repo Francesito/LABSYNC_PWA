@@ -34,6 +34,8 @@ router.get('/:id', materialController.getMaterialById);
 router.get('/tipo/liquidos', materialController.getLiquidos);
 router.get('/tipo/solidos', materialController.getSolidos);
 router.get('/tipo/equipos', materialController.getEquipos);
+router.get('/tipo/laboratorio', materialController.getLaboratorio);
+
 
 /**
  * ========================
