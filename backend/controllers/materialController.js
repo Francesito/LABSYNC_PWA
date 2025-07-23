@@ -38,6 +38,7 @@ function detectTableAndField(tipo) {
     case 'liquido': return { table: 'MaterialLiquido', field: 'cantidad_disponible_ml' };
     case 'solido':  return { table: 'MaterialSolido',  field: 'cantidad_disponible_g'  };
     case 'equipo':  return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
+    case 'laboratorio': return { table: 'MaterialLaboratorio', field: 'cantidad_disponible' }; // ✅ NUEVO
     default: return null;
   }
 }
@@ -576,16 +577,29 @@ const adjustInventory = async (req, res) => {
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
-    // IMPORTANTE: SOLO de las subtablas, ya no usas tabla Material
     const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo FROM MaterialLiquido');
     const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo FROM MaterialSolido');
+    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo FROM MaterialLaboratorio'); // ✅ NUEVO
     const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo FROM MaterialEquipo');
 
-    const materials = [...liquidos, ...solidos, ...equipos];
+    const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
     res.status(500).json({ error: 'Error al obtener materiales' });
+  }
+};
+
+
+/** Obtener materiales de laboratorio */
+const getLaboratorio = async (req, res) => {
+  logRequest('getLaboratorio');
+  try {
+    const [rows] = await pool.query('SELECT * FROM MaterialLaboratorio');
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getLaboratorio:', error);
+    res.status(500).json({ error: 'Error al obtener materiales de laboratorio' });
   }
 };
 
