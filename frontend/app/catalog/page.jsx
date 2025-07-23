@@ -27,70 +27,73 @@ export default function Catalog() {
 
   const LOW_STOCK_THRESHOLD = 50;
 
-  useEffect(() => {
-    if (!usuario) {
-      router.push('/login');
-      return;
-    }
+ useEffect(() => {
+  if (!usuario) {
+    router.push('/login');
+    return;
+  }
 
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        const [liquidoRes, laboratorioRes, equipoRes] = await Promise.all([
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/liquidos`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/laboratorio`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/equipos`),
-        ]);
+  const fetchData = async () => {
+    try {
+      setLoading(true);
 
-        const liquidos = liquidoRes.data.map((m) => ({
-          ...m,
-          tipo: 'liquido',
-          cantidad: m.cantidad_disponible_ml ?? 0,
-        }));
-        const laboratorio = laboratorioRes.data.map((m) => ({
-          ...m,
-          tipo: 'laboratorio',
-          cantidad: m.cantidad_disponible ?? 0,
-        }));
-        const equipos = equipoRes.data.map((m) => ({
-          ...m,
-          tipo: 'equipo',
-          cantidad: m.cantidad_disponible_u ?? 0,
-          riesgos_fisicos: '',
-          riesgos_salud: '',
-          riesgos_ambientales: ''
-        }));
+      const [liquidoRes, solidoRes, laboratorioRes, equipoRes] = await Promise.all([
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/liquidos`),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/solidos`),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/laboratorio`),
+        axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/equipos`),
+      ]);
 
-        let all = [];
-        if (usuario.rol === 'alumno') {
-          all = [...liquidos, ...laboratorio];
-        } else if (usuario.rol === 'docente') {
-          all = [...liquidos, ...laboratorio, ...equipos];
-        } else if (usuario.rol === 'almacen') {
-          all = [...liquidos, ...laboratorio, ...equipos];
-        }
+      const liquidos = liquidoRes.data.map((m) => ({
+        ...m,
+        tipo: 'liquido',
+        cantidad: m.cantidad_disponible_ml ?? 0,
+      }));
 
-        setAllMaterials(all);
+      const solidos = solidoRes.data.map((m) => ({
+        ...m,
+        tipo: 'solido',
+        cantidad: m.cantidad_disponible_g ?? 0,
+      }));
 
-        if (usuario.rol === 'almacen') {
-          const lowStock = all.filter(material => 
-            material.cantidad > 0 && 
-            material.cantidad <= LOW_STOCK_THRESHOLD &&
-            (material.tipo === 'liquido' || material.tipo === 'laboratorio')
-          );
-          setLowStockMaterials(lowStock);
-        }
+      const laboratorio = laboratorioRes.data.map((m) => ({
+        ...m,
+        tipo: 'laboratorio',
+        cantidad: m.cantidad_disponible ?? 0,
+      }));
 
-      } catch (err) {
-        console.error(err);
-        setError('Error al cargar el catálogo');
-      } finally {
-        setLoading(false);
+      const equipos = equipoRes.data.map((m) => ({
+        ...m,
+        tipo: 'equipo',
+        cantidad: m.cantidad_disponible_u ?? 0,
+        riesgos_fisicos: '',
+        riesgos_salud: '',
+        riesgos_ambientales: ''
+      }));
+
+      let all = [...liquidos, ...solidos, ...laboratorio, ...equipos];
+
+      setAllMaterials(all);
+
+      if (usuario.rol === 'almacen') {
+        const lowStock = all.filter(material =>
+          material.cantidad > 0 &&
+          material.cantidad <= LOW_STOCK_THRESHOLD
+        );
+        setLowStockMaterials(lowStock);
       }
-    };
 
-    fetchData();
-  }, [usuario, router]);
+    } catch (err) {
+      console.error(err);
+      setError('Error al cargar el catálogo');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  fetchData();
+}, [usuario, router]);
+
 
   const formatName = (name) =>
     name
@@ -109,24 +112,26 @@ export default function Catalog() {
           .toLowerCase()
       : '';
 
-  const getUnidad = (tipo) => {
-    if (tipo === 'liquido') return 'ml';
-    if (tipo === 'solido') return 'g';
-    if (tipo === 'laboratorio') return 'unidades';
-    return 'unidades';
-  };
+const getUnidad = (tipo) => {
+  if (tipo === 'liquido') return 'ml';
+  if (tipo === 'solido') return 'g';
+  if (tipo === 'laboratorio' || tipo === 'equipo') return 'unidades';
+  return 'unidades';
+};
 
-  const getImagePath = (material) => {
-    const typeMap = {
-      'solido': 'materialSolido',
-      'liquido': 'materialLiquido',
-      'laboratorio': 'materialLaboratorio',
-      'equipo': 'materialEquipo'
-    };
-    const folder = typeMap[material.tipo] || 'materialSolido';
-    const normalizedName = normalizeImageName(material.nombre);
-    return `/${folder}/${normalizedName}.jpg`;
+
+const getImagePath = (material) => {
+  const typeMap = {
+    'solido': 'materialSolido',
+    'liquido': 'materialLiquido',
+    'laboratorio': 'materialLaboratorio',
+    'equipo': 'materialEquipo'
   };
+  const folder = typeMap[material.tipo] || 'materialSolido';
+  const normalizedName = normalizeImageName(material.nombre);
+  return `/${folder}/${normalizedName}.jpg`;
+};
+
 
   const parseRiesgos = (riesgosString) => {
     if (!riesgosString || riesgosString.trim() === '') return [];
@@ -1208,58 +1213,64 @@ export default function Catalog() {
                 </select>
               </div>
 
-              <div className="p-0">
-                {error && (
-                  <div className="alert-custom mx-4 mt-3">
-                    {error}
-                  </div>
-                )}
+          <div className="p-0">
+  {error && (
+    <div className="alert-custom mx-4 mt-3">
+      {error}
+    </div>
+  )}
 
-                {loading ? (
-                  <div className="loading-spinner">
-                    <div className="spinner"></div>
-                  </div>
-                ) : (
-                  <>
-                    {filteredMaterials.some(m => m.tipo === 'solido' || m.tipo === 'liquido' || m.tipo === 'laboratorio') && (
-                      <div>
-                        <h2 style={{ padding: '1rem 1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>
-                          Materiales en Recuadros
-                        </h2>
-                        <div className="material-grid">
-                          {filteredMaterials
-                            .filter(m => m.tipo === 'solido' || m.tipo === 'liquido' || m.tipo === 'laboratorio')
-                            .map((material) => (
-                              <div 
-                                key={`${material.tipo}-${material.id}`} 
-                                className="material-card"
-                                onClick={(e) => handleDetailClick(material, e)}
-                              >
-                                <img
-                                  src={getImagePath(material)}
-                                  alt={formatName(material.nombre)}
-                                  className="material-image"
-                                  onError={(e) => {
-                                    console.log(`Imagen no encontrada para ${material.nombre} (Tipo: ${material.tipo}) en la ruta: ${getImagePath(material)}, Nombre normalizado: ${normalizeImageName(material.nombre)}`);
-                                    e.target.src = '/placeholder.jpg';
-                                  }}
-                                />
-                                <div className="material-card-content">
-                                  <div className="material-card-name">
-                                    {formatName(material.nombre)}
-                                  </div>
-                                  <span className={`material-card-type type-${material.tipo}`}>
-                                    {material.tipo}
-                                  </span>
-                                  <div className={`material-card-stock ${getStockColor(material)}`}>
-                                    {displayStock(material)}
-                                  </div>
-                                </div>
-                              </div>
-                            ))}
-                        </div>
+  {loading ? (
+    <div className="loading-spinner">
+      <div className="spinner"></div>
+    </div>
+  ) : (
+    <>
+      {/* Renderizar materiales en tarjetas para todos los tipos */}
+      {['liquido', 'solido', 'laboratorio', 'equipo'].map((tipo) => (
+        filteredMaterials.some((m) => m.tipo === tipo) && (
+          <div key={tipo} style={{ marginBottom: '2rem' }}>
+            <h2 style={{ padding: '1rem 1.5rem', fontSize: '1.25rem', fontWeight: '600' }}>
+              {tipo.charAt(0).toUpperCase() + tipo.slice(1)}
+            </h2>
+            <div className="material-grid">
+              {filteredMaterials
+                .filter((m) => m.tipo === tipo)
+                .map((material) => (
+                  <div
+                    key={`${material.tipo}-${material.id}`}
+                    className="material-card"
+                    onClick={(e) => handleDetailClick(material, e)}
+                  >
+                    <img
+                      src={getImagePath(material)}
+                      alt={formatName(material.nombre)}
+                      className="material-image"
+                      onError={(e) => {
+                        e.target.src = '/placeholder.jpg';
+                      }}
+                    />
+                    <div className="material-card-content">
+                      <div className="material-card-name">
+                        {formatName(material.nombre)}
                       </div>
-                    )}
+                      <span className={`material-card-type type-${material.tipo}`}>
+                        {material.tipo}
+                      </span>
+                      <div className={`material-card-stock ${getStockColor(material)}`}>
+                        {displayStock(material)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+            </div>
+          </div>
+        )
+      ))}
+    </>
+  )}
+</div>
+
 
                     {filteredMaterials.some(m => m.tipo === 'equipo') && (
                       <div className="materials-table">
