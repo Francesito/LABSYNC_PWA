@@ -1,6 +1,3 @@
-
-
-// File: frontend/lib/auth.js
 'use client';
 
 import { createContext, useContext, useEffect, useState } from 'react';
@@ -34,6 +31,9 @@ export function AuthProvider({ children }) {
             case 3:
               rolNombre = 'almacen';
               break;
+            case 4:
+              rolNombre = 'administrador';
+              break;
             default:
               rolNombre = 'desconocido';
           }
@@ -44,22 +44,23 @@ export function AuthProvider({ children }) {
           nombre: decoded.nombre,
           correo: decoded.correo_institucional || decoded.correo,
           rol: rolNombre,
+          rol_id: decoded.rol_id, // Añadimos rol_id al objeto usuario
         });
 
         // Redirecciones por rol
-      if (pathname === '/login' || pathname === '/register') {
-  router.push('/catalog');
-} else if (pathname.startsWith('/reset-password') || pathname === '/forgot-password' || pathname.startsWith('/verificar')) {
-  // No redirigir estas páginas públicas
-  return;
-} else if (rolNombre === 'docente' && pathname === '/chat') {
-  router.push('/catalog');
-} else if (
-  (rolNombre === 'alumno' || rolNombre === 'almacen') &&
-  pathname === '/solicitudes/pendientes'
-) {
-  router.push('/solicitudes');
-}
+        if (pathname === '/login' || pathname === '/register') {
+          router.push('/catalog');
+        } else if (pathname.startsWith('/reset-password') || pathname === '/forgot-password' || pathname.startsWith('/verificar')) {
+          // No redirigir estas páginas públicas
+          return;
+        } else if (rolNombre === 'docente' && pathname === '/chat') {
+          router.push('/catalog');
+        } else if (
+          (rolNombre === 'alumno' || rolNombre === 'almacen') &&
+          pathname === '/solicitudes/pendientes'
+        ) {
+          router.push('/solicitudes');
+        }
       } catch (error) {
         console.error('Error decodificando token:', error);
         localStorage.removeItem('token');
@@ -68,9 +69,9 @@ export function AuthProvider({ children }) {
           router.push('/login');
         }
       }
-  } else if (!['/login', '/register', '/forgot-password', '/verificar'].includes(pathname) && !pathname.startsWith('/reset-password')) {
-  router.push('/login');
-}
+    } else if (!['/login', '/register', '/forgot-password', '/verificar'].includes(pathname) && !pathname.startsWith('/reset-password')) {
+      router.push('/login');
+    }
   }, [pathname, router]);
 
   return (
