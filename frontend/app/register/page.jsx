@@ -8,7 +8,6 @@ export default function Register() {
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
   const [contrasena, setContrasena] = useState('');
-  const [rol, setRol] = useState('alumno');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
@@ -20,7 +19,7 @@ export default function Register() {
         nombre,
         correo_institucional: correo,
         contrasena,
-        rol,
+        rol: 'alumno', // Set default role to alumno
       });
       setError('');
       alert('Usuario registrado. Verifica tu correo.');
@@ -37,11 +36,9 @@ export default function Register() {
       backgroundPosition: 'center',
       backgroundRepeat: 'no-repeat'
     }}>
-
       <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
-
         {/* Sección derecha - Formulario */}
-       <div className="col-12 col-md-6 offset-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
+        <div className="col-12 col-md-6 offset-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
           <div className="w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
             <div className="mb-4">
               <h2 className="fw-bold text-dark mb-1">Crear cuenta</h2>
@@ -66,9 +63,9 @@ export default function Register() {
                   onChange={(e) => setNombre(e.target.value)}
                   className="form-control bg-white border-dark text-dark"
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.1) !important',
-                    borderColor: 'rgba(255,255,255,0.3)',
-                    color: 'white',
+                    backgroundColor: '#ffffff',
+                    borderColor: '#000000',
+                    color: '#000000',
                     padding: '12px 16px',
                     fontSize: '16px'
                   }}
@@ -87,9 +84,9 @@ export default function Register() {
                   onChange={(e) => setCorreo(e.target.value)}
                   className="form-control bg-white border-dark text-dark"
                   style={{
-                    backgroundColor: 'rgba(255,255,255,0.1) !important',
-                    borderColor: 'rgba(255,255,255,0.3)',
-                    color: 'white',
+                    backgroundColor: '#ffffff',
+                    borderColor: '#000000',
+                    color: '#000000',
                     padding: '12px 16px',
                     fontSize: '16px'
                   }}
@@ -109,9 +106,9 @@ export default function Register() {
                     onChange={(e) => setContrasena(e.target.value)}
                     className="form-control bg-white border-dark text-dark pe-5"
                     style={{
-                      backgroundColor: 'rgba(255,255,255,0.1) !important',
-                      borderColor: 'rgba(255,255,255,0.3)',
-                      color: 'white',
+                      backgroundColor: '#ffffff',
+                      borderColor: '#000000',
+                      color: '#000000',
                       padding: '12px 16px',
                       fontSize: '16px'
                     }}
@@ -122,50 +119,10 @@ export default function Register() {
                     type="button"
                     className="btn position-absolute top-50 end-0 translate-middle-y me-3 p-0 border-0 bg-transparent"
                     onClick={() => setShowPassword(!showPassword)}
-                    style={{ color: 'rgba(255,255,255,0.7)' }}
+                    style={{ color: '#000000' }}
                   >
                     <i className={`bi ${showPassword ? 'bi-eye-fill' : 'bi-eye-slash-fill'}`}></i>
                   </button>
-                </div>
-              </div>
-
-              {/* Rol */}
-              <div className="mb-4">
-                <label className="form-label fw-semibold text-dark mb-3">Selecciona tu rol</label>
-                <div className="d-flex gap-2">
-                  {[
-                    { value: 'alumno', label: 'Alumno', color: 'primary' },
-                    { value: 'docente', label: 'Docente', color: 'secondary' },
-                    { value: 'almacen', label: 'Almacén', color: 'dark' },
-                  ].map(({ value, label, color }) => (
-                    <div key={value} className="flex-grow-1">
-                      <input
-                        type="radio"
-                        name="rol"
-                        id={`rol-${value}`}
-                        value={value}
-                        checked={rol === value}
-                        onChange={() => setRol(value)}
-                        className="d-none"
-                      />
-                      <label
-                        htmlFor={`rol-${value}`}
-                        className={`w-100 btn fw-semibold text-center d-block`}
-                        style={{
-                          backgroundColor: rol === value ? '#d4634a' : 'rgba(255,255,255,0.1)',
-                          borderColor: rol === value ? '#d4634a' : 'rgba(255,255,255,0.3)',
-                          color: 'white',
-                          border: '1px solid',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          padding: '12px 8px',
-                          fontSize: '14px'
-                        }}
-                      >
-                        {label}
-                      </label>
-                    </div>
-                  ))}
                 </div>
               </div>
 
@@ -175,7 +132,7 @@ export default function Register() {
                 style={{
                   backgroundColor: '#d4634a',
                   borderColor: '#d4634a',
-                  color: 'white',
+                  color: '#ffffff',
                   borderRadius: '4px',
                   padding: '12px',
                   fontSize: '16px'
@@ -195,18 +152,14 @@ export default function Register() {
 
       <style jsx>{`
         .form-control:focus {
-          background-color: rgba(255,255,255,0.1) !important;
-          border-color: rgba(255,255,255,0.5) !important;
-          color: white !important;
-          box-shadow: 0 0 0 0.2rem rgba(255,255,255,0.25) !important;
+          background-color: #ffffff !important;
+          border-color: #000000 !important;
+          color: #000000 !important;
+          box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.25) !important;
         }
         
         .form-control::placeholder {
-          color: rgba(255,255,255,0.5) !important;
-        }
-        
-        label:hover {
-          background-color: rgba(255,255,255,0.15) !important;
+          color: #6c757d !important;
         }
       `}</style>
     </div>
