@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../lib/auth';
+import { useAuth } from '../../lib/auth'; // Corregido de '../lib/auth' a '../../lib/auth'
 import axios from 'axios';
 
 export default function Configuracion() {
