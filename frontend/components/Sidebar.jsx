@@ -24,7 +24,8 @@ export default function Sidebar() {
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
         </svg>
-      )
+      ),
+      visible: [1, 2, 3, 4].includes(usuario.rol_id), // Visible para todos los roles
     },
     { 
       href: '/solicitudes', 
@@ -33,7 +34,8 @@ export default function Sidebar() {
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-      )
+      ),
+      visible: [1, 2].includes(usuario.rol_id), // Visible solo para alumnos y docentes
     },
     {
       href: '/adeudos',
@@ -43,7 +45,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      visible: ['alumno', 'docente'].includes(usuario.rol),
+      visible: [1, 2].includes(usuario.rol_id), // Visible para alumnos y docentes
     },
     {
       href: '/prestamos',
@@ -53,7 +55,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
         </svg>
       ),
-      visible: usuario.rol === 'almacen',
+      visible: usuario.rol_id === 3, // Visible solo para almacen
     },
     {
       href: '/chat',
@@ -63,7 +65,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       ),
-      visible: ['alumno', 'almacen'].includes(usuario.rol),
+      visible: [1, 3].includes(usuario.rol_id), // Visible para alumnos y almacen
     },
     {
       href: '/configuracion',
@@ -74,7 +76,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
         </svg>
       ),
-      visible: usuario.rol_id === 4, // Only visible to admin (rol_id: 4)
+      visible: usuario.rol_id === 4, // Visible solo para administrador
     },
   ];
 
@@ -102,7 +104,7 @@ export default function Sidebar() {
               {usuario.nombre}
             </h3>
             <p className="text-sm text-slate-400 truncate">
-              {usuario.correo}
+              {usuario.correo_institucional}
             </p>
           </div>
           <button className="p-1 hover:bg-slate-800 rounded-full transition-colors">
