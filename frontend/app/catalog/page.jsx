@@ -1220,17 +1220,46 @@ const getImagePath = (material) => {
     </div>
   )}
 
-  {loading ? (
-    <div className="loading-spinner">
-      <div className="spinner"></div>
-    </div>
-  ) : (
-  )}
-</div>
+{loading ? (
+  <div className="loading-spinner">
+    <div className="spinner"></div>
+  </div>
+) : (
+  <div className="material-grid">
+    {filteredMaterials.length === 0 ? (
+      <p style={{ padding: '1rem 1.5rem', fontSize: '1rem', color: '#6b7280' }}>
+        No se encontraron materiales.
+      </p>
+    ) : (
+      filteredMaterials.map((material) => (
+        <div
+          key={`${material.tipo}-${material.id}`}
+          className="material-card"
+          onClick={(e) => handleDetailClick(material, e)}
+        >
+          <img
+            src={getImagePath(material)}
+            alt={formatName(material.nombre)}
+            className="material-image"
+            onError={(e) => {
+              e.target.src = '/placeholder.jpg';
+            }}
+          />
+          <div className="material-card-content">
+            <div className="material-card-name">{formatName(material.nombre)}</div>
+            <span className={`material-card-type type-${material.tipo}`}>
+              {material.tipo}
+            </span>
+            <div className={`material-card-stock ${getStockColor(material)}`}>
+              {displayStock(material)}
+            </div>
+          </div>
+        </div>
+      ))
+    )}
+  </div>
+)}
 
-
-                  </>
-                )}
               </div>
             </div>
           </div>
