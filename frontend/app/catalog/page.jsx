@@ -72,6 +72,12 @@ export default function Catalog() {
       }));
 
       let all = [...liquidos, ...solidos, ...laboratorio, ...equipos];
+      // Filtrar según el rol del usuario
+if (usuario.rol === 'alumno') {
+  all = all.filter(m => m.tipo === 'laboratorio' || m.tipo === 'equipo');
+} else if (usuario.rol === 'docente') {
+  all = all.filter(m => m.tipo === 'liquido' || m.tipo === 'solido');
+}
 
       setAllMaterials(all);
 
@@ -322,7 +328,14 @@ const getImagePath = (material) => {
       );
       setShowAdjustModal(false);
       setAdjustAmount('');
-      window.location.reload();
+      // Actualizar el estado sin recargar
+setAllMaterials(prev =>
+  prev.map(item =>
+    item.id === materialToAdjust.id && item.tipo === materialToAdjust.tipo
+      ? { ...item, cantidad: amountNum }
+      : item
+  )
+);
     } catch (err) {
       console.error(err);
       setError('Error al ajustar inventario');
@@ -1254,6 +1267,19 @@ const getImagePath = (material) => {
               {displayStock(material)}
             </div>
           </div>
+          {usuario?.rol === 'almacen' && (
+  <button
+    className="btn-adjust"
+    onClick={(e) => {
+      e.stopPropagation();
+      handleAdjustClick(material);
+    }}
+    style={{ marginTop: '8px', width: '100%' }}
+  >
+    Ajustar Stock
+  </button>
+)}
+
         </div>
       ))
     )}
