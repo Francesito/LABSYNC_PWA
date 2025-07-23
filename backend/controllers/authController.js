@@ -4,21 +4,15 @@ const pool = require('../config/db');
 const { sendEmail } = require('../utils/email');
 
 const registrarUsuario = async (req, res) => {
-  const { nombre, correo_institucional, contrasena, rol } = req.body;
+  const { nombre, correo_institucional, contrasena } = req.body;
+
+  // Input validation
+  if (!nombre || !correo_institucional || !contrasena) {
+    return res.status(400).json({ error: 'Todos los campos son obligatorios' });
+  }
 
   if (!correo_institucional.endsWith('@utsjr.edu.mx')) {
     return res.status(400).json({ error: 'Correo institucional inválido' });
-  }
-
-  const rolesMap = {
-    alumno: 1,
-    docente: 2,
-    almacen: 3,
-  };
-
-  const rol_id = rolesMap[rol?.toLowerCase()];
-  if (!rol_id) {
-    return res.status(400).json({ error: 'Rol inválido. Debe ser alumno, docente o almacen.' });
   }
 
   try {
@@ -30,12 +24,12 @@ const registrarUsuario = async (req, res) => {
     const hash = await bcrypt.hash(contrasena, 10);
     const token = jwt.sign({ correo_institucional }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
+    // Set default role to alumno (rol_id: 1)
     await pool.query(
       'INSERT INTO Usuario (nombre, correo_institucional, contrasena, rol_id, activo) VALUES (?, ?, ?, ?, FALSE)',
-      [nombre, correo_institucional, hash, rol_id]
+      [nombre, correo_institucional, hash, 1]
     );
 
-    // ✅ URL del frontend en producción
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
     await sendEmail(
       correo_institucional,
@@ -108,7 +102,6 @@ const forgotPassword = async (req, res) => {
 
     const token = jwt.sign({ correo_institucional }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    // ✅ URL del frontend en producción
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
     await sendEmail(
       correo_institucional,
