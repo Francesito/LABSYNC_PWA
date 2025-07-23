@@ -755,6 +755,7 @@ module.exports = {
   getMaterialById,
   getLiquidos,
   getSolidos,
+  getLaboratorio,
   getEquipos,
   crearSolicitudes,
   crearSolicitudConAdeudo,
