@@ -1194,37 +1194,45 @@ setAllMaterials(prev =>
               )}
 
               <div className="search-filter-container">
-                <input
-                  type="text"
-                  className="form-control search-input"
-                  placeholder="Buscar materiales..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                <select
-                  className="filter-select"
-                  value={selectedRiesgoFisico}
-                  onChange={(e) => setSelectedRiesgoFisico(e.target.value)}
-                >
-                  <option value="">Todos los riesgos físicos</option>
-                  <option value="Inflamable">🔥 Inflamable</option>
-                  <option value="Oxidante">⚗️ Oxidante</option>
-                  <option value="Corrosivo para metales">🛠️ Corrosivo para metales</option>
-                  <option value="Reacciona violentamente con agua">💥 Reactivo con agua</option>
-                </select>
-                <select
-                  className="filter-select"
-                  value={selectedRiesgoSalud}
-                  onChange={(e) => setSelectedRiesgoSalud(e.target.value)}
-                >
-                  <option value="">Todos los riesgos de salud</option>
-                  <option value="Tóxico agudo">☠️ Tóxico agudo</option>
-                  <option value="Cancerígeno">⚠️ Cancerígeno</option>
-                  <option value="Corrosivo para la piel">🧪 Corrosivo</option>
-                  <option value="Irritante">⚡ Irritante</option>
-                  <option value="Sensibilizante">🤧 Sensibilizante</option>
-                </select>
-              </div>
+  <input
+    type="text"
+    className="form-control search-input"
+    placeholder="Buscar materiales..."
+    value={searchTerm}
+    onChange={(e) => setSearchTerm(e.target.value)}
+  />
+
+  {/* Mostrar filtros SOLO si el rol NO es alumno */}
+  {usuario?.rol !== 'alumno' && (
+    <>
+      <select
+        className="filter-select"
+        value={selectedRiesgoFisico}
+        onChange={(e) => setSelectedRiesgoFisico(e.target.value)}
+      >
+        <option value="">Todos los riesgos físicos</option>
+        <option value="Inflamable">🔥 Inflamable</option>
+        <option value="Oxidante">⚗️ Oxidante</option>
+        <option value="Corrosivo para metales">🛠️ Corrosivo para metales</option>
+        <option value="Reacciona violentamente con agua">💥 Reactivo con agua</option>
+      </select>
+
+      <select
+        className="filter-select"
+        value={selectedRiesgoSalud}
+        onChange={(e) => setSelectedRiesgoSalud(e.target.value)}
+      >
+        <option value="">Todos los riesgos de salud</option>
+        <option value="Tóxico agudo">☠️ Tóxico agudo</option>
+        <option value="Cancerígeno">⚠️ Cancerígeno</option>
+        <option value="Corrosivo para la piel">🧪 Corrosivo</option>
+        <option value="Irritante">⚡ Irritante</option>
+        <option value="Sensibilizante">🤧 Sensibilizante</option>
+      </select>
+    </>
+  )}
+</div>
+
 
           <div className="p-0">
   {error && (
