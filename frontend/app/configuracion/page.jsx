@@ -1,7 +1,7 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '../../lib/auth'; // Corregido de '../lib/auth' a '../../lib/auth'
+import { useAuth } from '../../lib/auth';
 import axios from 'axios';
 
 export default function Configuracion() {
@@ -9,9 +9,12 @@ export default function Configuracion() {
   const router = useRouter();
   const [nombre, setNombre] = useState('');
   const [correo, setCorreo] = useState('');
+  const [contrasena, setContrasena] = useState('');
   const [rol, setRol] = useState('');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [usuarios, setUsuarios] = useState([]);
+  const [loadingUsuarios, setLoadingUsuarios] = useState(true);
 
   // Verificar que el usuario es administrador
   if (!usuario || usuario.rol_id !== 4) {
@@ -19,14 +22,35 @@ export default function Configuracion() {
     return null;
   }
 
-  const handleSubmit = async (e) => {
+  // Cargar lista de usuarios al montar el componente
+  useEffect(() => {
+    const fetchUsuarios = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/auth/usuarios`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        // Excluir al administrador actual
+        setUsuarios(response.data.filter(u => u.correo_institucional !== usuario.correo));
+        setLoadingUsuarios(false);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Error al cargar usuarios');
+        setLoadingUsuarios(false);
+      }
+    };
+    fetchUsuarios();
+  }, [usuario.correo]);
+
+  // Manejar agregar usuario
+  const handleAddUser = async (e) => {
     e.preventDefault();
     setError('');
     setSuccess('');
 
     // Validaciones en el frontend
     if (!nombre || !correo || !rol) {
-      setError('Todos los campos son obligatorios');
+      setError('Nombre, correo y rol son obligatorios');
       return;
     }
     if (!correo.endsWith('@utsjr.edu.mx')) {
@@ -37,155 +61,172 @@ export default function Configuracion() {
       setError('Rol inválido. Selecciona docente o almacen.');
       return;
     }
+    if (contrasena && contrasena.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
 
     try {
       const token = localStorage.getItem('token');
       const response = await axios.post(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/adminAddUser`,
-        { nombre, correo_institucional: correo, rol },
+        { nombre, correo_institucional: correo, rol, contrasena },
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setSuccess(response.data.mensaje || 'Usuario agregado exitosamente');
       setNombre('');
       setCorreo('');
+      setContrasena('');
       setRol('');
+      // Actualizar la lista de usuarios
+      const updatedUsuarios = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/usuarios`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setUsuarios(updatedUsuarios.data.filter(u => u.correo_institucional !== usuario.correo));
     } catch (err) {
       setError(err.response?.data?.error || 'Error al agregar usuario');
       console.error('Error en adminAddUser:', err.response?.data);
     }
   };
 
+  // Manejar eliminar usuario
+  const handleDeleteUser = async (userId) => {
+    if (!confirm('¿Estás seguro de que quieres eliminar este usuario?')) return;
+    try {
+      const token = localStorage.getItem('token');
+      await axios.delete(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/deleteUser/${userId}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setSuccess('Usuario eliminado exitosamente');
+      setUsuarios(usuarios.filter(u => u.id !== userId));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Error al eliminar usuario');
+      console.error('Error en deleteUser:', err.response?.data);
+    }
+  };
+
   return (
-    <div className="min-vh-100 d-flex font-sans position-relative" style={{
-      backgroundImage: 'url(/background.jpg)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat'
-    }}>
-      <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
-        <div className="col-12 col-md-6 offset-md-3 d-flex flex-column justify-content-center p-4 p-md-5">
-          <div className="w-100" style={{ maxWidth: '500px', margin: '0 auto' }}>
-            <div className="mb-4">
-              <h2 className="fw-bold text-dark mb-1">Configuración</h2>
-              <p className="text-dark-50 small">Agregar nuevo usuario (docente o almacen)</p>
+    <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 p-md-4">
+      <h2 className="fw-bold text-dark mb-4">Configuración</h2>
+      
+      {/* Mensajes de éxito o error */}
+      {error && (
+        <div className="alert alert-danger d-flex align-items-center mb-4 rounded shadow-sm">
+          <i className="bi bi-exclamation-triangle-fill me-2"></i>
+          {error}
+        </div>
+      )}
+      {success && (
+        <div className="alert alert-success d-flex align-items-center mb-4 rounded shadow-sm">
+          <i className="bi bi-check-circle-fill me-2"></i>
+          {success}
+        </div>
+      )}
+
+      {/* Formulario para agregar usuario */}
+      <div className="card mb-4">
+        <div className="card-body">
+          <h3 className="card-title fw-semibold text-dark mb-3">Agregar nuevo usuario</h3>
+          <form onSubmit={handleAddUser}>
+            <div className="mb-3">
+              <label htmlFor="nombre" className="form-label fw-semibold text-dark">Nombre completo</label>
+              <input
+                type="text"
+                id="nombre"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                className="form-control"
+                placeholder="Nombre completo"
+                required
+              />
             </div>
-
-            {error && (
-              <div className="alert alert-danger d-flex align-items-center mb-4 rounded shadow-sm">
-                <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                {error}
-              </div>
-            )}
-
-            {success && (
-              <div className="alert alert-success d-flex align-items-center mb-4 rounded shadow-sm">
-                <i className="bi bi-check-circle-fill me-2"></i>
-                {success}
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit}>
-              <div className="mb-4">
-                <label htmlFor="nombre" className="form-label fw-semibold text-dark mb-2">Nombre completo</label>
-                <input
-                  type="text"
-                  id="nombre"
-                  value={nombre}
-                  onChange={(e) => setNombre(e.target.value)}
-                  className="form-control bg-white border-dark text-dark"
-                  style={{
-                    backgroundColor: '#ffffff',
-                    borderColor: '#000000',
-                    color: '#000000',
-                    padding: '12px 16px',
-                    fontSize: '16px'
-                  }}
-                  placeholder="Nombre completo"
-                  required
-                />
-              </div>
-
-              <div className="mb-4">
-                <label htmlFor="correo" className="form-label fw-semibold text-dark mb-2">Correo institucional</label>
-                <input
-                  type="email"
-                  id="correo"
-                  value={correo}
-                  onChange={(e) => setCorreo(e.target.value)}
-                  className="form-control bg-white border-dark text-dark"
-                  style={{
-                    backgroundColor: '#ffffff',
-                    borderColor: '#000000',
-                    color: '#000000',
-                    padding: '12px 16px',
-                    fontSize: '16px'
-                  }}
-                  placeholder="ejemplo@utsjr.edu.mx"
-                  required
-                />
-              </div>
-
-              <div className="mb-4">
-                <label htmlFor="rol" className="form-label fw-semibold text-dark mb-2">Rol</label>
-                <select
-                  id="rol"
-                  value={rol}
-                  onChange={(e) => setRol(e.target.value)}
-                  className="form-control bg-white border-dark text-dark"
-                  style={{
-                    backgroundColor: '#ffffff',
-                    borderColor: '#000000',
-                    color: '#000000',
-                    padding: '12px 16px',
-                    fontSize: '16px'
-                  }}
-                  required
-                >
-                  <option value="">Selecciona un rol</option>
-                  <option value="docente">Docente</option>
-                  <option value="almacen">Almacen</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                className="btn w-100 fw-semibold mb-4"
-                style={{
-                  backgroundColor: '#d4634a',
-                  borderColor: '#d4634a',
-                  color: '#ffffff',
-                  borderRadius: '4px',
-                  padding: '12px',
-                  fontSize: '16px'
-                }}
+            <div className="mb-3">
+              <label htmlFor="correo" className="form-label fw-semibold text-dark">Correo institucional</label>
+              <input
+                type="email"
+                id="correo"
+                value={correo}
+                onChange={(e) => setCorreo(e.target.value)}
+                className="form-control"
+                placeholder="ejemplo@utsjr.edu.mx"
+                required
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="contrasena" className="form-label fw-semibold text-dark">Contraseña (opcional)</label>
+              <input
+                type="password"
+                id="contrasena"
+                value={contrasena}
+                onChange={(e) => setContrasena(e.target.value)}
+                className="form-control"
+                placeholder="Dejar en blanco para generar automáticamente"
+              />
+            </div>
+            <div className="mb-3">
+              <label htmlFor="rol" className="form-label fw-semibold text-dark">Rol</label>
+              <select
+                id="rol"
+                value={rol}
+                onChange={(e) => setRol(e.target.value)}
+                className="form-control"
+                required
               >
-                Agregar usuario
-              </button>
-            </form>
-          </div>
+                <option value="">Selecciona un rol</option>
+                <option value="docente">Docente</option>
+                <option value="almacen">Almacen</option>
+              </select>
+            </div>
+            <button type="submit" className="btn btn-primary w-100">
+              Agregar usuario
+            </button>
+          </form>
         </div>
       </div>
 
-      <style jsx>{`
-        .form-control:focus {
-          background-color: #ffffff !important;
-          border-color: #000000 !important;
-          color: #000000 !important;
-          box-shadow: 0 0 0 0.2rem rgba(0,0,0,0.25) !important;
-        }
-        .form-control::placeholder {
-          color: #6c757d !important;
-        }
-        select.form-control {
-          appearance: none;
-          -webkit-appearance: none;
-          -moz-appearance: none;
-          background-image: url("data:image/svg+xml;utf8,<svg fill='black' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
-          background-repeat: no-repeat;
-          background-position-x: 98%;
-          background-position-y: 50%;
-        }
-      `}</style>
+      {/* Tabla de usuarios */}
+      <div className="card">
+        <div className="card-body">
+          <h3 className="card-title fw-semibold text-dark mb-3">Usuarios existentes</h3>
+          {loadingUsuarios ? (
+            <p>Cargando usuarios...</p>
+          ) : usuarios.length === 0 ? (
+            <p>No hay usuarios para mostrar.</p>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-hover">
+                <thead>
+                  <tr>
+                    <th>Nombre</th>
+                    <th>Correo</th>
+                    <th>Rol</th>
+                    <th>Acciones</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {usuarios.map((u) => (
+                    <tr key={u.id}>
+                      <td>{u.nombre}</td>
+                      <td>{u.correo_institucional}</td>
+                      <td>{u.rol_id === 1 ? 'Alumno' : u.rol_id === 2 ? 'Docente' : u.rol_id === 3 ? 'Almacen' : 'Administrador'}</td>
+                      <td>
+                        <button
+                          className="btn btn-danger btn-sm"
+                          onClick={() => handleDeleteUser(u.id)}
+                        >
+                          Eliminar
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }
