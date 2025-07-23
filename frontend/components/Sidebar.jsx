@@ -104,7 +104,7 @@ export default function Sidebar() {
               {usuario.nombre}
             </h3>
             <p className="text-sm text-slate-400 truncate">
-              {usuario.correo_institucional}
+              {usuario.correo}
             </p>
           </div>
           <button className="p-1 hover:bg-slate-800 rounded-full transition-colors">
