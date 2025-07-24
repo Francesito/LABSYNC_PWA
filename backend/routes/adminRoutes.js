@@ -4,12 +4,12 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const { sendEmail } = require('../utils/email');
-const { authenticateToken, requireAdmin } = require('../middleware/auth');
+const { verificarToken, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
 // Middleware para verificar que es administrador
-router.use(authenticateToken);
+router.use(verificarToken);
 router.use(requireAdmin);
 
 // Generar contraseña aleatoria
