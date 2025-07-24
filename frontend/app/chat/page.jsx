@@ -28,19 +28,16 @@ export default function Chat() {
     // Check permissions and role restrictions
     if (usuario.rol === 'docente') {
       setError('Los docentes no tienen acceso al chat');
-      router.push('/catalog');
       return;
     }
 
     if (!usuario.permisos || !usuario.permisos.acceso_chat) {
-      setError('No tienes permiso para acceder al chat');
-      router.push('/catalog');
+      setError('No tienes permiso para acceder al chat. Solo puedes visualizar esta pantalla.');
       return;
     }
 
     if (usuario.rol !== 'alumno' && usuario.rol !== 'almacen') {
       setError('No tienes permisos para usar el chat');
-      router.push('/catalog');
       return;
     }
 
@@ -48,6 +45,11 @@ export default function Chat() {
   }, [usuario, router]);
 
   async function cargarContactos() {
+    if (!usuario.permisos || !usuario.permisos.acceso_chat) {
+      setError('No tienes permiso para cargar los contactos');
+      return;
+    }
+
     const token = localStorage.getItem('token');
     if (!token) {
       setError('Token de autenticación no encontrado');
@@ -118,7 +120,6 @@ export default function Chat() {
         router.push('/login');
       } else if (err.response?.status === 403) {
         setError('No tienes permisos para ver los contactos');
-        router.push('/catalog');
       } else {
         setError(err.response?.data?.error || 'Error al cargar contactos');
       }
@@ -134,6 +135,11 @@ export default function Chat() {
   }, [selectedUser]);
 
   async function cargarMensajes() {
+    if (!usuario.permisos || !usuario.permisos.acceso_chat) {
+      setError('No tienes permiso para cargar los mensajes');
+      return;
+    }
+
     const token = localStorage.getItem('token');
     if (!token) {
       setError('Token de autenticación no encontrado');
@@ -164,9 +170,6 @@ export default function Chat() {
         router.push('/login');
       } else if (err.response?.status === 403) {
         setError('No tienes permisos para ver mensajes con este usuario');
-        setMensajes([]);
-        setSelectedUser(null);
-        router.push('/catalog');
       } else {
         setError(err.response?.data?.error || 'Error al cargar mensajes');
       }
@@ -182,6 +185,11 @@ export default function Chat() {
   }, [mensajes]);
 
   async function handleEnviarMensaje() {
+    if (!usuario.permisos || !usuario.permisos.acceso_chat) {
+      setError('No tienes permiso para enviar mensajes');
+      return;
+    }
+
     const token = localStorage.getItem('token');
     if (!token) {
       setError('Token de autenticación no encontrado');
@@ -249,8 +257,6 @@ export default function Chat() {
         router.push('/login');
       } else if (err.response?.status === 403) {
         setError('No tienes permisos para enviar mensajes a este usuario');
-        setNuevoMensaje('');
-        router.push('/catalog');
       } else {
         setError(err.response?.data?.error || 'Error al enviar mensaje');
       }
@@ -333,7 +339,7 @@ export default function Chat() {
                 <button
                   className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
                   onClick={cargarContactos}
-                  disabled={loading}
+                  disabled={loading || !usuario.permisos || !usuario.permisos.acceso_chat}
                 >
                   <svg className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
@@ -389,7 +395,7 @@ export default function Chat() {
                       }`}
                       onClick={() => {
                         if (!usuario.permisos || !usuario.permisos.acceso_chat) {
-                          setError('No tienes permiso para ver los mensajes');
+                          setError('No tienes permiso para seleccionar un contacto');
                           return;
                         }
                         setSelectedUser(contacto);
