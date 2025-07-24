@@ -48,24 +48,36 @@ export default function Configuracion() {
   const cargarUsuariosAlmacen = async () => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        mostrarMensaje('error', 'Token no encontrado');
+        return;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/usuarios-almacen`, {
         headers: {
-          'Authorization': `Bearer ${token}`
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
         }
       });
       
       if (response.ok) {
         const data = await response.json();
         setUsuariosAlmacen(data);
+      } else {
+        console.error('Error response:', response.status, response.statusText);
+        mostrarMensaje('error', 'Error al cargar usuarios');
       }
     } catch (error) {
       console.error('Error al cargar usuarios:', error);
-      mostrarMensaje('error', 'Error al cargar la lista de usuarios');
+      mostrarMensaje('error', 'Error de conexión al cargar usuarios');
     }
   };
 
   // Agregar nuevo usuario
-  const agregarUsuario = async () => {
+  const agregarUsuario = async (e) => {
+    e.preventDefault();
+    
+    console.log('Datos del formulario:', nuevoUsuario);
     
     if (!nuevoUsuario.nombre || !nuevoUsuario.correo_institucional || !nuevoUsuario.rol_id) {
       mostrarMensaje('error', 'Todos los campos son obligatorios');
@@ -82,6 +94,17 @@ export default function Configuracion() {
       const contrasenaAleatoria = generarContrasenaAleatoria();
       const token = localStorage.getItem('token');
       
+      if (!token) {
+        mostrarMensaje('error', 'Token no encontrado');
+        setLoading(false);
+        return;
+      }
+
+      console.log('Enviando datos:', {
+        ...nuevoUsuario,
+        contrasena: contrasenaAleatoria
+      });
+      
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/crear-usuario`, {
         method: 'POST',
         headers: {
@@ -91,22 +114,24 @@ export default function Configuracion() {
         body: JSON.stringify({
           ...nuevoUsuario,
           contrasena: contrasenaAleatoria,
-          activo: true
+          rol_id: parseInt(nuevoUsuario.rol_id)
         })
       });
 
       const data = await response.json();
+      console.log('Respuesta del servidor:', data);
       
       if (response.ok) {
         mostrarMensaje('success', 'Usuario creado exitosamente. Se ha enviado un enlace de restablecimiento de contraseña al correo.');
         setNuevoUsuario({ nombre: '', correo_institucional: '', rol_id: '' });
         cargarUsuariosAlmacen();
       } else {
+        console.error('Error del servidor:', data);
         mostrarMensaje('error', data.error || 'Error al crear usuario');
       }
     } catch (error) {
       console.error('Error al crear usuario:', error);
-      mostrarMensaje('error', 'Error de conexión al crear usuario');
+      mostrarMensaje('error', 'Error de conexión al crear usuario: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -116,6 +141,11 @@ export default function Configuracion() {
   const actualizarPermisos = async (usuarioId, campo, valor) => {
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        mostrarMensaje('error', 'Token no encontrado');
+        return;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/actualizar-permisos`, {
         method: 'PUT',
         headers: {
@@ -148,7 +178,8 @@ export default function Configuracion() {
   };
 
   // Bloquear usuario
-  const bloquearUsuario = async () => {
+  const bloquearUsuario = async (e) => {
+    e.preventDefault();
     
     if (!correoBloqueo) {
       mostrarMensaje('error', 'Ingrese un correo electrónico');
@@ -158,6 +189,12 @@ export default function Configuracion() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        mostrarMensaje('error', 'Token no encontrado');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/bloquear-usuario`, {
         method: 'PUT',
         headers: {
@@ -185,7 +222,8 @@ export default function Configuracion() {
   };
 
   // Eliminar usuario
-  const eliminarUsuario = async () => {
+  const eliminarUsuario = async (e) => {
+    e.preventDefault();
     
     if (!correoEliminacion) {
       mostrarMensaje('error', 'Ingrese un correo electrónico');
@@ -199,6 +237,12 @@ export default function Configuracion() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
+      if (!token) {
+        mostrarMensaje('error', 'Token no encontrado');
+        setLoading(false);
+        return;
+      }
+
       const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/admin/eliminar-usuario`, {
         method: 'DELETE',
         headers: {
@@ -231,8 +275,10 @@ export default function Configuracion() {
   };
 
   useEffect(() => {
-    cargarUsuariosAlmacen();
-  }, []);
+    if (usuario && usuario.rol_id === 4) {
+      cargarUsuariosAlmacen();
+    }
+  }, [usuario]);
 
   return (
     <div className="flex min-h-screen bg-gray-50">
@@ -277,7 +323,7 @@ export default function Configuracion() {
             Agregar Nuevo Usuario
           </h2>
           
-          <div className="space-y-6">
+          <form onSubmit={agregarUsuario} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div>
                 <label htmlFor="nombre" className="block text-sm font-medium text-gray-700 mb-2">
@@ -316,7 +362,7 @@ export default function Configuracion() {
                 <select
                   id="rol"
                   value={nuevoUsuario.rol_id}
-                  onChange={(e) => setNuevoUsuario({...nuevoUsuario, rol_id: parseInt(e.target.value)})}
+                  onChange={(e) => setNuevoUsuario({...nuevoUsuario, rol_id: e.target.value})}
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-colors"
                   required
                 >
@@ -354,7 +400,7 @@ export default function Configuracion() {
                 )}
               </button>
             </div>
-          </div>
+          </form>
         </div>
 
         {/* Lista de usuarios de almacén */}
@@ -469,7 +515,7 @@ export default function Configuracion() {
             </h3>
             <p className="text-gray-600 mb-4">El usuario no podrá acceder al sistema</p>
             
-            <div className="space-y-4">
+            <form onSubmit={bloquearUsuario} className="space-y-4">
               <input
                 type="email"
                 value={correoBloqueo}
@@ -479,13 +525,13 @@ export default function Configuracion() {
                 required
               />
               <button
-                onClick={bloquearUsuario}
+                type="submit"
                 disabled={loading}
                 className="w-full bg-orange-600 hover:bg-orange-700 disabled:bg-orange-300 text-white py-3 rounded-lg font-medium transition-colors"
               >
                 {loading ? 'Bloqueando...' : 'Bloquear Usuario'}
               </button>
-            </div>
+            </form>
           </div>
 
           {/* Eliminación de cuenta */}
@@ -498,7 +544,7 @@ export default function Configuracion() {
             </h3>
             <p className="text-red-600 mb-4">⚠️ Esta acción no se puede deshacer</p>
             
-            <div className="space-y-4">
+            <form onSubmit={eliminarUsuario} className="space-y-4">
               <input
                 type="email"
                 value={correoEliminacion}
@@ -508,13 +554,13 @@ export default function Configuracion() {
                 required
               />
               <button
-                onClick={eliminarUsuario}
+                type="submit"
                 disabled={loading}
                 className="w-full bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white py-3 rounded-lg font-medium transition-colors"
               >
                 {loading ? 'Eliminando...' : 'Eliminar Usuario'}
               </button>
-            </div>
+            </form>
           </div>
         </div>
       </main>
