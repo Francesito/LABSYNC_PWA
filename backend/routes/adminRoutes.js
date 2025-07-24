@@ -26,6 +26,8 @@ const generarContrasenaAleatoria = () => {
 router.post('/crear-usuario', async (req, res) => {
   const { nombre, correo_institucional, rol_id, contrasena } = req.body;
 
+  console.log('Datos recibidos:', { nombre, correo_institucional, rol_id, contrasena });
+
   // Validaciones
   if (!nombre || !correo_institucional || !rol_id) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
@@ -55,18 +57,28 @@ router.post('/crear-usuario', async (req, res) => {
     const passwordToUse = contrasena || generarContrasenaAleatoria();
     const hash = await bcrypt.hash(passwordToUse, 10);
 
+    console.log('Creando usuario con hash:', hash.substring(0, 20) + '...');
+
     // Crear usuario activo
     const [result] = await pool.query(
       'INSERT INTO Usuario (nombre, correo_institucional, contrasena, rol_id, activo) VALUES (?, ?, ?, ?, TRUE)',
-      [nombre, correo_institucional, hash, rol_id]
+      [nombre, correo_institucional, hash, parseInt(rol_id)]
     );
+
+    console.log('Usuario creado con ID:', result.insertId);
 
     // Si es usuario de almacén, crear registro en tabla de permisos
     if (parseInt(rol_id) === 3) {
-      await pool.query(
-        'INSERT INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock) VALUES (?, FALSE, FALSE)',
-        [result.insertId]
-      );
+      try {
+        await pool.query(
+          'INSERT INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock) VALUES (?, FALSE, FALSE)',
+          [result.insertId]
+        );
+        console.log('Permisos de almacén creados');
+      } catch (permissionError) {
+        console.error('Error al crear permisos de almacén:', permissionError);
+        // No fallar la creación del usuario por esto
+      }
     }
 
     // Generar token para reset de contraseña
@@ -76,27 +88,39 @@ router.post('/crear-usuario', async (req, res) => {
       { expiresIn: '24h' }
     );
 
-    // Enviar correo con enlace para establecer contraseña
-    const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
-    const emailContent = `
-      Hola ${nombre},
-      
-      Se ha creado una cuenta para ti en el sistema LabSync.
-      
-      Para establecer tu contraseña, haz clic en el siguiente enlace:
-      ${frontendUrl}/reset-password/${resetToken}
-      
-      Este enlace expirará en 24 horas.
-      
-      Saludos,
-      Equipo LabSync
-    `;
-
-    await sendEmail(
-      correo_institucional,
-      'Cuenta creada - Establece tu contraseña',
-      emailContent
+    // Actualizar usuario con token de reset
+    await pool.query(
+      'UPDATE Usuario SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL 24 HOUR) WHERE id = ?',
+      [resetToken, result.insertId]
     );
+
+    // Enviar correo con enlace para establecer contraseña
+    try {
+      const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
+      const emailContent = `
+        Hola ${nombre},
+        
+        Se ha creado una cuenta para ti en el sistema LabSync.
+        
+        Para establecer tu contraseña, haz clic en el siguiente enlace:
+        ${frontendUrl}/reset-password/${resetToken}
+        
+        Este enlace expirará en 24 horas.
+        
+        Saludos,
+        Equipo LabSync
+      `;
+
+      await sendEmail(
+        correo_institucional,
+        'Cuenta creada - Establece tu contraseña',
+        emailContent
+      );
+      console.log('Correo enviado exitosamente');
+    } catch (emailError) {
+      console.error('Error al enviar correo:', emailError);
+      // No fallar la creación del usuario por error de correo
+    }
 
     res.status(201).json({ 
       mensaje: 'Usuario creado exitosamente. Se ha enviado un enlace para establecer la contraseña.',
@@ -105,7 +129,7 @@ router.post('/crear-usuario', async (req, res) => {
 
   } catch (error) {
     console.error('Error al crear usuario:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
   }
 });
 
