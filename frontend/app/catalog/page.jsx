@@ -310,7 +310,7 @@ export default function Catalog() {
   });
 
   const handleAdjustClick = (material) => {
-    if (usuario.rol === 'administrador' || !usuario.permisos || !usuario.permisos.modificar_stock) {
+    if (!usuario.permisos || !usuario.permisos.modificar_stock) {
       setError('No tienes permiso para ajustar el stock');
       return;
     }
@@ -368,7 +368,7 @@ export default function Catalog() {
   };
 
   const dismissLowStockAlert = (materialId, tipo) => {
-    if (usuario.rol === 'administrador' || !usuario.permisos || !usuario.permisos.modificar_stock) {
+    if (!usuario.permisos || !usuario.permisos.modificar_stock) {
       setError('No tienes permiso para gestionar alertas de stock');
       return;
     }
@@ -643,6 +643,8 @@ export default function Catalog() {
           font-size: 0.875rem;
           transition: background-color 0.15s ease;
           cursor: pointer;
+          margin-top: 8px;
+          width: 100%;
         }
 
         .btn-adjust:hover {
@@ -1309,7 +1311,6 @@ export default function Catalog() {
                                 e.stopPropagation();
                                 handleAdjustClick(material);
                               }}
-                              style={{ marginTop: '8px', width: '100%' }}
                             >
                               Ajustar Stock
                             </button>
