@@ -24,26 +24,26 @@ export default function Chat() {
     if (!usuario) {
       return;
     }
-    
+
+    // Check permissions and role restrictions
     if (usuario.rol === 'docente') {
       setError('Los docentes no tienen acceso al chat');
       router.push('/catalog');
       return;
     }
-    
-    // Check permissions
-    if (usuario.permisos && !usuario.permisos.acceso_chat) {
+
+    if (!usuario.permisos || !usuario.permisos.acceso_chat) {
       setError('No tienes permiso para acceder al chat');
       router.push('/catalog');
       return;
     }
-    
+
     if (usuario.rol !== 'alumno' && usuario.rol !== 'almacen') {
       setError('No tienes permisos para usar el chat');
       router.push('/catalog');
       return;
     }
-    
+
     cargarContactos();
   }, [usuario, router]);
 
@@ -62,7 +62,7 @@ export default function Chat() {
       const { data } = await axios.get(
         `${BASE}/messages/users`,
         {
-          headers: { 
+          headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
           }
@@ -75,14 +75,14 @@ export default function Chat() {
           try {
             const { data: mensajesContacto } = await axios.get(
               `${BASE}/messages/${contacto.id}`,
-              { 
-                headers: { 
+              {
+                headers: {
                   'Authorization': `Bearer ${token}`,
                   'Content-Type': 'application/json'
-                } 
+                }
               }
             );
-            
+
             const ultimoMensaje = mensajesContacto[mensajesContacto.length - 1];
             return {
               ...contacto,
@@ -106,7 +106,7 @@ export default function Chat() {
       });
 
       setContactos(contactosConUltimoMensaje);
-      
+
       if (contactosConUltimoMensaje.length === 0 && usuario.rol === 'almacen') {
         setError('No hay alumnos que hayan iniciado conversación contigo aún');
       }
@@ -116,6 +116,9 @@ export default function Chat() {
         setError('Sesión expirada. Inicia sesión nuevamente');
         localStorage.removeItem('token');
         router.push('/login');
+      } else if (err.response?.status === 403) {
+        setError('No tienes permisos para ver los contactos');
+        router.push('/catalog');
       } else {
         setError(err.response?.data?.error || 'Error al cargar contactos');
       }
@@ -144,14 +147,14 @@ export default function Chat() {
 
       const { data } = await axios.get(
         `${BASE}/messages/${selectedUser.id}`,
-        { 
-          headers: { 
+        {
+          headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          } 
+          }
         }
       );
-      
+
       setMensajes(data);
     } catch (err) {
       console.error('[Chat] cargarMensajes:', err);
@@ -161,6 +164,9 @@ export default function Chat() {
         router.push('/login');
       } else if (err.response?.status === 403) {
         setError('No tienes permisos para ver mensajes con este usuario');
+        setMensajes([]);
+        setSelectedUser(null);
+        router.push('/catalog');
       } else {
         setError(err.response?.data?.error || 'Error al cargar mensajes');
       }
@@ -196,25 +202,25 @@ export default function Chat() {
     try {
       setError('');
       setEnviandoMensaje(true);
-      
+
       const { data } = await axios.post(
         `${BASE}/messages/send`,
-        { 
-          contenido: nuevoMensaje.trim(), 
-          receptor_id: selectedUser.id 
+        {
+          contenido: nuevoMensaje.trim(),
+          receptor_id: selectedUser.id
         },
-        { 
-          headers: { 
+        {
+          headers: {
             'Authorization': `Bearer ${token}`,
             'Content-Type': 'application/json'
-          } 
+          }
         }
       );
 
       // Agregar el mensaje a la lista local
       setMensajes(prevMensajes => [...prevMensajes, data]);
       setNuevoMensaje('');
-      
+
       // Actualizar el último mensaje en la lista de contactos sin recargar todo
       setContactos(prevContactos => {
         const contactosActualizados = prevContactos.map(contacto => {
@@ -226,7 +232,7 @@ export default function Chat() {
           }
           return contacto;
         });
-        
+
         // Reordenar para poner el contacto actualizado al principio
         return contactosActualizados.sort((a, b) => {
           if (!a.ultimoMensaje && !b.ultimoMensaje) return 0;
@@ -235,7 +241,6 @@ export default function Chat() {
           return new Date(b.ultimoMensaje.fecha_envio) - new Date(a.ultimoMensaje.fecha_envio);
         });
       });
-      
     } catch (err) {
       console.error('[Chat] handleEnviarMensaje:', err);
       if (err.response?.status === 401) {
@@ -244,6 +249,8 @@ export default function Chat() {
         router.push('/login');
       } else if (err.response?.status === 403) {
         setError('No tienes permisos para enviar mensajes a este usuario');
+        setNuevoMensaje('');
+        router.push('/catalog');
       } else {
         setError(err.response?.data?.error || 'Error al enviar mensaje');
       }
@@ -264,7 +271,7 @@ export default function Chat() {
     const fechaMensaje = new Date(fecha);
     const diferencia = ahora - fechaMensaje;
     const diasDiferencia = Math.floor(diferencia / (1000 * 60 * 60 * 24));
-    
+
     if (diasDiferencia === 0) {
       return fechaMensaje.toLocaleTimeString([], {
         hour: '2-digit',
@@ -275,9 +282,9 @@ export default function Chat() {
     } else if (diasDiferencia < 7) {
       return fechaMensaje.toLocaleDateString('es-ES', { weekday: 'short' });
     } else {
-      return fechaMensaje.toLocaleDateString('es-ES', { 
-        day: '2-digit', 
-        month: '2-digit' 
+      return fechaMensaje.toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit'
       });
     }
   }
@@ -323,7 +330,7 @@ export default function Chat() {
                     </p>
                   </div>
                 </div>
-                <button 
+                <button
                   className="p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
                   onClick={cargarContactos}
                   disabled={loading}
@@ -366,8 +373,8 @@ export default function Chat() {
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                   </svg>
                   <p className="text-center">
-                    {usuario?.rol === 'alumno' 
-                      ? 'No hay almacenistas disponibles' 
+                    {usuario?.rol === 'alumno'
+                      ? 'No hay almacenistas disponibles'
                       : 'No hay conversaciones iniciadas aún'
                     }
                   </p>
@@ -380,7 +387,13 @@ export default function Chat() {
                       className={`flex items-center p-2.5 hover:bg-gray-50 cursor-pointer transition-colors ${
                         selectedUser?.id === contacto.id ? 'bg-green-50 border-r-4 border-green-500' : ''
                       }`}
-                      onClick={() => setSelectedUser(contacto)}
+                      onClick={() => {
+                        if (!usuario.permisos || !usuario.permisos.acceso_chat) {
+                          setError('No tienes permiso para ver los mensajes');
+                          return;
+                        }
+                        setSelectedUser(contacto);
+                      }}
                     >
                       <div className="relative">
                         <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-full flex items-center justify-center">
@@ -392,7 +405,7 @@ export default function Chat() {
                           <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-white"></div>
                         )}
                       </div>
-                      
+
                       <div className="ml-3 flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <h3 className="font-semibold text-gray-900 truncate text-sm">
@@ -404,7 +417,7 @@ export default function Chat() {
                             </span>
                           )}
                         </div>
-                        
+
                         <div className="flex items-center justify-between mt-0.5">
                           <p className="text-xs text-gray-600 truncate">
                             {contacto.ultimoMensaje ? (
@@ -445,8 +458,8 @@ export default function Chat() {
                 <div
                   ref={chatContainerRef}
                   className="flex-1 overflow-y-auto p-3 bg-gray-50"
-                  style={ { 
-                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f0f0f0' fill-opacity='0.3'%3E%3Cpath d='M20 20c0-11.046-8.954-20-20-20s-20 8.954-20 20 8.954 20 20 20 20-8.954 20-20zm-30 0c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10-10-4.477-10-10z'/%3E%3C/g%3E%3C/svg%3E")` 
+                  style={{
+                    backgroundImage: `url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23f0f0f0' fill-opacity='0.3'%3E%3Cpath d='M20 20c0-11.046-8.954-20-20-20s-20 8.954-20 20 8.954 20 20 20 20-8.954 20-20zm-30 0c0-5.523 4.477-10 10-10s10 4.477 10 10-4.477 10-10 10-10-4.477-10-10z'/%3E%3C/g%3E%3C/svg%3E")`
                   }}
                 >
                   {loadingMensajes ? (
@@ -471,9 +484,9 @@ export default function Chat() {
                     <div className="space-y-3">
                       {mensajes.map((mensaje, index) => {
                         const esMio = mensaje.emisor_id === usuario?.id;
-                        const mostrarFecha = index === 0 || 
+                        const mostrarFecha = index === 0 ||
                           new Date(mensajes[index - 1].fecha_envio).toDateString() !== new Date(mensaje.fecha_envio).toDateString();
-                        
+
                         return (
                           <div key={mensaje.id}>
                             {mostrarFecha && (
@@ -488,7 +501,7 @@ export default function Chat() {
                                 </span>
                               </div>
                             )}
-                            
+
                             <div className={`flex ${esMio ? 'justify-end' : 'justify-start'}`}>
                               <div
                                 className={`max-w-xs lg:max-w-md px-3 py-2 rounded-lg shadow-sm ${
@@ -510,7 +523,7 @@ export default function Chat() {
                           </div>
                         );
                       })}
-                      
+
                       {enviandoMensaje && (
                         <div className="flex justify-end">
                           <div className="max-w-xs lg:max-w-md px-3 py-2 rounded-lg rounded-br-none bg-green-500 text-white shadow-sm opacity-70">
@@ -535,24 +548,28 @@ export default function Chat() {
                         placeholder="Escribe un mensaje..."
                         value={nuevoMensaje}
                         onChange={(e) => {
+                          if (!usuario.permisos || !usuario.permisos.acceso_chat) {
+                            setError('No tienes permiso para escribir mensajes');
+                            return;
+                          }
                           setNuevoMensaje(e.target.value);
                           // Auto-resize textarea
                           e.target.style.height = 'inherit';
                           e.target.style.height = `${Math.min(e.target.scrollHeight, 120)}px`;
                         }}
                         onKeyPress={handleKeyPress}
-                        disabled={loadingMensajes || enviandoMensaje}
+                        disabled={loadingMensajes || enviandoMensaje || !usuario.permisos || !usuario.permisos.acceso_chat}
                         style={{ minHeight: '48px', maxHeight: '120px' }}
                       />
                     </div>
                     <button
                       className={`p-3 rounded-full transition-all duration-200 flex-shrink-0 ${
-                        nuevoMensaje.trim() && !enviandoMensaje
+                        nuevoMensaje.trim() && !enviandoMensaje && usuario.permisos && usuario.permisos.acceso_chat
                           ? 'bg-green-500 hover:bg-green-600 text-white shadow-lg hover:shadow-xl'
                           : 'bg-gray-200 text-gray-400 cursor-not-allowed'
                       }`}
                       onClick={handleEnviarMensaje}
-                      disabled={!nuevoMensaje.trim() || loadingMensajes || enviandoMensaje}
+                      disabled={!nuevoMensaje.trim() || loadingMensajes || enviandoMensaje || !usuario.permisos || !usuario.permisos.acceso_chat}
                     >
                       {enviandoMensaje ? (
                         <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
@@ -573,14 +590,14 @@ export default function Chat() {
                   </svg>
                   <h3 className="text-2xl font-semibold text-gray-900 mb-2">Bienvenido al Chat</h3>
                   <p className="text-gray-600 mb-4">
-                    {contactos.length === 0 
-                      ? 'No hay contactos disponibles' 
+                    {contactos.length === 0
+                      ? 'No hay contactos disponibles'
                       : 'Selecciona un contacto para comenzar a chatear'
                     }
                   </p>
                   <p className="text-sm text-gray-500">
-                    {usuario?.rol === 'alumno' 
-                      ? 'Puedes chatear con cualquier almacenista' 
+                    {usuario?.rol === 'alumno'
+                      ? 'Puedes chatear con cualquier almacenista'
                       : 'Solo puedes ver alumnos que te hayan escrito'
                     }
                   </p>
