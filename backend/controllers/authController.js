@@ -115,6 +115,74 @@ const iniciarSesion = async (req, res) => {
   }
 };
 
+const verificarPermisosChat = async (req, res) => {
+  try {
+    const userId = req.user.id; // Viene del middleware de autenticación
+    
+    // Primero verificar el rol del usuario
+    const [userRows] = await pool.query('SELECT rol_id FROM Usuario WHERE id = ?', [userId]);
+    
+    if (userRows.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    const userRole = userRows[0].rol_id;
+    
+    // Si es alumno (rol_id: 1), siempre tiene acceso al chat
+    if (userRole === 1) {
+      return res.json({ 
+        acceso_chat: true,
+        modificar_stock: false,
+        rol: 'alumno'
+      });
+    }
+    
+    // Si es docente (rol_id: 2), no tiene acceso al chat
+    if (userRole === 2) {
+      return res.json({ 
+        acceso_chat: false,
+        modificar_stock: false,
+        rol: 'docente'
+      });
+    }
+    
+    // Si es almacen (rol_id: 3), verificar permisos en PermisosAlmacen
+    if (userRole === 3) {
+      const [permisosRows] = await pool.query(
+        'SELECT acceso_chat, modificar_stock FROM PermisosAlmacen WHERE usuario_id = ?',
+        [userId]
+      );
+      
+      if (permisosRows.length === 0) {
+        // Si no hay registro en PermisosAlmacen, denegar acceso por defecto
+        return res.json({ 
+          acceso_chat: false,
+          modificar_stock: false,
+          rol: 'almacen'
+        });
+      }
+      
+      const permisos = permisosRows[0];
+      return res.json({ 
+        acceso_chat: Boolean(permisos.acceso_chat),
+        modificar_stock: Boolean(permisos.modificar_stock),
+        rol: 'almacen'
+      });
+    }
+    
+    // Rol no reconocido
+    return res.json({ 
+      acceso_chat: false,
+      modificar_stock: false,
+      rol: 'unknown'
+    });
+    
+  } catch (error) {
+    console.error('Error al verificar permisos de chat:', error);
+    res.status(500).json({ error: 'Error al verificar permisos' });
+  }
+};
+
 const forgotPassword = async (req, res) => {
   const { correo_institucional } = req.body;
 
@@ -201,6 +269,7 @@ module.exports = {
   registrarUsuario,
   verificarCorreo,
   iniciarSesion,
+  verificarPermisosChat,
   forgotPassword,
   resetPassword
 };
