@@ -10,27 +10,31 @@ const {
 // Todas las rutas requieren autenticación
 router.use(verificarToken);
 
+// Obtener lista de contactos (alumno verá todos almacenistas; almacenista verá solo sus alumnos)
+router.get('/users', messageController.getContactos);
+
 // Middleware que verifica tanto el rol como los permisos específicos de chat
 const verificarAccesoChat = [
-  verificarMultiplesRoles([1, 3, 4]), // Permitir alumnos (1), almacén (3), admin (4)
-  verificarPermisosAlmacen('chat')    // Verificar permisos específicos para almacén
+  verificarToken, // Included again to ensure it's applied to protected routes
+  verificarMultiplesRoles(1, 3, 4), // Permitir alumnos, almacén y admin
+  verificarPermisosAlmacen('chat')   // Verificar permisos específicos para almacén
 ];
 
-// Obtener lista de contactos (alumno verá todos almacenistas; almacenista verá solo sus alumnos)
-router.get('/users', verificarAccesoChat, messageController.getContactos); // Use getContactos as primary
-
-// Obtener mensajes con un usuario específico
-router.get('/:userId', verificarAccesoChat, messageController.obtenerMensajes);
-router.get('/:userId', messageController.getMessages); // Duplicate, consolidate if same intent
+// Todas las rutas de mensajes requieren acceso al chat
+router.get('/users', verificarAccesoChat, messageController.getContactos); // Protected version
+router.get('/:userId', verificarAccesoChat, messageController.obtenerMensajes); // Note: obtenerMensajes is undefined
+router.post('/send', verificarAccesoChat, messageController.enviarMensaje);
 
 // Enviar mensaje
-router.post('/send', verificarAccesoChat, messageController.enviarMensaje);
-router.post('/send', messageController.sendMessage); // Duplicate, consolidate if same intent
+router.post('/send', messageController.sendMessage);
+
+// Obtener mensajes con un usuario específico
+router.get('/:userId', messageController.getMessages);
 
 // (Opcional) Obtener todos los usuarios de un rol
-router.get('/all', verificarAccesoChat, messageController.getAllByRole); // Added protection
+router.get('/all', messageController.getAllByRole);
 
 // Limpiar mensajes antiguos manualmente
-router.delete('/cleanup', verificarAccesoChat, messageController.cleanupMessages); // Added protection
+router.delete('/cleanup', messageController.cleanupMessages);
 
 module.exports = router;
