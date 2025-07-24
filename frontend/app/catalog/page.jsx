@@ -33,6 +33,11 @@ export default function Catalog() {
     return;
   }
 
+  if (usuario.rol === 'administrador') {
+    // Admin can only view, no adjustments or requests
+    setError('Solo puedes ver los reactivos como administrador');
+  }
+
   const fetchData = async () => {
     try {
       setLoading(true);
@@ -81,7 +86,7 @@ if (usuario.rol === 'alumno') {
 
       setAllMaterials(all);
 
-      if (usuario.rol === 'almacen') {
+      if (usuario.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock) {
         const lowStock = all.filter(material =>
           material.cantidad > 0 &&
           material.cantidad <= LOW_STOCK_THRESHOLD
@@ -193,7 +198,7 @@ const getImagePath = (material) => {
   };
 
   const displayStock = (material) => {
-    if (usuario?.rol === 'almacen') {
+    if (usuario?.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock) {
       return `${material.cantidad} ${getUnidad(material.tipo)}`;
     } else {
       return material.cantidad > 0 ? 'Disponible' : 'Agotado';
@@ -201,7 +206,7 @@ const getImagePath = (material) => {
   };
 
   const getStockColor = (material) => {
-    if (usuario?.rol !== 'almacen') {
+    if (usuario?.rol !== 'almacen' || !usuario.permisos || !usuario.permisos.modificar_stock) {
       return material.cantidad > 0 ? 'text-green-600' : 'text-red-600';
     }
     
@@ -211,6 +216,11 @@ const getImagePath = (material) => {
   };
 
   const addToCart = (material, cantidad) => {
+    if (usuario.rol === 'administrador') {
+      setError('Los administradores no pueden solicitar materiales');
+      return;
+    }
+    
     const cantidadNum = parseInt(cantidad) || 0;
     if (cantidadNum <= 0) {
       setError(`Ingresa una cantidad válida para ${formatName(material.nombre)}`);
@@ -239,10 +249,18 @@ const getImagePath = (material) => {
   };
 
   const removeFromCart = (id, tipo) => {
+    if (usuario.rol === 'administrador') {
+      setError('Los administradores no pueden modificar el carrito');
+      return;
+    }
     setSelectedCart((prev) => prev.filter((item) => !(item.id === id && item.tipo === tipo)));
   };
 
   const vaciarSeleccion = () => {
+    if (usuario.rol === 'administrador') {
+      setError('Los administradores no pueden modificar el carrito');
+      return;
+    }
     setSelectedCart([]);
     setError('');
   };
@@ -250,6 +268,11 @@ const getImagePath = (material) => {
   const totalItems = selectedCart.reduce((sum, item) => sum + (item.cantidad || 0), 0);
 
   const handleSubmitRequest = async () => {
+    if (usuario.rol === 'administrador') {
+      setError('Los administradores no pueden enviar solicitudes');
+      return;
+    }
+    
     if (selectedCart.length === 0 || totalItems === 0) {
       setError('Selecciona al menos un material con cantidad válida.');
       return;
@@ -292,6 +315,10 @@ const getImagePath = (material) => {
   });
 
   const handleAdjustClick = (material) => {
+    if (usuario.rol === 'administrador' || !usuario.permisos || !usuario.permisos.modificar_stock) {
+      setError('No tienes permiso para ajustar el stock');
+      return;
+    }
     setMaterialToAdjust(material);
     setAdjustAmount('');
     setShowAdjustModal(true);
@@ -343,6 +370,10 @@ setAllMaterials(prev =>
   };
 
   const dismissLowStockAlert = (materialId, tipo) => {
+    if (usuario.rol === 'administrador' || !usuario.permisos || !usuario.permisos.modificar_stock) {
+      setError('No tienes permiso para gestionar alertas de stock');
+      return;
+    }
     setLowStockMaterials(prev => 
       prev.filter(material => !(material.id === materialId && material.tipo === tipo))
     );
@@ -1146,7 +1177,7 @@ setAllMaterials(prev =>
                 <h1>Catálogo de Reactivos</h1>
               </div>
 
-              {usuario?.rol === 'almacen' && lowStockMaterials.length > 0 && (
+              {usuario?.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock && lowStockMaterials.length > 0 && (
                 <div className="low-stock-alerts">
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                     <div style={{ 
@@ -1275,7 +1306,7 @@ setAllMaterials(prev =>
               {displayStock(material)}
             </div>
           </div>
-          {usuario?.rol === 'almacen' && (
+          {(usuario?.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock) && (
   <button
     className="btn-adjust"
     onClick={(e) => {
@@ -1287,7 +1318,6 @@ setAllMaterials(prev =>
     Ajustar Stock
   </button>
 )}
-
         </div>
       ))
     )}
@@ -1336,14 +1366,14 @@ setAllMaterials(prev =>
                 <button
                   className="btn-create-vale"
                   onClick={() => setShowRequestModal(true)}
-                  disabled={selectedCart.length === 0 || totalItems === 0}
+                  disabled={selectedCart.length === 0 || totalItems === 0 || usuario.rol === 'administrador'}
                 >
                   Crear Vale
                 </button>
                 <button
                   className="btn-clear mt-3"
                   onClick={vaciarSeleccion}
-                  disabled={selectedCart.length === 0}
+                  disabled={selectedCart.length === 0 || usuario.rol === 'administrador'}
                 >
                   Vaciar Selección
                 </button>
@@ -1393,6 +1423,7 @@ setAllMaterials(prev =>
                 <button
                   className="btn-create-vale"
                   onClick={handleSubmitRequest}
+                  disabled={usuario.rol === 'administrador'}
                 >
                   Confirmar
                 </button>
@@ -1401,145 +1432,123 @@ setAllMaterials(prev =>
           </div>
         )}
 
-        {showAdjustModal && materialToAdjust && (
-          <div className="modal-overlay">
-            <div className="modal-content-custom">
-              <div className="modal-header-custom">
-                <h5 className="modal-title">Ajustar Inventario: {formatName(materialToAdjust.nombre)}</h5>
-                <button
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowAdjustModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body p-4">
-                {error && <div className="alert-custom mb-3">{error}</div>}
-                <div className="mb-3">
-                  <label className="form-label">
-                    Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
-                  </label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    placeholder="Nueva cantidad"
-                    value={adjustAmount}
-                    onChange={(e) => setAdjustAmount(e.target.value)}
-                  />
-                </div>
-              </div>
-              <div className="modal-footer-custom">
-                <button
-                  className="btn-secondary-custom"
-                  onClick={() => setShowAdjustModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="btn-create-vale"
-                  onClick={handleAdjustSubmit}
-                >
-                  Ajustar
-                </button>
-              </div>
+       {showAdjustModal && materialToAdjust && (
+  <div className="modal-overlay">
+    <div className="modal-content-custom">
+      <div className="modal-header-custom">
+        <h5 className="modal-title">Ajustar Inventario: {formatName(materialToAdjust.nombre)}</h5>
+        <button
+          className="btn-close btn-close-white"
+          onClick={() => setShowAdjustModal(false)}
+        ></button>
+      </div>
+      <div className="modal-body p-4">
+        {error && <div className="alert-custom mb-3">{error}</div>}
+        <div className="mb-3">
+          <label className="form-label">
+            Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
+          </label>
+          <input
+            type="number"
+            className="form-control mt-2"
+            value={adjustAmount}
+            onChange={(e) => setAdjustAmount(e.target.value)}
+            placeholder="Nueva cantidad"
+            min="0"
+          />
+        </div>
+      </div>
+      <div className="modal-footer-custom">
+        <button
+          className="btn-secondary-custom"
+          onClick={() => setShowAdjustModal(false)}
+        >
+          Cancelar
+        </button>
+        <button
+          className="btn-adjust"
+          onClick={handleAdjustSubmit}
+          disabled={!adjustAmount || parseInt(adjustAmount) < 0}
+        >
+          Guardar
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showDetailModal && selectedMaterial && (
+  <div className="modal-overlay">
+    <div className="modal-content-custom">
+      <div className="modal-header-custom">
+        <h5 className="modal-title">Detalles: {formatName(selectedMaterial.nombre)}</h5>
+        <button
+          className="btn-close btn-close-white"
+          onClick={() => setShowDetailModal(false)}
+        ></button>
+      </div>
+      <div className="modal-body p-4 align-items-start">
+        {error && <div className="alert-custom mb-3">{error}</div>}
+        <img
+          src={getImagePath(selectedMaterial)}
+          alt={formatName(selectedMaterial.nombre)}
+          className="detail-image"
+          onError={(e) => {
+            e.target.src = '/placeholder.jpg';
+          }}
+        />
+        <h5 className="mt-4">Información</h5>
+        <p className="text-muted">
+          Tipo: {selectedMaterial.tipo}
+          <br />
+          Stock: {displayStock(selectedMaterial)}
+        </p>
+        {selectedMaterial.riesgos_fisicos || selectedMaterial.riesgos_salud || selectedMaterial.riesgos_ambientales ? (
+          <div>
+            <h5 className="mt-4">Riesgos</h5>
+            <div className="riesgos-container">
+              {parseRiesgos(selectedMaterial.riesgos_fisicos).map((riesgo) => (
+                <span key={riesgo} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                  {getRiesgoIcon(riesgo)} {riesgo}
+                </span>
+              ))}
+              {parseRiesgos(selectedMaterial.riesgos_salud).map((riesgo) => (
+                <span key={riesgo} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                  {getRiesgoIcon(riesgo)} {riesgo}
+                </span>
+              ))}
+              {parseRiesgos(selectedMaterial.riesgos_ambientales).map((riesgo) => (
+                <span key={riesgo} className={`riesgo-badge ${getRiesgoColor(riesgo)}`}>
+                  {getRiesgoIcon(riesgo)} {riesgo}
+                </span>
+              ))}
             </div>
           </div>
+        ) : (
+          <p className="no-risks mt-4">No se han registrado riesgos para este material.</p>
         )}
-
-        {showDetailModal && selectedMaterial && (
-          <div className="modal-overlay show">
-            <div className="modal-content-custom">
-              <div className="modal-header-custom">
-                <h5 className="modal-title">{formatName(selectedMaterial.nombre)}</h5>
-                <button
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowDetailModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body p-4">
-                <img
-                  src={getImagePath(selectedMaterial)}
-                  alt={formatName(selectedMaterial.nombre)}
-                  className="detail-image"
-                  onError={(e) => {
-                    console.log(`Imagen no encontrada para ${selectedMaterial.nombre} (Tipo: ${selectedMaterial.tipo}) en la ruta: ${getImagePath(selectedMaterial)}, Nombre normalizado: ${normalizeImageName(selectedMaterial.nombre)}`);
-                    e.target.src = '/placeholder.jpg';
-                  }}
-                />
-                <h5>Detalles</h5>
-                <p>
-                  <strong>Tipo:</strong>{' '}
-                  <span className={`material-type type-${selectedMaterial.tipo}`}>
-                    {selectedMaterial.tipo}
-                  </span>
-                </p>
-                <p>
-                  <strong>Descripción:</strong>{' '}
-                  {selectedMaterial.descripcion || 'Sin descripción'}
-                </p>
-                <p>
-                  <strong>Stock:</strong>{' '}
-                  <span className={getStockColor(selectedMaterial)}>
-                    {displayStock(selectedMaterial)}
-                  </span>
-                </p>
-                <h5>Riesgos GHS</h5>
-                <div className="riesgos-container mb-3">
-                  {[
-                    ...parseRiesgos(selectedMaterial.riesgos_fisicos),
-                    ...parseRiesgos(selectedMaterial.riesgos_salud),
-                    ...parseRiesgos(selectedMaterial.riesgos_ambientales)
-                  ].length > 0 ? (
-                    [
-                      ...parseRiesgos(selectedMaterial.riesgos_fisicos),
-                      ...parseRiesgos(selectedMaterial.riesgos_salud),
-                      ...parseRiesgos(selectedMaterial.riesgos_ambientales)
-                    ].map((riesgo, index) => (
-                      <span 
-                        key={`${selectedMaterial.id}-riesgo-${index}`}
-                        className={`riesgo-badge ${getRiesgoColor(riesgo)}`}
-                      >
-                        {getRiesgoIcon(riesgo)} {riesgo}
-                      </span>
-                    ))
-                  ) : (
-                    <span className="no-risks">Sin riesgos especificados</span>
-                  )}
-                </div>
-                {usuario?.rol !== 'almacen' && (
-                  <div className="mb-3">
-                    <label className="form-label">
-                      Cantidad a solicitar ({getUnidad(selectedMaterial.tipo)}):
-                    </label>
-                    <input
-                      type="number"
-                      min="0"
-                      className="form-control"
-                      value={detailAmount}
-                      onChange={(e) => setDetailAmount(e.target.value)}
-                    />
-                  </div>
-                )}
-              </div>
-              <div className="modal-footer-custom">
-                <button
-                  className="btn-secondary-custom"
-                  onClick={() => setShowDetailModal(false)}
-                >
-                  Cerrar
-                </button>
-                {usuario?.rol !== 'almacen' && (
-                  <button
-                    className="btn-add-to-cart"
-                    onClick={() => addToCart(selectedMaterial, detailAmount)}
-                    disabled={!detailAmount || parseInt(detailAmount) <= 0}
-                  >
-                    Agregar al carrito
-                  </button>
-                )}
-              </div>
-            </div>
+        {usuario.rol !== 'administrador' && (
+          <div className="mt-4">
+            <label className="form-label">Cantidad a solicitar</label>
+            <input
+              type="number"
+              className="form-control mt-2"
+              value={detailAmount}
+              onChange={(e) => setDetailAmount(e.target.value)}
+              placeholder="Ingresa cantidad"
+              min="1"
+              max={selectedMaterial.cantidad}
+            />
+            <button
+              className="btn-add-to-cart mt-3"
+              onClick={() => addToCart(selectedMaterial, detailAmount)}
+              disabled={!detailAmount || parseInt(detailAmount) <= 0 || parseInt(detailAmount) > selectedMaterial.cantidad}
+            >
+              Añadir al carrito
+            </button>
           </div>
         )}
       </div>
-    </>
-  );
-}
+    </div>
+  </div>
+)}
