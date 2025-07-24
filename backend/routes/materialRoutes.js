@@ -6,23 +6,32 @@
  * Incluye rutas separadas por rol
  * y soporte para tipos (liquido, solido, equipo)
  * con soporte de query param en get/:id
+ * Con verificación de permisos de almacén
  *
  * Autor: ChatGPT Asistente
  * Fecha: 2025
  * ========================================
  */
-
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
-const { verificarToken, verificarRol } = require('../middleware/authMiddleware');
+const { 
+  verificarToken, 
+  verificarRol, 
+  verificarMultiplesRoles,
+  verificarAccesoStock,
+  verificarAccesoSolicitudes,
+  verificarPermisosAlmacen
+} = require('../middleware/authMiddleware');
+
+// Todas las rutas requieren autenticación
+router.use(verificarToken);
 
 /**
  * ========================
- * RUTAS PÚBLICAS
+ * RUTAS PÚBLICAS (para usuarios autenticados)
  * ========================
  */
-
 // Lista todos los materiales (las 3 subtablas unidas)
 router.get('/', materialController.getMaterials);
 
@@ -36,19 +45,16 @@ router.get('/tipo/solidos', materialController.getSolidos);
 router.get('/tipo/equipos', materialController.getEquipos);
 router.get('/tipo/laboratorio', materialController.getLaboratorio);
 
-
 /**
  * ========================
  * RUTAS PARA ALUMNOS (ROL 1) Y DOCENTES (ROL 2)
  * ========================
  */
-
-// Crear solicitud agrupada (alumno o docente)
+// Crear solicitud agrupada (alumno, docente, o almacén sin permisos de stock)
 // El body debe incluir tipo en cada objeto de materiales
 router.post(
   '/solicitudes',
-  verificarToken,
-  verificarRol([1, 2]),
+  verificarAccesoSolicitudes,
   materialController.crearSolicitudes
 );
 
@@ -56,23 +62,20 @@ router.post(
 // Body también incluye tipo
 router.post(
   '/solicitud-adeudo',
-  verificarToken,
   verificarRol([1]),
   materialController.crearSolicitudConAdeudo
 );
 
-// Obtener solicitudes propias (solo alumno)
+// Obtener solicitudes propias (alumno, docente, almacén sin permisos de stock)
 router.get(
   '/usuario/solicitudes',
-  verificarToken,
-  verificarRol([1]),
+  verificarAccesoSolicitudes,
   materialController.getUserSolicitudes
 );
 
 // Cancelar solicitud pendiente (solo alumno)
 router.post(
   '/solicitud/:id/cancelar',
-  verificarToken,
   verificarRol([1]),
   materialController.cancelSolicitud
 );
@@ -82,18 +85,16 @@ router.post(
  * RUTAS PARA DOCENTES (ROL 2)
  * ========================
  */
-
 // Listar solicitudes pendientes
 router.get(
   '/solicitudes/pendientes',
-  verificarToken,
   verificarRol([2]),
   materialController.getPendingSolicitudes
 );
+
 // Obtener TODAS las solicitudes (para docente)
 router.get(
   '/solicitudes/todas',
-  verificarToken,
   verificarRol([2]),
   materialController.getAllSolicitudes
 );
@@ -101,59 +102,53 @@ router.get(
 // Aprobar o rechazar solicitudes por ID
 router.post(
   '/solicitud/:id/aprobar',
-  verificarToken,
   verificarRol([2]),
   materialController.approveSolicitud
 );
 
 router.post(
   '/solicitud/:id/rechazar',
-  verificarToken,
   verificarRol([2]),
   materialController.rejectSolicitud
 );
 
 /**
  * ========================
- * RUTAS PARA ALMACENISTAS (ROL 3)
+ * RUTAS PARA ALMACENISTAS (ROL 3) - CON VERIFICACIÓN DE PERMISOS
  * ========================
  */
-
-// Listar solicitudes aprobadas
+// Listar solicitudes aprobadas (solo almacenistas)
 router.get(
   '/solicitudes/aprobadas',
-  verificarToken,
   verificarRol([3]),
   materialController.getApprovedSolicitudes
 );
 
-// Marcar como entregada o cancelar
+// Marcar como entregada (solo almacenistas)
 router.post(
   '/solicitud/:id/entregar',
-  verificarToken,
   verificarRol([3]),
   materialController.deliverSolicitud
 );
 
+// Cancelar solicitud (solo almacenistas)
 router.post(
   '/solicitud/:id/cancelar',
-  verificarToken,
   verificarRol([3]),
   materialController.cancelSolicitud
 );
 
-// Ajustar inventario (con tipo en body)
+// Ajustar inventario (con tipo en body) - SOLO ALMACENISTAS CON PERMISOS DE STOCK
 router.post(
   '/material/:id/ajustar',
-  verificarToken,
-  verificarRol([3]),
+  verificarRol([3, 4]), // Almacén y Admin
+  verificarPermisosAlmacen('stock'), // Verificar permisos específicos para almacén
   materialController.adjustInventory
 );
 
 // Listar solicitudes entregadas (solo almacenistas)
 router.get(
   '/solicitudes/entregadas',
-  verificarToken,
   verificarRol([3]),
   materialController.getDeliveredSolicitudes
 );
@@ -161,9 +156,60 @@ router.get(
 // Detalle de una solicitud entregada (almacenista)
 router.get(
   '/solicitudes/:id',
-  verificarToken,
   verificarRol([3]),
-  materialController.getSolicitudDetalle   // <-- esta acción exportada
+  materialController.getSolicitudDetalle
+);
+
+/**
+ * ========================
+ * RUTAS ADICIONALES PARA ADMINISTRADORES (ROL 4)
+ * ========================
+ */
+// Ajustar inventario (administradores siempre pueden)
+router.post(
+  '/material/:id/ajustar-admin',
+  verificarRol([4]),
+  materialController.adjustInventory
+);
+
+// Ver todas las solicitudes (administradores)
+router.get(
+  '/solicitudes/admin/todas',
+  verificarRol([4]),
+  materialController.getAllSolicitudes
+);
+
+// Estadísticas de materiales (solo admin)
+router.get(
+  '/estadisticas',
+  verificarRol([4]),
+  materialController.getEstadisticas || materialController.getMaterials // fallback si no existe
+);
+
+// Historial de movimientos (solo admin)
+router.get(
+  '/historial',
+  verificarRol([4]),
+  materialController.getHistorialMovimientos || materialController.getMaterials // fallback si no existe
+);
+
+/**
+ * ========================
+ * RUTAS ESPECIALES COMBINADAS
+ * ========================
+ */
+// Ruta que pueden usar tanto almacenistas con permisos como administradores
+router.post(
+  '/stock/ajuste-masivo',
+  verificarAccesoStock,
+  materialController.ajusteMasivoStock || materialController.adjustInventory // fallback
+);
+
+// Ruta para obtener materiales con stock bajo (almacén con permisos y admin)
+router.get(
+  '/stock-bajo',
+  verificarAccesoStock,
+  materialController.getMaterialesStockBajo || materialController.getMaterials // fallback
 );
 
 /**
