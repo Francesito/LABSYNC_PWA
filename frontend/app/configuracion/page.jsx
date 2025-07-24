@@ -1,3 +1,4 @@
+//frontend/app/configuracion/page.jsx
 'use client';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../../lib/auth';
