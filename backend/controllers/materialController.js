@@ -4,7 +4,7 @@
  * ==========================================================================================
  *
  * Soporta:
- * - Subtablas MaterialLiquido, MaterialSolido, MaterialEquipo
+ * - Subtablas MaterialLiquido, MaterialSolido, MaterialEquipo, MaterialLaboratorio
  * - Solicitudes agrupadas con stock por tipo
  * - Ajuste de inventario robusto con validación
  * - LEFT JOIN dinámico para resolver nombre del material
@@ -38,7 +38,7 @@ function detectTableAndField(tipo) {
     case 'liquido': return { table: 'MaterialLiquido', field: 'cantidad_disponible_ml' };
     case 'solido':  return { table: 'MaterialSolido',  field: 'cantidad_disponible_g'  };
     case 'equipo':  return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
-    case 'laboratorio': return { table: 'MaterialLaboratorio', field: 'cantidad_disponible' }; // ✅ NUEVO
+    case 'laboratorio': return { table: 'MaterialLaboratorio', field: 'cantidad_disponible' };
     default: return null;
   }
 }
@@ -74,17 +74,16 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
     si.material_id,
     si.tipo,
     si.cantidad,
-    COALESCE(ml.nombre, ms.nombre, me.nombre) AS nombre_material
+    COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material
   FROM Solicitud s
   JOIN SolicitudItem si ON s.id = si.solicitud_id
   LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
   LEFT JOIN MaterialSolido  ms ON si.tipo = 'solido'  AND si.material_id = ms.id
   LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo'  AND si.material_id = me.id
+  LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
   WHERE 1=1
   /*AND_CONDITION*/
 `;
-
-
 
 /**
  * ========================================
@@ -116,7 +115,6 @@ const getSolidos = async (req, res) => {
   }
 };
 
-
 /** Obtener equipos */
 const getEquipos = async (req, res) => {
   logRequest('getEquipos');
@@ -128,6 +126,19 @@ const getEquipos = async (req, res) => {
     res.status(500).json({ error: 'Error al obtener equipos' });
   }
 };
+
+/** Obtener materiales de laboratorio */
+const getLaboratorio = async (req, res) => {
+  logRequest('getLaboratorio');
+  try {
+    const [rows] = await pool.query('SELECT * FROM MaterialLaboratorio');
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getLaboratorio:', error);
+    res.status(500).json({ error: 'Error al obtener materiales de laboratorio' });
+  }
+};
+
 /**
  * ========================================
  * CREAR SOLICITUDES (AGRUPADAS)
@@ -144,9 +155,7 @@ const getEquipos = async (req, res) => {
  * 
  */
 
-/**
- * Obtener TODAS las solicitudes (para DOCENTE)
- */
+/** Obtener TODAS las solicitudes (para DOCENTE) */
 const getAllSolicitudes = async (req, res) => {
   logRequest('getAllSolicitudes');
   try {
@@ -158,7 +167,6 @@ const getAllSolicitudes = async (req, res) => {
     res.status(500).json({ error: 'Error al obtener solicitudes' });
   }
 };
-
 
 /** Crear solicitud (alumno/docente) con folio */
 const crearSolicitudes = async (req, res) => {
@@ -173,7 +181,7 @@ const crearSolicitudes = async (req, res) => {
 
   try {
     const { id: usuario_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
-    if (![1,2].includes(rol_id)) {
+    if (![1, 2].includes(rol_id)) {
       return res.status(403).json({ error: 'Solo alumnos o docentes pueden crear solicitudes' });
     }
 
@@ -181,9 +189,9 @@ const crearSolicitudes = async (req, res) => {
     if (!user.length) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     const folio = generarFolio();
-    const estadoInicial = (rol_id===2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
+    const estadoInicial = (rol_id === 2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
     let docente_id = null, profesor = 'Sin asignar';
-    if (estadoInicial==='aprobada') {
+    if (estadoInicial === 'aprobada') {
       docente_id = usuario_id; profesor = user[0].nombre;
     } else {
       const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 LIMIT 1');
@@ -204,7 +212,7 @@ const crearSolicitudes = async (req, res) => {
         `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?,?,?,?)`,
         [solicitudId, material_id, tipo, cantidad]
       );
-      if (rol_id===1) {
+      if (rol_id === 1) {
         const meta = detectTableAndField(tipo);
         if (meta) {
           await pool.query(
@@ -215,13 +223,12 @@ const crearSolicitudes = async (req, res) => {
       }
     }
 
-    res.status(201).json({ message:'Solicitud creada', solicitudId, folio });
-  } catch(err) {
+    res.status(201).json({ message: 'Solicitud creada', solicitudId, folio });
+  } catch (err) {
     console.error('[Error] crearSolicitudes:', err);
-    res.status(500).json({ error:'Error al registrar solicitud' });
+    res.status(500).json({ error: 'Error al registrar solicitud' });
   }
 };
-
 
 /**
  * ========================================
@@ -229,8 +236,6 @@ const crearSolicitudes = async (req, res) => {
  * Solo ALUMNO
  * ========================================
  */
-
-
 
 const crearSolicitudConAdeudo = async (req, res) => {
   logRequest('crearSolicitudConAdeudo');
@@ -283,8 +288,7 @@ const crearSolicitudConAdeudo = async (req, res) => {
  */
 
 /**
- * Obtener solicitudes del usuario
- */
+ * Obtener solicitudes del usuario */
 const getUserSolicitudes = async (req, res) => {
   logRequest('getUserSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
@@ -306,11 +310,8 @@ const getUserSolicitudes = async (req, res) => {
   }
 };
 
-
-
 /**
- * Obtener solicitudes aprobadas
- */
+ * Obtener solicitudes aprobadas */
 const getApprovedSolicitudes = async (req, res) => {
   logRequest('getApprovedSolicitudes');
 
@@ -329,11 +330,8 @@ const getApprovedSolicitudes = async (req, res) => {
   }
 };
 
-
-
 /**
- * Obtener solicitudes pendientes
- */
+ * Obtener solicitudes pendientes */
 const getPendingSolicitudes = async (req, res) => {
   logRequest('getPendingSolicitudes');
 
@@ -351,7 +349,6 @@ const getPendingSolicitudes = async (req, res) => {
   }
 };
 
-
 /**
  * ========================================
  * ACCIONES SOBRE SOLICITUDES
@@ -359,8 +356,7 @@ const getPendingSolicitudes = async (req, res) => {
  */
 
 /**
- * Aprobar solicitud
- */
+ * Aprobar solicitud */
 const approveSolicitud = async (req, res) => {
   logRequest(`approveSolicitud`);
 
@@ -387,10 +383,8 @@ const approveSolicitud = async (req, res) => {
   }
 };
 
-
 /**
- * Rechazar solicitud
- */
+ * Rechazar solicitud */
 const rejectSolicitud = async (req, res) => {
   const { id } = req.params;
   logRequest(`rejectSolicitud - ID=${id}`);
@@ -404,12 +398,7 @@ const rejectSolicitud = async (req, res) => {
 };
 
 /**
- * Marcar como entregada
- */
-/** Marcar solicitud como entregada + generar adeudos */
-/**
- * Marcar solicitud como entregada + generar adeudos con fecha_entrega
- */
+ * Marcar solicitud como entregada + generar adeudos con fecha_entrega */
 const deliverSolicitud = async (req, res) => {
   logRequest('deliverSolicitud');
   const { id } = req.params;
@@ -451,7 +440,7 @@ const deliverSolicitud = async (req, res) => {
             tipo,
             cantidad_pendiente,
             fecha_entrega)
-         VALUES (?,         ?,                  ?,          ?,           ?,        ?,                 NOW())`,
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
         [
           id,
           it.solicitud_item_id,
@@ -472,15 +461,12 @@ const deliverSolicitud = async (req, res) => {
   }
 };
 
-
-
-
 /**
-+ * Cancelar solicitud
-+ * - Si lo hace un alumno (rol 1): valida que sea suya, esté pendiente,
-+ *   restaura stock y luego marca como cancelado.
-+ * - Para almacenistas (rol 3) sigue marcando como cancelado sin tocar stock.
-+ */
+ * Cancelar solicitud
+ * - Si lo hace un alumno (rol 1): valida que sea suya, esté pendiente,
+ *   restaura stock y luego marca como cancelado.
+ * - Para almacenistas (rol 3) sigue marcando como cancelado sin tocar stock.
+ */
 const cancelSolicitud = async (req, res) => {
   const { id } = req.params;
   logRequest(`cancelSolicitud - ID=${id}`);
@@ -539,6 +525,7 @@ const cancelSolicitud = async (req, res) => {
     res.status(500).json({ error: 'Error al cancelar solicitud' });
   }
 };
+
 /**
  * ========================================
  * AJUSTE DE INVENTARIO (SOLO ALMACENISTA)
@@ -553,7 +540,9 @@ const adjustInventory = async (req, res) => {
 
   try {
     const { rol_id } = jwt.verify(token, process.env.JWT_SECRET);
-    if (rol_id !== 3) return res.status(403).json({ error: 'Solo almacenistas pueden ajustar inventario' });
+    if (rol_id !== 3 && !req.user?.permisos?.modificar_stock) {
+      return res.status(403).json({ error: 'Solo almacenistas con permisos de stock pueden ajustar inventario' });
+    }
 
     if (isNaN(cantidad)) return res.status(400).json({ error: 'Cantidad debe ser un número válido' });
 
@@ -574,12 +563,168 @@ const adjustInventory = async (req, res) => {
   }
 };
 
+/**
+ * ========================================
+ * RUTAS ADICIONALES PARA ADMINISTRADORES
+ * ========================================
+ */
+
+/** Obtener estadísticas de materiales (solo admin) */
+const getEstadisticas = async (req, res) => {
+  logRequest('getEstadisticas');
+  try {
+    const { rol_id } = req.usuario;
+    if (rol_id !== 4) return res.status(403).json({ error: 'Solo administradores pueden ver estadísticas' });
+
+    const [liquidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_ml) as stock FROM MaterialLiquido');
+    const [solidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_g) as stock FROM MaterialSolido');
+    const [equipos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_u) as stock FROM MaterialEquipo');
+    const [laboratorio] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible) as stock FROM MaterialLaboratorio');
+
+    const stats = {
+      liquidos: { total: liquidos[0].total, stock: liquidos[0].stock || 0 },
+      solidos: { total: solidos[0].total, stock: solidos[0].stock || 0 },
+      equipos: { total: equipos[0].total, stock: equipos[0].stock || 0 },
+      laboratorio: { total: laboratorio[0].total, stock: laboratorio[0].stock || 0 },
+      total_items: liquidos[0].total + solidos[0].total + equipos[0].total + laboratorio[0].total,
+      total_stock: (liquidos[0].stock || 0) + (solidos[0].stock || 0) + (equipos[0].stock || 0) + (laboratorio[0].stock || 0)
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('[Error] getEstadisticas:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas' });
+  }
+};
+
+/** Obtener historial de movimientos (solo admin) */
+const getHistorialMovimientos = async (req, res) => {
+  logRequest('getHistorialMovimientos');
+  try {
+    const { rol_id } = req.usuario;
+    if (rol_id !== 4) return res.status(403).json({ error: 'Solo administradores pueden ver el historial' });
+
+    const [rows] = await pool.query(`
+      SELECT m.*, u.nombre AS usuario
+      FROM MovimientosInventario m
+      JOIN Usuario u ON m.usuario_id = u.id
+      ORDER BY m.fecha_movimiento DESC
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getHistorialMovimientos:', error);
+    res.status(500).json({ error: 'Error al obtener historial de movimientos' });
+  }
+};
+
+/**
+ * ========================================
+ * RUTAS ESPECIALES COMBINADAS
+ * ========================================
+ */
+
+/** Ajuste masivo de stock (almacenistas con permisos y admins) */
+const ajusteMasivoStock = async (req, res) => {
+  logRequest('ajusteMasivoStock');
+  const { ajustes } = req.body; // Array de { id, tipo, cantidad }
+  const token = req.headers.authorization?.split(' ')[1];
+
+  try {
+    const { rol_id, permisos } = jwt.verify(token, process.env.JWT_SECRET);
+    if (rol_id !== 3 && rol_id !== 4 && !permisos?.modificar_stock) {
+      return res.status(403).json({ error: 'Acceso denegado. Requiere permisos de stock' });
+    }
+
+    if (!Array.isArray(ajustes) || ajustes.length === 0) {
+      return res.status(400).json({ error: 'Se requiere al menos un ajuste' });
+    }
+
+    for (const ajuste of ajustes) {
+      const { id, tipo, cantidad } = ajuste;
+      if (!id || !tipo || isNaN(cantidad)) {
+        return res.status(400).json({ error: 'Datos de ajuste inválidos' });
+      }
+
+      const meta = detectTableAndField(tipo);
+      if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+      const [material] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
+      if (!material.length) return res.status(404).json({ error: `Material ${id} no encontrado` });
+
+      const nuevaCantidad = material[0][meta.field] + parseInt(cantidad);
+      if (nuevaCantidad < 0) return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
+
+      await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevaCantidad, id]);
+      await pool.query(
+        `INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, fecha_movimiento)
+         VALUES (?, ?, ?, ?, NOW())`,
+        [req.usuario.id, id, tipo, cantidad]
+      );
+    }
+
+    res.status(200).json({ message: 'Ajuste masivo de stock completado' });
+  } catch (error) {
+    console.error('[Error] ajusteMasivoStock:', error);
+    res.status(500).json({ error: 'Error al ajustar stock masivo' });
+  }
+};
+
+/** Obtener materiales con stock bajo (almacenistas con permisos y admins) */
+const getMaterialesStockBajo = async (req, res) => {
+  logRequest('getMaterialesStockBajo');
+  try {
+    const { rol_id, permisos } = req.usuario;
+    if (rol_id !== 3 && rol_id !== 4 && !permisos?.modificar_stock) {
+      return res.status(403).json({ error: 'Acceso denegado. Requiere permisos de stock' });
+    }
+
+    const threshold = 10; // Umbral de stock bajo (ajustable)
+    const [liquidos] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible_ml AS stock FROM MaterialLiquido WHERE cantidad_disponible_ml < ?',
+      [threshold]
+    );
+    const [solidos] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible_g AS stock FROM MaterialSolido WHERE cantidad_disponible_g < ?',
+      [threshold]
+    );
+    const [equipos] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible_u AS stock FROM MaterialEquipo WHERE cantidad_disponible_u < ?',
+      [threshold]
+    );
+    const [laboratorio] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible AS stock FROM MaterialLaboratorio WHERE cantidad_disponible < ?',
+      [threshold]
+    );
+
+    const lowStock = [...liquidos, ...solidos, ...equipos, ...laboratorio].map(item => ({
+      ...item,
+      tipo: detectTableAndField(
+        item.stock === item.cantidad_disponible_ml ? 'liquido' :
+        item.stock === item.cantidad_disponible_g ? 'solido' :
+        item.stock === item.cantidad_disponible_u ? 'equipo' : 'laboratorio'
+      ).table.split('Material')[1].toLowerCase()
+    }));
+
+    res.json(lowStock);
+  } catch (error) {
+    console.error('[Error] getMaterialesStockBajo:', error);
+    res.status(500).json({ error: 'Error al obtener materiales con stock bajo' });
+  }
+};
+
+/**
+ * ========================================
+ * RUTAS GENERALES
+ * ========================================
+ */
+
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
     const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo FROM MaterialLiquido');
     const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo FROM MaterialSolido');
-    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo FROM MaterialLaboratorio'); // ✅ NUEVO
+    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo FROM MaterialLaboratorio');
     const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo FROM MaterialEquipo');
 
     const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
@@ -590,19 +735,7 @@ const getMaterials = async (req, res) => {
   }
 };
 
-
-/** Obtener materiales de laboratorio */
-const getLaboratorio = async (req, res) => {
-  logRequest('getLaboratorio');
-  try {
-    const [rows] = await pool.query('SELECT * FROM MaterialLaboratorio');
-    res.json(rows);
-  } catch (error) {
-    console.error('[Error] getLaboratorio:', error);
-    res.status(500).json({ error: 'Error al obtener materiales de laboratorio' });
-  }
-};
-
+/** Obtener un material específico por ID y TIPO */
 const getMaterialById = async (req, res) => {
   const { id } = req.params;
   const { tipo } = req.query;  // IMPORTANTE: ahora recibe el tipo
@@ -627,17 +760,7 @@ const getMaterialById = async (req, res) => {
   }
 };
 
-/**
- * Listar solicitudes entregadas **con** adeudos pendientes (solo almacenistas)
- */
-// ========================================
-// Listar solicitudes entregadas CON adeudos pendientes
-// ========================================
-/**
- * GET /api/materials/solicitudes/entregadas
- * Devuelve las solicitudes entregadas que aún tienen adeudos pendientes,
- * agrupadas por solicitud_id con folio, nombre_alumno, profesor y fecha_entrega.
- */
+/** Listar solicitudes entregadas CON adeudos pendientes */
 const getDeliveredSolicitudes = async (req, res) => {
   logRequest('getDeliveredSolicitudes');
   try {
@@ -647,16 +770,11 @@ const getDeliveredSolicitudes = async (req, res) => {
         s.folio,
         s.nombre_alumno,
         s.profesor,
-        -- Tomamos la fecha de entrega del primer adeudo (insertada en deliverSolicitud)
         MIN(a.fecha_entrega) AS fecha_entrega 
       FROM Solicitud s
-      JOIN Adeudo a
-        ON a.solicitud_id = s.id
-      GROUP BY
-        s.id,
-        s.folio,
-        s.nombre_alumno,
-        s.profesor
+      JOIN Adeudo a ON a.solicitud_id = s.id
+      WHERE s.estado = 'entregado'
+      GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor
       ORDER BY fecha_entrega DESC
     `);
     res.json(rows);
@@ -666,19 +784,7 @@ const getDeliveredSolicitudes = async (req, res) => {
   }
 };
 
-
-
-
-
-/**
- * ========================================
- * Obtener detalle de una solicitud entregada
- * ========================================
- */
-// ========================================
-// Obtener detalle de una solicitud entregada
-// (solo los ítems con adeudo pendiente)
-// ========================================
+/** Obtener detalle de una solicitud entregada */
 const getSolicitudDetalle = async (req, res) => {
   logRequest(`getSolicitudDetalle - ID=${req.params.id}`);
   try {
@@ -691,7 +797,6 @@ const getSolicitudDetalle = async (req, res) => {
          s.folio,
          s.nombre_alumno,
          s.profesor,
-         /* Fecha de entrega = máxima fecha_entrega en los adeudos */
          (SELECT MAX(a.fecha_entrega) 
             FROM Adeudo a 
            WHERE a.solicitud_id = s.id
@@ -711,11 +816,12 @@ const getSolicitudDetalle = async (req, res) => {
          a.solicitud_item_id AS item_id,
          a.tipo,
          a.cantidad_pendiente AS cantidad,
-         COALESCE(ml.nombre, ms.nombre, me.nombre) AS nombre_material
+         COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material
        FROM Adeudo a
        LEFT JOIN MaterialLiquido ml ON a.tipo = 'liquido' AND a.material_id = ml.id
        LEFT JOIN MaterialSolido  ms ON a.tipo = 'solido'  AND a.material_id = ms.id
        LEFT JOIN MaterialEquipo  me ON a.tipo = 'equipo'  AND a.material_id = me.id
+       LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
       WHERE a.solicitud_id = ? AND a.cantidad_pendiente > 0`,
       [id]
     );
@@ -741,8 +847,6 @@ const getSolicitudDetalle = async (req, res) => {
   }
 };
 
-
-
 /**
  * ========================================
  * EXPORTS
@@ -767,6 +871,9 @@ module.exports = {
   deliverSolicitud,
   getSolicitudDetalle,
   cancelSolicitud,
-  adjustInventory
+  adjustInventory,
+  getEstadisticas,
+  getHistorialMovimientos,
+  ajusteMasivoStock,
+  getMaterialesStockBajo
 };
-
