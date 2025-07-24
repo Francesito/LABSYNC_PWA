@@ -8,9 +8,9 @@ const { verificarToken, requireAdmin } = require('../middleware/authMiddleware')
 
 const router = express.Router();
 
-// Middleware para verificar que es administrador
-router.use(verificarToken);
-router.use(requireAdmin);
+// Middleware para verificar autenticación y rol de administrador
+router.use(verificarToken); // Verifica el token JWT
+router.use(requireAdmin);   // Verifica que el rol sea administrador (rol_id = 4)
 
 // Generar contraseña aleatoria
 const generarContrasenaAleatoria = () => {
@@ -37,7 +37,7 @@ router.post('/crear-usuario', async (req, res) => {
     return res.status(400).json({ error: 'Correo institucional inválido' });
   }
 
-  // Solo permitir roles de docente, almacen y administrador
+  // Solo permitir roles de docente, almacén y administrador
   if (![2, 3, 4].includes(parseInt(rol_id))) {
     return res.status(400).json({ error: 'Rol no válido' });
   }
