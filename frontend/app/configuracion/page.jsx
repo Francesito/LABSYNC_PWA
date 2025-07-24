@@ -1,119 +1,199 @@
 'use client';
 import { useAuth } from '../../lib/auth';
+import { useState } from 'react';
 
 export default function Configuracion() {
   const { usuario } = useAuth();
+  const [usuarios, setUsuarios] = useState([
+    { id: 1, nombre: 'Usuario 1', correo: 'usuario1@utsjr.edu.mx', rol: 'Almacenista', acceso: true, modificacion: true },
+    { id: 2, nombre: 'Usuario 2', correo: 'usuario2@utsjr.edu.mx', rol: 'Almacenista', acceso: true, modificacion: true }
+  ]);
+  const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: '', correo: '', rol: '' });
+  const [correoBloqueo, setCorreoBloqueo] = useState('');
+  const [correoEliminacion, setCorreoEliminacion] = useState('');
 
-  // Verificar que el usuario es administrador (solo estructura, sin redirección)
+  // Verificar que el usuario es administrador
   if (!usuario || usuario.rol_id !== 4) {
     return null;
   }
 
+  const toggleAcceso = (id) => {
+    setUsuarios(usuarios.map(user => 
+      user.id === id ? { ...user, acceso: !user.acceso } : user
+    ));
+  };
+
+  const toggleModificacion = (id) => {
+    setUsuarios(usuarios.map(user => 
+      user.id === id ? { ...user, modificacion: !user.modificacion } : user
+    ));
+  };
+
+  const agregarUsuario = () => {
+    if (nuevoUsuario.nombre && nuevoUsuario.correo && nuevoUsuario.rol) {
+      const nuevo = {
+        id: Date.now(),
+        ...nuevoUsuario,
+        acceso: true,
+        modificacion: true
+      };
+      setUsuarios([...usuarios, nuevo]);
+      setNuevoUsuario({ nombre: '', correo: '', rol: '' });
+    }
+  };
+
   return (
     <div className="flex min-h-screen">
-      {/* Contenido principal desplazado al lado del sidebar */}
-      <main className="flex-1 ml-64 p-3 p-md-4 bg-white bg-opacity-95 rounded-4 shadow-lg">
-        <h2 className="fw-bold text-dark mb-4">Configuración</h2>
-
-        {/* Placeholder para mensajes de éxito o error */}
-        <div className="mb-4">
-          <div className="alert alert-danger d-flex align-items-center rounded shadow-sm">
-            <i className="bi bi-exclamation-triangle-fill me-2"></i>
-            Placeholder para mensaje de error
-          </div>
-          <div className="alert alert-success d-flex align-items-center rounded shadow-sm">
-            <i className="bi bi-check-circle-fill me-2"></i>
-            Placeholder para mensaje de éxito
-          </div>
+      <main className="flex-1 ml-64 p-6 bg-gray-50">
+        {/* Header con título y botón de agregar */}
+        <div className="flex justify-between items-center mb-8">
+          <h1 className="text-3xl font-bold text-gray-900">Listado de Usuarios</h1>
+          <button 
+            onClick={agregarUsuario}
+            className="w-12 h-12 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors"
+          >
+            <span className="text-xl font-bold">+</span>
+          </button>
         </div>
 
-        {/* Placeholder para formulario de agregar usuario */}
-        <div className="card mb-4">
-          <div className="card-body">
-            <h3 className="card-title fw-semibold text-dark mb-3">Agregar nuevo usuario</h3>
-            <form>
-              <div className="mb-3">
-                <label htmlFor="nombre" className="form-label fw-semibold text-dark">Nombre completo</label>
-                <input
-                  type="text"
-                  id="nombre"
-                  className="form-control"
-                  placeholder="Nombre completo"
-                />
+        {/* Lista de usuarios existentes */}
+        <div className="bg-white rounded-lg shadow-sm mb-8 overflow-hidden">
+          {usuarios.map((user) => (
+            <div key={user.id} className="flex items-center p-4 border-b border-gray-200 last:border-b-0">
+              {/* Checkbox de selección */}
+              <input 
+                type="checkbox" 
+                className="w-5 h-5 mr-4 rounded border-2 border-gray-300"
+              />
+              
+              {/* Nombre del usuario */}
+              <div className="flex-1">
+                <span className="text-lg font-medium text-gray-900">{user.rol}</span>
               </div>
-              <div className="mb-3">
-                <label htmlFor="correo" className="form-label fw-semibold text-dark">Correo institucional</label>
-                <input
-                  type="email"
-                  id="correo"
-                  className="form-control"
-                  placeholder="ejemplo@utsjr.edu.mx"
-                />
+              
+              {/* Acceso a chat */}
+              <div className="flex flex-col items-center mx-8">
+                <span className="text-sm font-medium text-gray-700 mb-2">Acceso a chat</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={user.acceso}
+                    onChange={() => toggleAcceso(user.id)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500">
+                    {user.acceso && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </label>
               </div>
-              <div className="mb-3">
-                <label htmlFor="contrasena" className="form-label fw-semibold text-dark">Contraseña (opcional)</label>
-                <input
-                  type="password"
-                  id="contrasena"
-                  className="form-control"
-                  placeholder="Dejar en blanco para generar automáticamente"
-                />
+              
+              {/* Modificación de stock */}
+              <div className="flex flex-col items-center">
+                <span className="text-sm font-medium text-gray-700 mb-2">Modificación de stock</span>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={user.modificacion}
+                    onChange={() => toggleModificacion(user.id)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500">
+                    {user.modificacion && (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                </label>
               </div>
-              <div className="mb-3">
-                <label htmlFor="rol" className="form-label fw-semibold text-dark">Rol</label>
-                <select
-                  id="rol"
-                  className="form-control"
-                >
-                  <option value="">Selecciona un rol</option>
-                  <option value="docente">Docente</option>
-                  <option value="almacen">Almacen</option>
-                </select>
-              </div>
-              <button type="submit" className="btn btn-primary w-100">
-                Agregar usuario
+            </div>
+          ))}
+        </div>
+
+        {/* Formulario para agregar nuevo usuario */}
+        <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+          <div className="flex items-center gap-4 mb-4">
+            {/* Campos del formulario */}
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+              <input
+                type="text"
+                value={nuevoUsuario.nombre}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, nombre: e.target.value})}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Nombre completo"
+              />
+            </div>
+            
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Correo Electronico</label>
+              <input
+                type="email"
+                value={nuevoUsuario.correo}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, correo: e.target.value})}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="correo@utsjr.edu.mx"
+              />
+            </div>
+            
+            <div className="flex-1">
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rol</label>
+              <input
+                type="text"
+                value={nuevoUsuario.rol}
+                onChange={(e) => setNuevoUsuario({...nuevoUsuario, rol: e.target.value})}
+                className="w-full p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Rol del usuario"
+              />
+            </div>
+            
+            {/* Botón de agregar */}
+            <div className="flex items-end">
+              <button 
+                onClick={agregarUsuario}
+                className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center hover:bg-gray-800 transition-colors"
+              >
+                <span className="text-lg font-bold">+</span>
               </button>
-            </form>
+            </div>
           </div>
         </div>
 
-        {/* Placeholder para tabla de usuarios */}
-        <div className="card">
-          <div className="card-body">
-            <h3 className="card-title fw-semibold text-dark mb-3">Usuarios existentes</h3>
-            <div className="table-responsive">
-              <table className="table table-hover">
-                <thead>
-                  <tr>
-                    <th>Nombre</th>
-                    <th>Correo</th>
-                    <th>Rol</th>
-                    <th>Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  <tr>
-                    <td>Placeholder Nombre</td>
-                    <td>placeholder@utsjr.edu.mx</td>
-                    <td>Docente</td>
-                    <td>
-                      <button className="btn btn-danger btn-sm">
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                  <tr>
-                    <td>Placeholder Nombre</td>
-                    <td>placeholder2@utsjr.edu.mx</td>
-                    <td>Almacen</td>
-                    <td>
-                      <button className="btn btn-danger btn-sm">
-                        Eliminar
-                      </button>
-                    </td>
-                  </tr>
-                </tbody>
-              </table>
+        {/* Sección de bloqueo y eliminación */}
+        <div className="grid grid-cols-2 gap-8">
+          {/* Bloqueo de cuenta */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Bloqueo de cuenta por correo electronico</h3>
+            <div className="flex items-center gap-4">
+              <input
+                type="email"
+                value={correoBloqueo}
+                onChange={(e) => setCorreoBloqueo(e.target.value)}
+                className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Correo electrónico"
+              />
+            </div>
+          </div>
+
+          {/* Eliminación de cuenta */}
+          <div className="bg-white rounded-lg shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Eliminacion de cuenta por correo electronico</h3>
+            <div className="flex items-center gap-4">
+              <input
+                type="email"
+                value={correoEliminacion}
+                onChange={(e) => setCorreoEliminacion(e.target.value)}
+                className="flex-1 p-2 border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Correo electrónico"
+              />
             </div>
           </div>
         </div>
