@@ -211,8 +211,8 @@ export default function Catalog() {
   };
 
   const addToCart = (material, cantidad) => {
-    if (usuario.rol === 'administrador') {
-      setError('Los administradores no pueden solicitar materiales');
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
+      setError('No tienes permiso para solicitar materiales');
       return;
     }
     
@@ -244,16 +244,16 @@ export default function Catalog() {
   };
 
   const removeFromCart = (id, tipo) => {
-    if (usuario.rol === 'administrador') {
-      setError('Los administradores no pueden modificar el carrito');
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
+      setError('No tienes permiso para modificar el carrito');
       return;
     }
     setSelectedCart((prev) => prev.filter((item) => !(item.id === id && item.tipo === tipo)));
   };
 
   const vaciarSeleccion = () => {
-    if (usuario.rol === 'administrador') {
-      setError('Los administradores no pueden modificar el carrito');
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
+      setError('No tienes permiso para modificar el carrito');
       return;
     }
     setSelectedCart([]);
@@ -263,8 +263,8 @@ export default function Catalog() {
   const totalItems = selectedCart.reduce((sum, item) => sum + (item.cantidad || 0), 0);
 
   const handleSubmitRequest = async () => {
-    if (usuario.rol === 'administrador') {
-      setError('Los administradores no pueden enviar solicitudes');
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
+      setError('No tienes permiso para enviar solicitudes');
       return;
     }
     
@@ -322,6 +322,10 @@ export default function Catalog() {
 
   const handleDetailClick = (material, e) => {
     e.stopPropagation();
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
+      setError('No tienes permiso para ver los detalles del material');
+      return;
+    }
     console.log(`Clic en material: ${material.nombre}, ID: ${material.id}, Tipo: ${material.tipo}, Image Path: ${getImagePath(material)}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
     setSelectedMaterial(material);
     setDetailAmount('');
@@ -1357,14 +1361,14 @@ export default function Catalog() {
                 <button
                   className="btn-create-vale"
                   onClick={() => setShowRequestModal(true)}
-                  disabled={selectedCart.length === 0 || totalItems === 0 || usuario.rol === 'administrador'}
+                  disabled={selectedCart.length === 0 || totalItems === 0 || usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))}
                 >
                   Crear Vale
                 </button>
                 <button
                   className="btn-clear mt-3"
                   onClick={vaciarSeleccion}
-                  disabled={selectedCart.length === 0 || usuario.rol === 'administrador'}
+                  disabled={selectedCart.length === 0 || usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))}
                 >
                   Vaciar Selección
                 </button>
@@ -1414,7 +1418,7 @@ export default function Catalog() {
                 <button
                   className="btn-create-vale"
                   onClick={handleSubmitRequest}
-                  disabled={usuario.rol === 'administrador'}
+                  disabled={usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))}
                 >
                   Confirmar
                 </button>
@@ -1518,7 +1522,7 @@ export default function Catalog() {
                 ) : (
                   <p className="no-risks mt-4">No se han registrado riesgos para este material.</p>
                 )}
-                {usuario.rol !== 'administrador' && (
+                {usuario.rol !== 'administrador' && usuario.rol !== 'almacen' && (
                   <div className="mt-4">
                     <label className="form-label">Cantidad a solicitar</label>
                     <input
