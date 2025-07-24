@@ -13,7 +13,12 @@ router.use(verificarToken);
 // Middleware que verifica tanto el rol como los permisos específicos de chat
 const verificarAccesoChat = [
   verificarMultiplesRoles(1, 3, 4), // Permitir alumnos, almacén y admin
-  verificarPermisosAlmacen('chat')   // Verificar permisos específicos para almacén
+  (req, res, next) => {
+    if (req.usuario.rol_id === 3 && !req.usuario.permisos?.acceso_chat) {
+      return res.status(403).json({ error: 'Acceso al chat denegado. Requiere permisos específicos.' });
+    }
+    next();
+  }
 ];
 
 /**
