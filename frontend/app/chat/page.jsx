@@ -390,12 +390,6 @@ export default function Chat() {
                 Contacta al administrador para solicitar permisos de chat.
               </p>
             )}
-            <button
-              onClick={() => router.push('/dashboard')}
-              className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-            >
-              Volver al Dashboard
-            </button>
           </div>
         </div>
       </div>
