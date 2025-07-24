@@ -117,16 +117,13 @@ const iniciarSesion = async (req, res) => {
 
 const verificarPermisosChat = async (req, res) => {
   try {
-    const userId = req.user.id; // Viene del middleware de autenticación
+    const usuario = req.usuario; // Viene del middleware verificarToken
     
-    // Primero verificar el rol del usuario
-    const [userRows] = await pool.query('SELECT rol_id FROM Usuario WHERE id = ?', [userId]);
-    
-    if (userRows.length === 0) {
-      return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
     }
 
-    const userRole = userRows[0].rol_id;
+    const userRole = usuario.rol_id;
     
     // Si es alumno (rol_id: 1), siempre tiene acceso al chat
     if (userRole === 1) {
@@ -150,7 +147,7 @@ const verificarPermisosChat = async (req, res) => {
     if (userRole === 3) {
       const [permisosRows] = await pool.query(
         'SELECT acceso_chat, modificar_stock FROM PermisosAlmacen WHERE usuario_id = ?',
-        [userId]
+        [usuario.id]
       );
       
       if (permisosRows.length === 0) {
@@ -167,6 +164,15 @@ const verificarPermisosChat = async (req, res) => {
         acceso_chat: Boolean(permisos.acceso_chat),
         modificar_stock: Boolean(permisos.modificar_stock),
         rol: 'almacen'
+      });
+    }
+    
+    // Si es administrador (rol_id: 4), tiene todos los permisos
+    if (userRole === 4) {
+      return res.json({ 
+        acceso_chat: true,
+        modificar_stock: true,
+        rol: 'administrador'
       });
     }
     
