@@ -95,7 +95,7 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
 const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialLiquido');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
@@ -107,7 +107,7 @@ const getLiquidos = async (req, res) => {
 const getSolidos = async (req, res) => {
   logRequest('getSolidos');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialSolido');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
@@ -119,7 +119,7 @@ const getSolidos = async (req, res) => {
 const getEquipos = async (req, res) => {
   logRequest('getEquipos');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialEquipo');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
@@ -131,7 +131,7 @@ const getEquipos = async (req, res) => {
 const getLaboratorio = async (req, res) => {
   logRequest('getLaboratorio');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialLaboratorio');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
@@ -681,19 +681,19 @@ const getMaterialesStockBajo = async (req, res) => {
 
     const threshold = 10; // Umbral de stock bajo (ajustable)
     const [liquidos] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible_ml AS stock FROM MaterialLiquido WHERE cantidad_disponible_ml < ?',
+      'SELECT id, nombre, cantidad_disponible_ml AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido WHERE cantidad_disponible_ml < ?',
       [threshold]
     );
     const [solidos] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible_g AS stock FROM MaterialSolido WHERE cantidad_disponible_g < ?',
+      'SELECT id, nombre, cantidad_disponible_g AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido WHERE cantidad_disponible_g < ?',
       [threshold]
     );
     const [equipos] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible_u AS stock FROM MaterialEquipo WHERE cantidad_disponible_u < ?',
+      'SELECT id, nombre, cantidad_disponible_u AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo WHERE cantidad_disponible_u < ?',
       [threshold]
     );
     const [laboratorio] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible AS stock FROM MaterialLaboratorio WHERE cantidad_disponible < ?',
+      'SELECT id, nombre, cantidad_disponible AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio WHERE cantidad_disponible < ?',
       [threshold]
     );
 
@@ -722,10 +722,10 @@ const getMaterialesStockBajo = async (req, res) => {
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
-    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo FROM MaterialLiquido');
-    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo FROM MaterialSolido');
-    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo FROM MaterialLaboratorio');
-    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo FROM MaterialEquipo');
+    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
+    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
+    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
+    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
 
     const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
     res.json(materials);
