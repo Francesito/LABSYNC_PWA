@@ -1,4 +1,3 @@
-//backend/controllers/authController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
@@ -88,27 +87,77 @@ const iniciarSesion = async (req, res) => {
       return res.status(400).json({ error: 'Contraseña incorrecta' });
     }
 
-    // Generar token JWT
-    const token = jwt.sign(
-      {
-        id: usuario.id,
-        nombre: usuario.nombre,
-        correo_institucional: usuario.correo_institucional,
-        rol_id: usuario.rol_id
-      },
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' }
-    );
+    // Obtener permisos específicos si es usuario de almacén
+    let permisos = null;
+    if (usuario.rol_id === 3) { // rol de almacén
+      const [permisosRows] = await pool.query(
+        'SELECT acceso_chat, modificar_stock FROM PermisosAlmacen WHERE usuario_id = ?',
+        [usuario.id]
+      );
+      
+      if (permisosRows.length > 0) {
+        permisos = {
+          acceso_chat: Boolean(permisosRows[0].acceso_chat),
+          modificar_stock: Boolean(permisosRows[0].modificar_stock)
+        };
+      } else {
+        // Si no hay registro en PermisosAlmacen, denegar acceso por defecto
+        permisos = {
+          acceso_chat: false,
+          modificar_stock: false
+        };
+      }
+    }
 
-    res.json({ 
+    // Generar token JWT con permisos incluidos
+    const tokenData = {
+      id: usuario.id,
+      nombre: usuario.nombre,
+      correo_institucional: usuario.correo_institucional,
+      rol_id: usuario.rol_id
+    };
+
+    // Incluir permisos en el token si es usuario de almacén
+    if (permisos) {
+      tokenData.permisos = permisos;
+    }
+
+    const token = jwt.sign(tokenData, process.env.JWT_SECRET, { expiresIn: '24h' });
+
+    // Determinar el nombre del rol
+    let rolNombre = 'unknown';
+    switch (usuario.rol_id) {
+      case 1:
+        rolNombre = 'alumno';
+        break;
+      case 2:
+        rolNombre = 'docente';
+        break;
+      case 3:
+        rolNombre = 'almacen';
+        break;
+      case 4:
+        rolNombre = 'administrador';
+        break;
+    }
+
+    const responseData = { 
       token,
       usuario: {
         id: usuario.id,
         nombre: usuario.nombre,
         correo: usuario.correo_institucional,
-        rol_id: usuario.rol_id
+        rol_id: usuario.rol_id,
+        rol: rolNombre
       }
-    });
+    };
+
+    // Incluir permisos en la respuesta si es usuario de almacén
+    if (permisos) {
+      responseData.usuario.permisos = permisos;
+    }
+
+    res.json(responseData);
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
     res.status(500).json({ error: 'Error al iniciar sesión' });
@@ -134,7 +183,7 @@ const verificarPermisosChat = async (req, res) => {
       });
     }
     
-    // Si es docente (rol_id: 2), no tiene acceso al chat
+    // Si es docente (rol_id: 2), no tiene acceso al chat pero puede hacer solicitudes
     if (userRole === 2) {
       return res.json({ 
         acceso_chat: false,
