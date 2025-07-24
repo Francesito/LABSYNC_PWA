@@ -2,11 +2,17 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
+
+// Importar rutas existentes
 const adeudoRoutes = require('./routes/adeudoRoutes'); 
 const authRoutes = require('./routes/authRoutes');
 const materialRoutes = require('./routes/materialRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const solicitudRoutes = require('./routes/solicitudRoutes');
+
+// Importar nueva ruta de administrador
+const adminRoutes = require('./routes/adminRoutes');
+
 const pool = require('./config/db');
 const { eliminarSolicitudesViejas } = require('./controllers/solicitudController');
 
@@ -56,24 +62,74 @@ app.get('/health', async (req, res) => {
 });
 
 // ==================== RUTAS DE LA API ====================
+// Rutas existentes (sin cambios)
 app.use('/api/auth', authRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/solicitudes', solicitudRoutes);
 app.use('/api/adeudos', adeudoRoutes);
 
+// Nueva ruta de administrador
+app.use('/api/admin', adminRoutes);
+
 // ==================== INICIALIZACIÓN DE ROLES ====================
 const initializeRoles = async () => {
   try {
+    // Actualizado para incluir el rol de administrador
     await pool.query(`
       INSERT IGNORE INTO Rol (id, nombre) VALUES
       (1, 'alumno'),
       (2, 'docente'),
-      (3, 'almacen');
+      (3, 'almacen'),
+      (4, 'administrador');
     `);
     console.log('✅ Roles inicializados correctamente');
   } catch (error) {
     console.error('❌ Error inicializando roles:', error);
+  }
+};
+
+// ==================== INICIALIZACIÓN DE TABLA PERMISOS ====================
+const initializePermisosTable = async () => {
+  try {
+    // Crear tabla PermisosAlmacen si no existe
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS PermisosAlmacen (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        usuario_id INT NOT NULL,
+        acceso_chat BOOLEAN DEFAULT FALSE,
+        modificar_stock BOOLEAN DEFAULT FALSE,
+        fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
+        UNIQUE KEY unique_usuario (usuario_id)
+      );
+    `);
+
+    // Insertar permisos por defecto para usuarios de almacén existentes
+    await pool.query(`
+      INSERT IGNORE INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock)
+      SELECT id, FALSE, FALSE 
+      FROM Usuario 
+      WHERE rol_id = 3;
+    `);
+
+    // Crear índices para mejorar rendimiento
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_permisos_usuario ON PermisosAlmacen(usuario_id);
+    `);
+    
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_usuario_rol ON Usuario(rol_id);
+    `);
+    
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_usuario_activo ON Usuario(activo);
+    `);
+
+    console.log('✅ Tabla PermisosAlmacen inicializada correctamente');
+  } catch (error) {
+    console.error('❌ Error inicializando tabla PermisosAlmacen:', error);
   }
 };
 
@@ -97,9 +153,17 @@ app.use('*', (req, res) => {
 
 // ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, '0.0.0.0', () => {
+
+app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
   console.log(`🌐 URL: https://labsync-1090.onrender.com`);
-  initializeRoles();
+  
+  // Inicializar base de datos
+  await initializeRoles();
+  await initializePermisosTable();
+  
+  // Iniciar trabajos programados
   startSolicitudCleanupJob();
+  
+  console.log('✅ Sistema LabSync inicializado completamente');
 });
