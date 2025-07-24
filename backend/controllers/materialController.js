@@ -11,7 +11,7 @@
  *
  * Versión: Extensiva (>400 líneas) para compatibilidad total
  * Autor: ChatGPT Asistente
- * Fecha: 2025
+ * Fecha: 24 de julio de 2025
  *
  * ==========================================================================================
  */
@@ -28,7 +28,7 @@ const crypto = require('crypto');
 
 /** Log helper con timestamp */
 function logRequest(name) {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().toISOString(); // Ejemplo: 2025-07-24T20:20:00.000Z
   console.log(`[${timestamp}] [MaterialController] >> ${name}`);
 }
 
@@ -36,8 +36,8 @@ function logRequest(name) {
 function detectTableAndField(tipo) {
   switch (tipo) {
     case 'liquido': return { table: 'MaterialLiquido', field: 'cantidad_disponible_ml' };
-    case 'solido':  return { table: 'MaterialSolido',  field: 'cantidad_disponible_g'  };
-    case 'equipo':  return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
+    case 'solido': return { table: 'MaterialSolido', field: 'cantidad_disponible_g' };
+    case 'equipo': return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
     case 'laboratorio': return { table: 'MaterialLaboratorio', field: 'cantidad_disponible' };
     default: return null;
   }
@@ -99,7 +99,7 @@ const getLiquidos = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
-    res.status(500).json({ error: 'Error al obtener materiales líquidos' });
+    res.status(500).json({ error: 'Error al obtener materiales líquidos: ' + error.message });
   }
 };
 
@@ -111,7 +111,7 @@ const getSolidos = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
-    res.status(500).json({ error: 'Error al obtener materiales sólidos' });
+    res.status(500).json({ error: 'Error al obtener materiales sólidos: ' + error.message });
   }
 };
 
@@ -123,7 +123,7 @@ const getEquipos = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
-    res.status(500).json({ error: 'Error al obtener equipos' });
+    res.status(500).json({ error: 'Error al obtener equipos: ' + error.message });
   }
 };
 
@@ -135,7 +135,7 @@ const getLaboratorio = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
-    res.status(500).json({ error: 'Error al obtener materiales de laboratorio' });
+    res.status(500).json({ error: 'Error al obtener materiales de laboratorio: ' + error.message });
   }
 };
 
@@ -164,7 +164,7 @@ const getAllSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getAllSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
   }
 };
 
@@ -226,7 +226,7 @@ const crearSolicitudes = async (req, res) => {
     res.status(201).json({ message: 'Solicitud creada', solicitudId, folio });
   } catch (err) {
     console.error('[Error] crearSolicitudes:', err);
-    res.status(500).json({ error: 'Error al registrar solicitud' });
+    res.status(500).json({ error: 'Error al registrar solicitud: ' + err.message });
   }
 };
 
@@ -273,7 +273,7 @@ const crearSolicitudConAdeudo = async (req, res) => {
     res.status(201).json({ message: 'Solicitud con adeudo registrada correctamente' });
   } catch (error) {
     console.error('[Error] crearSolicitudConAdeudo:', error);
-    res.status(500).json({ error: 'Error al crear solicitud con adeudo' });
+    res.status(500).json({ error: 'Error al crear solicitud con adeudo: ' + error.message });
   }
 };
 
@@ -293,6 +293,8 @@ const getUserSolicitudes = async (req, res) => {
   logRequest('getUserSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
 
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
   try {
     const { id: usuario_id } = jwt.verify(token, process.env.JWT_SECRET);
 
@@ -306,7 +308,7 @@ const getUserSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getUserSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
   }
 };
 
@@ -326,7 +328,7 @@ const getApprovedSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getApprovedSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes aprobadas' });
+    res.status(500).json({ error: 'Error al obtener solicitudes aprobadas: ' + error.message });
   }
 };
 
@@ -345,7 +347,7 @@ const getPendingSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getPendingSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes pendientes' });
+    res.status(500).json({ error: 'Error al obtener solicitudes pendientes: ' + error.message });
   }
 };
 
@@ -379,7 +381,7 @@ const approveSolicitud = async (req, res) => {
     res.status(200).json({ message: 'Solicitud aprobada' });
   } catch (error) {
     console.error('[Error] approveSolicitud:', error);
-    res.status(500).json({ error: 'Error al aprobar solicitud' });
+    res.status(500).json({ error: 'Error al aprobar solicitud: ' + error.message });
   }
 };
 
@@ -393,7 +395,7 @@ const rejectSolicitud = async (req, res) => {
     res.status(200).json({ message: 'Solicitud rechazada' });
   } catch (error) {
     console.error('[Error] rejectSolicitud:', error);
-    res.status(500).json({ error: 'Error al rechazar solicitud' });
+    res.status(500).json({ error: 'Error al rechazar solicitud: ' + error.message });
   }
 };
 
@@ -457,7 +459,7 @@ const deliverSolicitud = async (req, res) => {
     console.error('[Error] deliverSolicitud:', err);
     return res
       .status(500)
-      .json({ error: 'Error al entregar solicitud' });
+      .json({ error: 'Error al entregar solicitud: ' + err.message });
   }
 };
 
@@ -471,6 +473,8 @@ const cancelSolicitud = async (req, res) => {
   const { id } = req.params;
   logRequest(`cancelSolicitud - ID=${id}`);
   const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
 
   try {
     const { id: usuario_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
@@ -522,7 +526,7 @@ const cancelSolicitud = async (req, res) => {
 
   } catch (error) {
     console.error('[Error] cancelSolicitud:', error);
-    res.status(500).json({ error: 'Error al cancelar solicitud' });
+    res.status(500).json({ error: 'Error al cancelar solicitud: ' + error.message });
   }
 };
 
@@ -537,6 +541,8 @@ const adjustInventory = async (req, res) => {
   const { id } = req.params;
   const { cantidad, tipo } = req.body;
   const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
 
   try {
     const { rol_id } = jwt.verify(token, process.env.JWT_SECRET);
@@ -559,7 +565,7 @@ const adjustInventory = async (req, res) => {
     res.status(200).json({ message: 'Inventario actualizado correctamente', nuevoStock: nuevaCantidad });
   } catch (error) {
     console.error('[Error] adjustInventory:', error);
-    res.status(500).json({ error: 'Error al ajustar inventario' });
+    res.status(500).json({ error: 'Error al ajustar inventario: ' + error.message });
   }
 };
 
@@ -593,7 +599,7 @@ const getEstadisticas = async (req, res) => {
     res.json(stats);
   } catch (error) {
     console.error('[Error] getEstadisticas:', error);
-    res.status(500).json({ error: 'Error al obtener estadísticas' });
+    res.status(500).json({ error: 'Error al obtener estadísticas: ' + error.message });
   }
 };
 
@@ -614,7 +620,7 @@ const getHistorialMovimientos = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getHistorialMovimientos:', error);
-    res.status(500).json({ error: 'Error al obtener historial de movimientos' });
+    res.status(500).json({ error: 'Error al obtener historial de movimientos: ' + error.message });
   }
 };
 
@@ -629,6 +635,8 @@ const ajusteMasivoStock = async (req, res) => {
   logRequest('ajusteMasivoStock');
   const { ajustes } = req.body; // Array de { id, tipo, cantidad }
   const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
 
   try {
     const { rol_id, permisos } = jwt.verify(token, process.env.JWT_SECRET);
@@ -666,7 +674,7 @@ const ajusteMasivoStock = async (req, res) => {
     res.status(200).json({ message: 'Ajuste masivo de stock completado' });
   } catch (error) {
     console.error('[Error] ajusteMasivoStock:', error);
-    res.status(500).json({ error: 'Error al ajustar stock masivo' });
+    res.status(500).json({ error: 'Error al ajustar stock masivo: ' + error.message });
   }
 };
 
@@ -709,7 +717,7 @@ const getMaterialesStockBajo = async (req, res) => {
     res.json(lowStock);
   } catch (error) {
     console.error('[Error] getMaterialesStockBajo:', error);
-    res.status(500).json({ error: 'Error al obtener materiales con stock bajo' });
+    res.status(500).json({ error: 'Error al obtener materiales con stock bajo: ' + error.message });
   }
 };
 
@@ -731,7 +739,7 @@ const getMaterials = async (req, res) => {
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
-    res.status(500).json({ error: 'Error al obtener materiales' });
+    res.status(500).json({ error: 'Error al obtener materiales: ' + error.message });
   }
 };
 
@@ -756,7 +764,7 @@ const getMaterialById = async (req, res) => {
     res.json({ ...result[0], tipo });
   } catch (error) {
     console.error('[Error] getMaterialById:', error);
-    res.status(500).json({ error: 'Error al obtener material' });
+    res.status(500).json({ error: 'Error al obtener material: ' + error.message });
   }
 };
 
@@ -780,7 +788,7 @@ const getDeliveredSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getDeliveredSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes entregadas' });
+    res.status(500).json({ error: 'Error al obtener solicitudes entregadas: ' + error.message });
   }
 };
 
@@ -797,12 +805,11 @@ const getSolicitudDetalle = async (req, res) => {
          s.folio,
          s.nombre_alumno,
          s.profesor,
-         (SELECT MAX(a.fecha_entrega) 
-            FROM Adeudo a 
-           WHERE a.solicitud_id = s.id
-         ) AS fecha_entrega
+         MIN(a.fecha_entrega) AS fecha_entrega
        FROM Solicitud s
-      WHERE s.id = ?`,
+       LEFT JOIN Adeudo a ON a.solicitud_id = s.id
+       WHERE s.id = ?
+       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor`,
       [id]
     );
     if (!solRows.length) {
@@ -843,7 +850,7 @@ const getSolicitudDetalle = async (req, res) => {
     });
   } catch (err) {
     console.error('[Error] getSolicitudDetalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle de solicitud' });
+    res.status(500).json({ error: 'Error al obtener detalle de solicitud: ' + err.message });
   }
 };
 
