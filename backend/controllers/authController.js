@@ -62,18 +62,32 @@ const verificarCorreo = async (req, res) => {
 const iniciarSesion = async (req, res) => {
   const { correo_institucional, contrasena } = req.body;
 
+  // Validar campos requeridos
+  if (!correo_institucional || !contrasena) {
+    return res.status(400).json({ error: 'Correo y contraseña son obligatorios' });
+  }
+
   try {
     const [rows] = await pool.query('SELECT * FROM Usuario WHERE correo_institucional = ?', [correo_institucional]);
-    if (rows.length === 0 || !rows[0].activo) {
-      return res.status(400).json({ error: 'Usuario no encontrado o no verificado' });
+    
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Usuario no encontrado' });
     }
 
     const usuario = rows[0];
+    
+    // Verificar si el usuario está activo
+    if (!usuario.activo) {
+      return res.status(400).json({ error: 'Usuario no verificado o bloqueado. Verifica tu correo o contacta al administrador.' });
+    }
+
+    // Verificar contraseña
     const esValido = await bcrypt.compare(contrasena, usuario.contrasena);
     if (!esValido) {
       return res.status(400).json({ error: 'Contraseña incorrecta' });
     }
 
+    // Generar token JWT
     const token = jwt.sign(
       {
         id: usuario.id,
@@ -82,17 +96,30 @@ const iniciarSesion = async (req, res) => {
         rol_id: usuario.rol_id
       },
       process.env.JWT_SECRET,
-      { expiresIn: '1d' }
+      { expiresIn: '24h' }
     );
 
-    res.json({ token });
+    res.json({ 
+      token,
+      usuario: {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo: usuario.correo_institucional,
+        rol_id: usuario.rol_id
+      }
+    });
   } catch (error) {
+    console.error('Error al iniciar sesión:', error);
     res.status(500).json({ error: 'Error al iniciar sesión' });
   }
 };
 
 const forgotPassword = async (req, res) => {
   const { correo_institucional } = req.body;
+
+  if (!correo_institucional) {
+    return res.status(400).json({ error: 'Correo institucional requerido' });
+  }
 
   try {
     const [rows] = await pool.query('SELECT * FROM Usuario WHERE correo_institucional = ?', [correo_institucional]);
@@ -101,6 +128,12 @@ const forgotPassword = async (req, res) => {
     }
 
     const token = jwt.sign({ correo_institucional }, process.env.JWT_SECRET, { expiresIn: '1h' });
+
+    // Guardar token en la base de datos
+    await pool.query(
+      'UPDATE Usuario SET reset_token = ?, reset_token_expires = DATE_ADD(NOW(), INTERVAL 1 HOUR) WHERE correo_institucional = ?',
+      [token, correo_institucional]
+    );
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
     await sendEmail(
@@ -111,6 +144,7 @@ const forgotPassword = async (req, res) => {
 
     res.json({ mensaje: 'Enlace de restablecimiento enviado a tu correo.' });
   } catch (error) {
+    console.error('Error al procesar solicitud:', error);
     res.status(500).json({ error: 'Error al procesar la solicitud' });
   }
 };
@@ -123,16 +157,42 @@ const resetPassword = async (req, res) => {
     return res.status(400).json({ error: 'La nueva contraseña es requerida' });
   }
 
+  if (contrasena.length < 6) {
+    return res.status(400).json({ error: 'La contraseña debe tener al menos 6 caracteres' });
+  }
+
   try {
+    // Verificar token JWT
     const { correo_institucional } = jwt.verify(token, process.env.JWT_SECRET);
-    const hash = await bcrypt.hash(contrasena, 10);
-    const [result] = await pool.query('UPDATE Usuario SET contrasena = ? WHERE correo_institucional = ?', [hash, correo_institucional]);
-    if (result.affectedRows === 0) {
-      return res.status(400).json({ error: 'Usuario no encontrado' });
+    
+    // Verificar que el token existe en la base de datos y no ha expirado
+    const [rows] = await pool.query(
+      'SELECT * FROM Usuario WHERE correo_institucional = ? AND reset_token = ? AND reset_token_expires > NOW()',
+      [correo_institucional, token]
+    );
+
+    if (rows.length === 0) {
+      return res.status(400).json({ error: 'Token inválido o expirado' });
     }
+
+    // Actualizar contraseña y limpiar token
+    const hash = await bcrypt.hash(contrasena, 10);
+    const [result] = await pool.query(
+      'UPDATE Usuario SET contrasena = ?, reset_token = NULL, reset_token_expires = NULL WHERE correo_institucional = ?',
+      [hash, correo_institucional]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(400).json({ error: 'Error al actualizar contraseña' });
+    }
+
     res.json({ mensaje: 'Contraseña restablecida exitosamente' });
   } catch (error) {
-    res.status(400).json({ error: 'Token inválido o expirado' });
+    console.error('Error al restablecer contraseña:', error);
+    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
+      return res.status(400).json({ error: 'Token inválido o expirado' });
+    }
+    res.status(500).json({ error: 'Error interno del servidor' });
   }
 };
 
