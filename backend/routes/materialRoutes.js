@@ -142,13 +142,14 @@ router.post(
   materialController.cancelSolicitud
 );
 
-// Ajustar inventario (con tipo en body)
 router.post(
   '/material/:id/ajustar',
   verificarToken,
   verificarRol([3]),
+  verificarPermisosAlmacen('stock'),
   materialController.adjustInventory
 );
+
 
 // Listar solicitudes entregadas (solo almacenistas)
 router.get(
