@@ -115,29 +115,6 @@ const iniciarSesion = async (req, res) => {
   }
 };
 
-const verificarPermisosStock = async (req, res) => {
-  try {
-    if (req.usuario.rol_id !== 3) {
-      return res.json({ modificar_stock: false });
-    }
-
-    const [rows] = await pool.query(
-      'SELECT modificar_stock FROM PermisosAlmacen WHERE usuario_id = ?',
-      [req.usuario.id]
-    );
-
-    if (rows.length === 0) {
-      return res.json({ modificar_stock: false });
-    }
-
-    res.json({ modificar_stock: Boolean(rows[0].modificar_stock) });
-  } catch (error) {
-    console.error('Error al verificar permiso modificar_stock:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
-  }
-};
-
-
 const verificarPermisosChat = async (req, res) => {
   try {
     const usuario = req.usuario; // Viene del middleware verificarToken
@@ -298,7 +275,6 @@ module.exports = {
   registrarUsuario,
   verificarCorreo,
   iniciarSesion,
-  verificarPermisosStock,
   verificarPermisosChat,
   forgotPassword,
   resetPassword
