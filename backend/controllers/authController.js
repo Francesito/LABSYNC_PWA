@@ -1,3 +1,4 @@
+//backend/controllers/authController.js
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
@@ -68,13 +69,7 @@ const iniciarSesion = async (req, res) => {
   }
 
   try {
-    // Consultar usuario con información del rol
-    const [rows] = await pool.query(`
-      SELECT u.*, r.nombre as rol_nombre 
-      FROM Usuario u 
-      LEFT JOIN Rol r ON u.rol_id = r.id 
-      WHERE u.correo_institucional = ?
-    `, [correo_institucional]);
+    const [rows] = await pool.query('SELECT * FROM Usuario WHERE correo_institucional = ?', [correo_institucional]);
     
     if (rows.length === 0) {
       return res.status(400).json({ error: 'Usuario no encontrado' });
@@ -93,83 +88,27 @@ const iniciarSesion = async (req, res) => {
       return res.status(400).json({ error: 'Contraseña incorrecta' });
     }
 
-    // Obtener permisos específicos si es usuario de almacén
-    let permisos = null;
-    if (usuario.rol_id === 3) { // rol de almacén
-      const [permisosRows] = await pool.query(
-        'SELECT acceso_chat, modificar_stock FROM PermisosAlmacen WHERE usuario_id = ?',
-        [usuario.id]
-      );
-      
-      if (permisosRows.length > 0) {
-        permisos = {
-          acceso_chat: Boolean(permisosRows[0].acceso_chat),
-          modificar_stock: Boolean(permisosRows[0].modificar_stock)
-        };
-      } else {
-        // Si no hay registro en PermisosAlmacen, crear uno con permisos por defecto
-        await pool.query(
-          'INSERT INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock) VALUES (?, 0, 0)',
-          [usuario.id]
-        );
-        permisos = {
-          acceso_chat: false,
-          modificar_stock: false
-        };
-      }
-    }
+    // Generar token JWT
+    const token = jwt.sign(
+      {
+        id: usuario.id,
+        nombre: usuario.nombre,
+        correo_institucional: usuario.correo_institucional,
+        rol_id: usuario.rol_id
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' }
+    );
 
-    // Generar token JWT con permisos incluidos
-    const tokenData = {
-      id: usuario.id,
-      nombre: usuario.nombre,
-      correo_institucional: usuario.correo_institucional,
-      rol_id: usuario.rol_id
-    };
-
-    // Incluir permisos en el token si es usuario de almacén
-    if (permisos) {
-      tokenData.permisos = permisos;
-    }
-
-    const token = jwt.sign(tokenData, process.env.JWT_SECRET, { expiresIn: '24h' });
-
-    // Determinar el nombre del rol
-    let rolNombre = 'unknown';
-    switch (usuario.rol_id) {
-      case 1:
-        rolNombre = 'alumno';
-        break;
-      case 2:
-        rolNombre = 'docente';
-        break;
-      case 3:
-        rolNombre = 'almacen';
-        break;
-      case 4:
-        rolNombre = 'administrador';
-        break;
-    }
-
-    const responseData = { 
-      success: true, // Agregar indicador de éxito
+    res.json({ 
       token,
       usuario: {
         id: usuario.id,
         nombre: usuario.nombre,
         correo: usuario.correo_institucional,
-        rol_id: usuario.rol_id,
-        rol: rolNombre
-      },
-      redirect: '/catalogo' // Agregar la ruta de redirección
-    };
-
-    // Incluir permisos en la respuesta si es usuario de almacén
-    if (permisos) {
-      responseData.usuario.permisos = permisos;
-    }
-
-    res.json(responseData);
+        rol_id: usuario.rol_id
+      }
+    });
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
     res.status(500).json({ error: 'Error al iniciar sesión' });
@@ -195,7 +134,7 @@ const verificarPermisosChat = async (req, res) => {
       });
     }
     
-    // Si es docente (rol_id: 2), no tiene acceso al chat pero puede hacer solicitudes
+    // Si es docente (rol_id: 2), no tiene acceso al chat
     if (userRole === 2) {
       return res.json({ 
         acceso_chat: false,
@@ -212,11 +151,7 @@ const verificarPermisosChat = async (req, res) => {
       );
       
       if (permisosRows.length === 0) {
-        // Si no hay registro en PermisosAlmacen, crear uno con permisos por defecto
-        await pool.query(
-          'INSERT INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock) VALUES (?, 0, 0)',
-          [usuario.id]
-        );
+        // Si no hay registro en PermisosAlmacen, denegar acceso por defecto
         return res.json({ 
           acceso_chat: false,
           modificar_stock: false,
@@ -251,20 +186,6 @@ const verificarPermisosChat = async (req, res) => {
   } catch (error) {
     console.error('Error al verificar permisos de chat:', error);
     res.status(500).json({ error: 'Error al verificar permisos' });
-  }
-};
-
-const cerrarSesion = async (req, res) => {
-  try {
-    // En el frontend se debe eliminar el token del localStorage
-    res.json({ 
-      success: true,
-      mensaje: 'Sesión cerrada exitosamente',
-      redirect: '/login' // Agregar la ruta de redirección
-    });
-  } catch (error) {
-    console.error('Error al cerrar sesión:', error);
-    res.status(500).json({ error: 'Error al cerrar sesión' });
   }
 };
 
@@ -355,7 +276,6 @@ module.exports = {
   verificarCorreo,
   iniciarSesion,
   verificarPermisosChat,
-  cerrarSesion,
   forgotPassword,
   resetPassword
 };
