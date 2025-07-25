@@ -4,14 +4,14 @@
  * ==========================================================================================
  *
  * Soporta:
- * - Subtablas MaterialLiquido, MaterialSolido, MaterialEquipo, MaterialLaboratorio
+ * - Subtablas MaterialLiquido, MaterialSolido, MaterialEquipo
  * - Solicitudes agrupadas con stock por tipo
  * - Ajuste de inventario robusto con validación
  * - LEFT JOIN dinámico para resolver nombre del material
  *
  * Versión: Extensiva (>400 líneas) para compatibilidad total
  * Autor: ChatGPT Asistente
- * Fecha: 24 de julio de 2025
+ * Fecha: 2025
  *
  * ==========================================================================================
  */
@@ -28,7 +28,7 @@ const crypto = require('crypto');
 
 /** Log helper con timestamp */
 function logRequest(name) {
-  const timestamp = new Date().toISOString(); // Ejemplo: 2025-07-24T20:20:00.000Z
+  const timestamp = new Date().toISOString();
   console.log(`[${timestamp}] [MaterialController] >> ${name}`);
 }
 
@@ -36,9 +36,9 @@ function logRequest(name) {
 function detectTableAndField(tipo) {
   switch (tipo) {
     case 'liquido': return { table: 'MaterialLiquido', field: 'cantidad_disponible_ml' };
-    case 'solido': return { table: 'MaterialSolido', field: 'cantidad_disponible_g' };
-    case 'equipo': return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
-    case 'laboratorio': return { table: 'MaterialLaboratorio', field: 'cantidad_disponible' };
+    case 'solido':  return { table: 'MaterialSolido',  field: 'cantidad_disponible_g'  };
+    case 'equipo':  return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
+    case 'laboratorio': return { table: 'MaterialLaboratorio', field: 'cantidad_disponible' }; // ✅ NUEVO
     default: return null;
   }
 }
@@ -74,16 +74,17 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
     si.material_id,
     si.tipo,
     si.cantidad,
-    COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material
+    COALESCE(ml.nombre, ms.nombre, me.nombre) AS nombre_material
   FROM Solicitud s
   JOIN SolicitudItem si ON s.id = si.solicitud_id
   LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
   LEFT JOIN MaterialSolido  ms ON si.tipo = 'solido'  AND si.material_id = ms.id
   LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo'  AND si.material_id = me.id
-  LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
   WHERE 1=1
   /*AND_CONDITION*/
 `;
+
+
 
 /**
  * ========================================
@@ -95,11 +96,11 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
 const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
+    const [rows] = await pool.query('SELECT * FROM MaterialLiquido');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
-    res.status(500).json({ error: 'Error al obtener materiales líquidos: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener materiales líquidos' });
   }
 };
 
@@ -107,38 +108,26 @@ const getLiquidos = async (req, res) => {
 const getSolidos = async (req, res) => {
   logRequest('getSolidos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
+    const [rows] = await pool.query('SELECT * FROM MaterialSolido');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
-    res.status(500).json({ error: 'Error al obtener materiales sólidos: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener materiales sólidos' });
   }
 };
+
 
 /** Obtener equipos */
 const getEquipos = async (req, res) => {
   logRequest('getEquipos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
+    const [rows] = await pool.query('SELECT * FROM MaterialEquipo');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
-    res.status(500).json({ error: 'Error al obtener equipos: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener equipos' });
   }
 };
-
-/** Obtener materiales de laboratorio */
-const getLaboratorio = async (req, res) => {
-  logRequest('getLaboratorio');
-  try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
-    res.json(rows);
-  } catch (error) {
-    console.error('[Error] getLaboratorio:', error);
-    res.status(500).json({ error: 'Error al obtener materiales de laboratorio: ' + error.message });
-  }
-};
-
 /**
  * ========================================
  * CREAR SOLICITUDES (AGRUPADAS)
@@ -155,7 +144,9 @@ const getLaboratorio = async (req, res) => {
  * 
  */
 
-/** Obtener TODAS las solicitudes (para DOCENTE) */
+/**
+ * Obtener TODAS las solicitudes (para DOCENTE)
+ */
 const getAllSolicitudes = async (req, res) => {
   logRequest('getAllSolicitudes');
   try {
@@ -164,9 +155,10 @@ const getAllSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getAllSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener solicitudes' });
   }
 };
+
 
 /** Crear solicitud (alumno/docente) con folio */
 const crearSolicitudes = async (req, res) => {
@@ -181,7 +173,7 @@ const crearSolicitudes = async (req, res) => {
 
   try {
     const { id: usuario_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
-    if (![1, 2].includes(rol_id)) {
+    if (![1,2].includes(rol_id)) {
       return res.status(403).json({ error: 'Solo alumnos o docentes pueden crear solicitudes' });
     }
 
@@ -189,9 +181,9 @@ const crearSolicitudes = async (req, res) => {
     if (!user.length) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     const folio = generarFolio();
-    const estadoInicial = (rol_id === 2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
+    const estadoInicial = (rol_id===2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
     let docente_id = null, profesor = 'Sin asignar';
-    if (estadoInicial === 'aprobada') {
+    if (estadoInicial==='aprobada') {
       docente_id = usuario_id; profesor = user[0].nombre;
     } else {
       const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 LIMIT 1');
@@ -212,7 +204,7 @@ const crearSolicitudes = async (req, res) => {
         `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?,?,?,?)`,
         [solicitudId, material_id, tipo, cantidad]
       );
-      if (rol_id === 1) {
+      if (rol_id===1) {
         const meta = detectTableAndField(tipo);
         if (meta) {
           await pool.query(
@@ -223,12 +215,13 @@ const crearSolicitudes = async (req, res) => {
       }
     }
 
-    res.status(201).json({ message: 'Solicitud creada', solicitudId, folio });
-  } catch (err) {
+    res.status(201).json({ message:'Solicitud creada', solicitudId, folio });
+  } catch(err) {
     console.error('[Error] crearSolicitudes:', err);
-    res.status(500).json({ error: 'Error al registrar solicitud: ' + err.message });
+    res.status(500).json({ error:'Error al registrar solicitud' });
   }
 };
+
 
 /**
  * ========================================
@@ -236,6 +229,8 @@ const crearSolicitudes = async (req, res) => {
  * Solo ALUMNO
  * ========================================
  */
+
+
 
 const crearSolicitudConAdeudo = async (req, res) => {
   logRequest('crearSolicitudConAdeudo');
@@ -273,7 +268,7 @@ const crearSolicitudConAdeudo = async (req, res) => {
     res.status(201).json({ message: 'Solicitud con adeudo registrada correctamente' });
   } catch (error) {
     console.error('[Error] crearSolicitudConAdeudo:', error);
-    res.status(500).json({ error: 'Error al crear solicitud con adeudo: ' + error.message });
+    res.status(500).json({ error: 'Error al crear solicitud con adeudo' });
   }
 };
 
@@ -288,12 +283,11 @@ const crearSolicitudConAdeudo = async (req, res) => {
  */
 
 /**
- * Obtener solicitudes del usuario */
+ * Obtener solicitudes del usuario
+ */
 const getUserSolicitudes = async (req, res) => {
   logRequest('getUserSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) return res.status(401).json({ error: 'Token requerido' });
 
   try {
     const { id: usuario_id } = jwt.verify(token, process.env.JWT_SECRET);
@@ -308,12 +302,15 @@ const getUserSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getUserSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener solicitudes' });
   }
 };
 
+
+
 /**
- * Obtener solicitudes aprobadas */
+ * Obtener solicitudes aprobadas
+ */
 const getApprovedSolicitudes = async (req, res) => {
   logRequest('getApprovedSolicitudes');
 
@@ -328,12 +325,15 @@ const getApprovedSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getApprovedSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes aprobadas: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener solicitudes aprobadas' });
   }
 };
 
+
+
 /**
- * Obtener solicitudes pendientes */
+ * Obtener solicitudes pendientes
+ */
 const getPendingSolicitudes = async (req, res) => {
   logRequest('getPendingSolicitudes');
 
@@ -347,9 +347,10 @@ const getPendingSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getPendingSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes pendientes: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener solicitudes pendientes' });
   }
 };
+
 
 /**
  * ========================================
@@ -358,7 +359,8 @@ const getPendingSolicitudes = async (req, res) => {
  */
 
 /**
- * Aprobar solicitud */
+ * Aprobar solicitud
+ */
 const approveSolicitud = async (req, res) => {
   logRequest(`approveSolicitud`);
 
@@ -381,12 +383,14 @@ const approveSolicitud = async (req, res) => {
     res.status(200).json({ message: 'Solicitud aprobada' });
   } catch (error) {
     console.error('[Error] approveSolicitud:', error);
-    res.status(500).json({ error: 'Error al aprobar solicitud: ' + error.message });
+    res.status(500).json({ error: 'Error al aprobar solicitud' });
   }
 };
 
+
 /**
- * Rechazar solicitud */
+ * Rechazar solicitud
+ */
 const rejectSolicitud = async (req, res) => {
   const { id } = req.params;
   logRequest(`rejectSolicitud - ID=${id}`);
@@ -395,12 +399,17 @@ const rejectSolicitud = async (req, res) => {
     res.status(200).json({ message: 'Solicitud rechazada' });
   } catch (error) {
     console.error('[Error] rejectSolicitud:', error);
-    res.status(500).json({ error: 'Error al rechazar solicitud: ' + error.message });
+    res.status(500).json({ error: 'Error al rechazar solicitud' });
   }
 };
 
 /**
- * Marcar solicitud como entregada + generar adeudos con fecha_entrega */
+ * Marcar como entregada
+ */
+/** Marcar solicitud como entregada + generar adeudos */
+/**
+ * Marcar solicitud como entregada + generar adeudos con fecha_entrega
+ */
 const deliverSolicitud = async (req, res) => {
   logRequest('deliverSolicitud');
   const { id } = req.params;
@@ -442,7 +451,7 @@ const deliverSolicitud = async (req, res) => {
             tipo,
             cantidad_pendiente,
             fecha_entrega)
-         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+         VALUES (?,         ?,                  ?,          ?,           ?,        ?,                 NOW())`,
         [
           id,
           it.solicitud_item_id,
@@ -459,22 +468,23 @@ const deliverSolicitud = async (req, res) => {
     console.error('[Error] deliverSolicitud:', err);
     return res
       .status(500)
-      .json({ error: 'Error al entregar solicitud: ' + err.message });
+      .json({ error: 'Error al entregar solicitud' });
   }
 };
 
+
+
+
 /**
- * Cancelar solicitud
- * - Si lo hace un alumno (rol 1): valida que sea suya, esté pendiente,
- *   restaura stock y luego marca como cancelado.
- * - Para almacenistas (rol 3) sigue marcando como cancelado sin tocar stock.
- */
++ * Cancelar solicitud
++ * - Si lo hace un alumno (rol 1): valida que sea suya, esté pendiente,
++ *   restaura stock y luego marca como cancelado.
++ * - Para almacenistas (rol 3) sigue marcando como cancelado sin tocar stock.
++ */
 const cancelSolicitud = async (req, res) => {
   const { id } = req.params;
   logRequest(`cancelSolicitud - ID=${id}`);
   const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) return res.status(401).json({ error: 'Token requerido' });
 
   try {
     const { id: usuario_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
@@ -526,10 +536,9 @@ const cancelSolicitud = async (req, res) => {
 
   } catch (error) {
     console.error('[Error] cancelSolicitud:', error);
-    res.status(500).json({ error: 'Error al cancelar solicitud: ' + error.message });
+    res.status(500).json({ error: 'Error al cancelar solicitud' });
   }
 };
-
 /**
  * ========================================
  * AJUSTE DE INVENTARIO (SOLO ALMACENISTA)
@@ -542,13 +551,9 @@ const adjustInventory = async (req, res) => {
   const { cantidad, tipo } = req.body;
   const token = req.headers.authorization?.split(' ')[1];
 
-  if (!token) return res.status(401).json({ error: 'Token requerido' });
-
   try {
     const { rol_id } = jwt.verify(token, process.env.JWT_SECRET);
-    if (rol_id !== 3 && !req.user?.permisos?.modificar_stock) {
-      return res.status(403).json({ error: 'Solo almacenistas con permisos de stock pueden ajustar inventario' });
-    }
+    if (rol_id !== 3) return res.status(403).json({ error: 'Solo almacenistas pueden ajustar inventario' });
 
     if (isNaN(cantidad)) return res.status(400).json({ error: 'Cantidad debe ser un número válido' });
 
@@ -565,185 +570,39 @@ const adjustInventory = async (req, res) => {
     res.status(200).json({ message: 'Inventario actualizado correctamente', nuevoStock: nuevaCantidad });
   } catch (error) {
     console.error('[Error] adjustInventory:', error);
-    res.status(500).json({ error: 'Error al ajustar inventario: ' + error.message });
+    res.status(500).json({ error: 'Error al ajustar inventario' });
   }
 };
-
-/**
- * ========================================
- * RUTAS ADICIONALES PARA ADMINISTRADORES
- * ========================================
- */
-
-/** Obtener estadísticas de materiales (solo admin) */
-const getEstadisticas = async (req, res) => {
-  logRequest('getEstadisticas');
-  try {
-    const { rol_id } = req.usuario;
-    if (rol_id !== 4) return res.status(403).json({ error: 'Solo administradores pueden ver estadísticas' });
-
-    const [liquidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_ml) as stock FROM MaterialLiquido');
-    const [solidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_g) as stock FROM MaterialSolido');
-    const [equipos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_u) as stock FROM MaterialEquipo');
-    const [laboratorio] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible) as stock FROM MaterialLaboratorio');
-
-    const stats = {
-      liquidos: { total: liquidos[0].total, stock: liquidos[0].stock || 0 },
-      solidos: { total: solidos[0].total, stock: solidos[0].stock || 0 },
-      equipos: { total: equipos[0].total, stock: equipos[0].stock || 0 },
-      laboratorio: { total: laboratorio[0].total, stock: laboratorio[0].stock || 0 },
-      total_items: liquidos[0].total + solidos[0].total + equipos[0].total + laboratorio[0].total,
-      total_stock: (liquidos[0].stock || 0) + (solidos[0].stock || 0) + (equipos[0].stock || 0) + (laboratorio[0].stock || 0)
-    };
-
-    res.json(stats);
-  } catch (error) {
-    console.error('[Error] getEstadisticas:', error);
-    res.status(500).json({ error: 'Error al obtener estadísticas: ' + error.message });
-  }
-};
-
-/** Obtener historial de movimientos (solo admin) */
-const getHistorialMovimientos = async (req, res) => {
-  logRequest('getHistorialMovimientos');
-  try {
-    const { rol_id } = req.usuario;
-    if (rol_id !== 4) return res.status(403).json({ error: 'Solo administradores pueden ver el historial' });
-
-    const [rows] = await pool.query(`
-      SELECT m.*, u.nombre AS usuario
-      FROM MovimientosInventario m
-      JOIN Usuario u ON m.usuario_id = u.id
-      ORDER BY m.fecha_movimiento DESC
-    `);
-
-    res.json(rows);
-  } catch (error) {
-    console.error('[Error] getHistorialMovimientos:', error);
-    res.status(500).json({ error: 'Error al obtener historial de movimientos: ' + error.message });
-  }
-};
-
-/**
- * ========================================
- * RUTAS ESPECIALES COMBINADAS
- * ========================================
- */
-
-/** Ajuste masivo de stock (almacenistas con permisos y admins) */
-const ajusteMasivoStock = async (req, res) => {
-  logRequest('ajusteMasivoStock');
-  const { ajustes } = req.body; // Array de { id, tipo, cantidad }
-  const token = req.headers.authorization?.split(' ')[1];
-
-  if (!token) return res.status(401).json({ error: 'Token requerido' });
-
-  try {
-    const { rol_id, permisos } = jwt.verify(token, process.env.JWT_SECRET);
-    if (rol_id !== 3 && rol_id !== 4 && !permisos?.modificar_stock) {
-      return res.status(403).json({ error: 'Acceso denegado. Requiere permisos de stock' });
-    }
-
-    if (!Array.isArray(ajustes) || ajustes.length === 0) {
-      return res.status(400).json({ error: 'Se requiere al menos un ajuste' });
-    }
-
-    for (const ajuste of ajustes) {
-      const { id, tipo, cantidad } = ajuste;
-      if (!id || !tipo || isNaN(cantidad)) {
-        return res.status(400).json({ error: 'Datos de ajuste inválidos' });
-      }
-
-      const meta = detectTableAndField(tipo);
-      if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
-
-      const [material] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
-      if (!material.length) return res.status(404).json({ error: `Material ${id} no encontrado` });
-
-      const nuevaCantidad = material[0][meta.field] + parseInt(cantidad);
-      if (nuevaCantidad < 0) return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
-
-      await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevaCantidad, id]);
-      await pool.query(
-        `INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, fecha_movimiento)
-         VALUES (?, ?, ?, ?, NOW())`,
-        [req.usuario.id, id, tipo, cantidad]
-      );
-    }
-
-    res.status(200).json({ message: 'Ajuste masivo de stock completado' });
-  } catch (error) {
-    console.error('[Error] ajusteMasivoStock:', error);
-    res.status(500).json({ error: 'Error al ajustar stock masivo: ' + error.message });
-  }
-};
-
-/** Obtener materiales con stock bajo (almacenistas con permisos y admins) */
-const getMaterialesStockBajo = async (req, res) => {
-  logRequest('getMaterialesStockBajo');
-  try {
-    const { rol_id, permisos } = req.usuario;
-    if (rol_id !== 3 && rol_id !== 4 && !permisos?.modificar_stock) {
-      return res.status(403).json({ error: 'Acceso denegado. Requiere permisos de stock' });
-    }
-
-    const threshold = 10; // Umbral de stock bajo (ajustable)
-    const [liquidos] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible_ml AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido WHERE cantidad_disponible_ml < ?',
-      [threshold]
-    );
-    const [solidos] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible_g AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido WHERE cantidad_disponible_g < ?',
-      [threshold]
-    );
-    const [equipos] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible_u AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo WHERE cantidad_disponible_u < ?',
-      [threshold]
-    );
-    const [laboratorio] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio WHERE cantidad_disponible < ?',
-      [threshold]
-    );
-
-    const lowStock = [...liquidos, ...solidos, ...equipos, ...laboratorio].map(item => ({
-      ...item,
-      tipo: detectTableAndField(
-        item.stock === item.cantidad_disponible_ml ? 'liquido' :
-        item.stock === item.cantidad_disponible_g ? 'solido' :
-        item.stock === item.cantidad_disponible_u ? 'equipo' : 'laboratorio'
-      ).table.split('Material')[1].toLowerCase()
-    }));
-
-    res.json(lowStock);
-  } catch (error) {
-    console.error('[Error] getMaterialesStockBajo:', error);
-    res.status(500).json({ error: 'Error al obtener materiales con stock bajo: ' + error.message });
-  }
-};
-
-/**
- * ========================================
- * RUTAS GENERALES
- * ========================================
- */
 
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
-    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
-    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
-    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
-    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
+    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo FROM MaterialLiquido');
+    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo FROM MaterialSolido');
+    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo FROM MaterialLaboratorio'); // ✅ NUEVO
+    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo FROM MaterialEquipo');
 
     const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
-    res.status(500).json({ error: 'Error al obtener materiales: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener materiales' });
   }
 };
 
-/** Obtener un material específico por ID y TIPO */
+
+/** Obtener materiales de laboratorio */
+const getLaboratorio = async (req, res) => {
+  logRequest('getLaboratorio');
+  try {
+    const [rows] = await pool.query('SELECT * FROM MaterialLaboratorio');
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getLaboratorio:', error);
+    res.status(500).json({ error: 'Error al obtener materiales de laboratorio' });
+  }
+};
+
 const getMaterialById = async (req, res) => {
   const { id } = req.params;
   const { tipo } = req.query;  // IMPORTANTE: ahora recibe el tipo
@@ -764,11 +623,21 @@ const getMaterialById = async (req, res) => {
     res.json({ ...result[0], tipo });
   } catch (error) {
     console.error('[Error] getMaterialById:', error);
-    res.status(500).json({ error: 'Error al obtener material: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener material' });
   }
 };
 
-/** Listar solicitudes entregadas CON adeudos pendientes */
+/**
+ * Listar solicitudes entregadas **con** adeudos pendientes (solo almacenistas)
+ */
+// ========================================
+// Listar solicitudes entregadas CON adeudos pendientes
+// ========================================
+/**
+ * GET /api/materials/solicitudes/entregadas
+ * Devuelve las solicitudes entregadas que aún tienen adeudos pendientes,
+ * agrupadas por solicitud_id con folio, nombre_alumno, profesor y fecha_entrega.
+ */
 const getDeliveredSolicitudes = async (req, res) => {
   logRequest('getDeliveredSolicitudes');
   try {
@@ -778,21 +647,38 @@ const getDeliveredSolicitudes = async (req, res) => {
         s.folio,
         s.nombre_alumno,
         s.profesor,
+        -- Tomamos la fecha de entrega del primer adeudo (insertada en deliverSolicitud)
         MIN(a.fecha_entrega) AS fecha_entrega 
       FROM Solicitud s
-      JOIN Adeudo a ON a.solicitud_id = s.id
-      WHERE s.estado = 'entregado'
-      GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor
+      JOIN Adeudo a
+        ON a.solicitud_id = s.id
+      GROUP BY
+        s.id,
+        s.folio,
+        s.nombre_alumno,
+        s.profesor
       ORDER BY fecha_entrega DESC
     `);
     res.json(rows);
   } catch (error) {
     console.error('[Error] getDeliveredSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes entregadas: ' + error.message });
+    res.status(500).json({ error: 'Error al obtener solicitudes entregadas' });
   }
 };
 
-/** Obtener detalle de una solicitud entregada */
+
+
+
+
+/**
+ * ========================================
+ * Obtener detalle de una solicitud entregada
+ * ========================================
+ */
+// ========================================
+// Obtener detalle de una solicitud entregada
+// (solo los ítems con adeudo pendiente)
+// ========================================
 const getSolicitudDetalle = async (req, res) => {
   logRequest(`getSolicitudDetalle - ID=${req.params.id}`);
   try {
@@ -805,11 +691,13 @@ const getSolicitudDetalle = async (req, res) => {
          s.folio,
          s.nombre_alumno,
          s.profesor,
-         MIN(a.fecha_entrega) AS fecha_entrega
+         /* Fecha de entrega = máxima fecha_entrega en los adeudos */
+         (SELECT MAX(a.fecha_entrega) 
+            FROM Adeudo a 
+           WHERE a.solicitud_id = s.id
+         ) AS fecha_entrega
        FROM Solicitud s
-       LEFT JOIN Adeudo a ON a.solicitud_id = s.id
-       WHERE s.id = ?
-       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor`,
+      WHERE s.id = ?`,
       [id]
     );
     if (!solRows.length) {
@@ -823,12 +711,11 @@ const getSolicitudDetalle = async (req, res) => {
          a.solicitud_item_id AS item_id,
          a.tipo,
          a.cantidad_pendiente AS cantidad,
-         COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material
+         COALESCE(ml.nombre, ms.nombre, me.nombre) AS nombre_material
        FROM Adeudo a
        LEFT JOIN MaterialLiquido ml ON a.tipo = 'liquido' AND a.material_id = ml.id
        LEFT JOIN MaterialSolido  ms ON a.tipo = 'solido'  AND a.material_id = ms.id
        LEFT JOIN MaterialEquipo  me ON a.tipo = 'equipo'  AND a.material_id = me.id
-       LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
       WHERE a.solicitud_id = ? AND a.cantidad_pendiente > 0`,
       [id]
     );
@@ -850,9 +737,11 @@ const getSolicitudDetalle = async (req, res) => {
     });
   } catch (err) {
     console.error('[Error] getSolicitudDetalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle de solicitud: ' + err.message });
+    res.status(500).json({ error: 'Error al obtener detalle de solicitud' });
   }
 };
+
+
 
 /**
  * ========================================
@@ -878,9 +767,5 @@ module.exports = {
   deliverSolicitud,
   getSolicitudDetalle,
   cancelSolicitud,
-  adjustInventory,
-  getEstadisticas,
-  getHistorialMovimientos,
-  ajusteMasivoStock,
-  getMaterialesStockBajo
+  adjustInventory
 };
