@@ -24,29 +24,30 @@ export default function Catalog() {
   const [selectedRiesgoFisico, setSelectedRiesgoFisico] = useState('');
   const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
+  const [permisoStock, setPermisoStock] = useState(false);
+  const [infoMessage, setInfoMessage] = useState('');
+
 
   const LOW_STOCK_THRESHOLD = 50;
 
   // Función para verificar si el usuario puede modificar stock
-  const canModifyStock = () => {
-    if (usuario?.rol === 'administrador') return true;
-    if (usuario?.rol === 'almacen' && usuario?.permisos?.modificar_stock) return true;
-    return false;
-  };
+ const canModifyStock = () => {
+  if (usuario?.rol === 'administrador') return true;
+  if (usuario?.rol === 'almacen' && permisoStock) return true;
+  return false;
+};
 
-  // Función para verificar si el usuario puede realizar solicitudes
-  const canMakeRequests = () => {
-    if (usuario?.rol === 'administrador') return false; // Administradores no pueden hacer solicitudes
-    if (usuario?.rol === 'almacen' && !usuario?.permisos?.modificar_stock) return false; // Almacén sin permisos no puede hacer solicitudes
-    return true; // Alumnos, docentes y almacén con permisos sí pueden
-  };
+const canMakeRequests = () => {
+  if (usuario?.rol === 'administrador') return false;
+  if (usuario?.rol === 'almacen') return false;
+  return true; // Solo alumnos y docentes
+};
 
-  // Función para verificar si el usuario puede ver detalles e interactuar
-  const canViewDetails = () => {
-    if (usuario?.rol === 'administrador') return false; // Solo pueden ver reactivos
-    if (usuario?.rol === 'almacen' && !usuario?.permisos?.modificar_stock) return false; // Almacén sin permisos no puede interactuar
-    return true; // Todos los demás sí pueden
-  };
+const canViewDetails = () => {
+  if (usuario?.rol === 'administrador') return false;
+  if (usuario?.rol === 'almacen' && !permisoStock) return false;
+  return true;
+};
 
   useEffect(() => {
     if (!usuario) {
@@ -55,9 +56,12 @@ export default function Catalog() {
     }
 
     if (usuario.rol === 'administrador') {
-      setError('Solo puedes ver los reactivos como administrador');
-    }
+  setInfoMessage('Modo administrador: solo puedes visualizar el catálogo.');
+}
 
+
+
+    
     const fetchData = async () => {
       try {
         setLoading(true);
@@ -125,6 +129,29 @@ export default function Catalog() {
     fetchData();
   }, [usuario, router]);
 
+  // Nuevo useEffect para consultar permiso de modificar stock
+useEffect(() => {
+  const fetchPermisoStock = async () => {
+    if (!usuario) return;
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+      setPermisoStock(false);
+      return; // Si no hay token, detenemos la ejecución
+    }
+      const res = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/permisos-stock`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setPermisoStock(res.data.modificar_stock);
+    } catch (err) {
+      console.error('Error verificando permiso modificar_stock', err);
+      setPermisoStock(false);
+    }
+  };
+  fetchPermisoStock();
+}, [usuario]);
+
+  
   const formatName = (name) =>
     name
       ? name.replace(/_/g, ' ')
