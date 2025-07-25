@@ -4,14 +4,13 @@
  *
  * Versión actualizada
  * Incluye rutas separadas por rol
- * y soporte para tipos (liquido, solido, equipo)
+ * y soporte para tipos (liquido, solido, equipo, laboratorio)
  * con soporte de query param en get/:id
  *
  * Autor: ChatGPT Asistente
  * Fecha: 2025
  * ========================================
  */
-
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
@@ -22,8 +21,7 @@ const { verificarToken, verificarRol } = require('../middleware/authMiddleware')
  * RUTAS PÚBLICAS
  * ========================
  */
-
-// Lista todos los materiales (las 3 subtablas unidas)
+// Lista todos los materiales (las 4 subtablas unidas)
 router.get('/', materialController.getMaterials);
 
 // Obtener un material específico por ID y TIPO
@@ -36,13 +34,11 @@ router.get('/tipo/solidos', materialController.getSolidos);
 router.get('/tipo/equipos', materialController.getEquipos);
 router.get('/tipo/laboratorio', materialController.getLaboratorio);
 
-
 /**
  * ========================
  * RUTAS PARA ALUMNOS (ROL 1) Y DOCENTES (ROL 2)
  * ========================
  */
-
 // Crear solicitud agrupada (alumno o docente)
 // El body debe incluir tipo en cada objeto de materiales
 router.post(
@@ -61,7 +57,7 @@ router.post(
   materialController.crearSolicitudConAdeudo
 );
 
-// Obtener solicitudes propias (solo alumno)
+// Obtener solicitudes propias (alumno)
 router.get(
   '/usuario/solicitudes',
   verificarToken,
@@ -82,7 +78,6 @@ router.post(
  * RUTAS PARA DOCENTES (ROL 2)
  * ========================
  */
-
 // Listar solicitudes pendientes
 router.get(
   '/solicitudes/pendientes',
@@ -90,6 +85,7 @@ router.get(
   verificarRol([2]),
   materialController.getPendingSolicitudes
 );
+
 // Obtener TODAS las solicitudes (para docente)
 router.get(
   '/solicitudes/todas',
@@ -118,7 +114,6 @@ router.post(
  * RUTAS PARA ALMACENISTAS (ROL 3)
  * ========================
  */
-
 // Listar solicitudes aprobadas
 router.get(
   '/solicitudes/aprobadas',
@@ -127,7 +122,7 @@ router.get(
   materialController.getApprovedSolicitudes
 );
 
-// Marcar como entregada o cancelar
+// Marcar como entregada o cancelar (almacenista puede cancelar también)
 router.post(
   '/solicitud/:id/entregar',
   verificarToken,
@@ -138,7 +133,7 @@ router.post(
 router.post(
   '/solicitud/:id/cancelar',
   verificarToken,
-  verificarRol([3]),
+  verificarRol([1, 3]), // Tanto alumnos como almacenistas pueden cancelar
   materialController.cancelSolicitud
 );
 
@@ -163,7 +158,7 @@ router.get(
   '/solicitudes/:id',
   verificarToken,
   verificarRol([3]),
-  materialController.getSolicitudDetalle   // <-- esta acción exportada
+  materialController.getSolicitudDetalle
 );
 
 /**
