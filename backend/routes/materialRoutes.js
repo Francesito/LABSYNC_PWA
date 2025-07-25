@@ -15,7 +15,8 @@
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
-const { verificarToken, verificarRol } = require('../middleware/authMiddleware');
+const { verificarToken, verificarRol, verificarPermisosAlmacen } = require('../middleware/authMiddleware');
+
 
 /**
  * ========================
