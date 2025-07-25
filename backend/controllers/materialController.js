@@ -164,7 +164,7 @@ const getAllSolicitudes = async (req, res) => {
 const crearSolicitudes = async (req, res) => {
   logRequest('crearSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
-  const { materiales, motivo } = req.body;
+  const { materiales, motivo, fecha_solicitud, aprobar_automatico } = req.body;
 
   if (!token) return res.status(401).json({ error: 'Token requerido' });
   if (!Array.isArray(materiales) || materiales.length === 0) {
@@ -173,8 +173,7 @@ const crearSolicitudes = async (req, res) => {
 
   try {
     const { id: usuario_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
-
-    if (![1, 2].includes(rol_id)) {
+    if (![1,2].includes(rol_id)) {
       return res.status(403).json({ error: 'Solo alumnos o docentes pueden crear solicitudes' });
     }
 
@@ -182,24 +181,30 @@ const crearSolicitudes = async (req, res) => {
     if (!user.length) return res.status(404).json({ error: 'Usuario no encontrado' });
 
     const folio = generarFolio();
-    const estado = rol_id === 2 ? 'aprobada' : 'pendiente';
+    const estadoInicial = (rol_id===2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
+    let docente_id = null, profesor = 'Sin asignar';
+    if (estadoInicial==='aprobada') {
+      docente_id = usuario_id; profesor = user[0].nombre;
+    } else {
+      const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 LIMIT 1');
+      docente_id = docente[0]?.id; profesor = docente[0]?.nombre || profesor;
+    }
 
     const [result] = await pool.query(
-      `INSERT INTO Solicitud (usuario_id, fecha_solicitud, motivo, estado, nombre_alumno, profesor, folio)
-       VALUES (?, NOW(), ?, ?, ?, ?, ?)`,
-      [usuario_id, motivo, estado, user[0].nombre, rol_id === 2 ? user[0].nombre : 'Pendiente', folio]
+      `INSERT INTO Solicitud
+         (usuario_id, fecha_solicitud, motivo, estado, docente_id, nombre_alumno, profesor, folio)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_id, user[0].nombre, profesor, folio]
     );
-
     const solicitudId = result.insertId;
 
-    for (const { material_id, cantidad, tipo } of materiales) {
+    for (const mat of materiales) {
+      const { material_id, cantidad, tipo } = mat;
       await pool.query(
-        `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?, ?, ?, ?)`,
+        `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?,?,?,?)`,
         [solicitudId, material_id, tipo, cantidad]
       );
-
-      // Solo descontar stock si es docente (aprobada automáticamente)
-      if (rol_id === 2) {
+      if (rol_id===1) {
         const meta = detectTableAndField(tipo);
         if (meta) {
           await pool.query(
@@ -210,13 +215,12 @@ const crearSolicitudes = async (req, res) => {
       }
     }
 
-    res.status(201).json({ message: 'Solicitud creada', folio, solicitudId });
-  } catch (error) {
-    console.error('[Error] crearSolicitudes:', error);
-    res.status(500).json({ error: 'Error al crear solicitud' });
+    res.status(201).json({ message:'Solicitud creada', solicitudId, folio });
+  } catch(err) {
+    console.error('[Error] crearSolicitudes:', err);
+    res.status(500).json({ error:'Error al registrar solicitud' });
   }
 };
-
 
 
 /**
