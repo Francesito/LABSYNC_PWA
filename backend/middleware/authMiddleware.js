@@ -77,12 +77,11 @@ const requireDocente = (req, res, next) => {
   next();
 };
 
-// ✅ NUEVA FUNCIÓN: Verificar permisos específicos de almacén
 const verificarPermisosAlmacen = (permisoRequerido) => {
   return async (req, res, next) => {
-    // Solo aplica a usuarios de almacén (rol 3)
+    // Aplica solo a usuarios con rol almacen (3)
     if (req.usuario.rol_id !== 3) {
-      return next(); // Los administradores tienen todos los permisos
+      return next(); // Admin (rol 4) pasa directo
     }
 
     try {
@@ -112,6 +111,7 @@ const verificarPermisosAlmacen = (permisoRequerido) => {
     }
   };
 };
+
 const verificarMultiplesRoles = (...rolesPermitidos) => {
   return (req, res, next) => {
     if (!req.usuario || !rolesPermitidos.includes(req.usuario.rol_id)) {
