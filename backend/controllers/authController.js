@@ -68,7 +68,13 @@ const iniciarSesion = async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query('SELECT * FROM Usuario WHERE correo_institucional = ?', [correo_institucional]);
+    // Consultar usuario con información del rol
+    const [rows] = await pool.query(`
+      SELECT u.*, r.nombre as rol_nombre 
+      FROM Usuario u 
+      LEFT JOIN Rol r ON u.rol_id = r.id 
+      WHERE u.correo_institucional = ?
+    `, [correo_institucional]);
     
     if (rows.length === 0) {
       return res.status(400).json({ error: 'Usuario no encontrado' });
@@ -101,7 +107,11 @@ const iniciarSesion = async (req, res) => {
           modificar_stock: Boolean(permisosRows[0].modificar_stock)
         };
       } else {
-        // Si no hay registro en PermisosAlmacen, denegar acceso por defecto
+        // Si no hay registro en PermisosAlmacen, crear uno con permisos por defecto
+        await pool.query(
+          'INSERT INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock) VALUES (?, 0, 0)',
+          [usuario.id]
+        );
         permisos = {
           acceso_chat: false,
           modificar_stock: false
@@ -150,7 +160,8 @@ const iniciarSesion = async (req, res) => {
         correo: usuario.correo_institucional,
         rol_id: usuario.rol_id,
         rol: rolNombre
-      }
+      },
+      redirect: '/catalogo' // Agregar la ruta de redirección
     };
 
     // Incluir permisos en la respuesta si es usuario de almacén
@@ -201,7 +212,11 @@ const verificarPermisosChat = async (req, res) => {
       );
       
       if (permisosRows.length === 0) {
-        // Si no hay registro en PermisosAlmacen, denegar acceso por defecto
+        // Si no hay registro en PermisosAlmacen, crear uno con permisos por defecto
+        await pool.query(
+          'INSERT INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock) VALUES (?, 0, 0)',
+          [usuario.id]
+        );
         return res.json({ 
           acceso_chat: false,
           modificar_stock: false,
@@ -244,7 +259,8 @@ const cerrarSesion = async (req, res) => {
     // En el frontend se debe eliminar el token del localStorage
     res.json({ 
       success: true,
-      mensaje: 'Sesión cerrada exitosamente' 
+      mensaje: 'Sesión cerrada exitosamente',
+      redirect: '/login' // Agregar la ruta de redirección
     });
   } catch (error) {
     console.error('Error al cerrar sesión:', error);
