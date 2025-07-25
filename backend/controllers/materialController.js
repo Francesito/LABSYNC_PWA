@@ -811,7 +811,4 @@ module.exports = {
   getSolicitudDetalle,
   cancelSolicitud,
   adjustInventory
-}; Adeudo a 
-           WHERE a.solicitud_id = s.id
-         ) AS fecha_entrega
-       FROM
+}; 
