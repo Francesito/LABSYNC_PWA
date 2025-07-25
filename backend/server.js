@@ -86,7 +86,6 @@ const initializeRoles = async () => {
     console.log('✅ Roles inicializados correctamente');
   } catch (error) {
     console.error('❌ Error inicializando roles:', error);
-    throw error; // Propagar el error para manejarlo en el servidor
   }
 };
 
@@ -115,53 +114,22 @@ const initializePermisosTable = async () => {
       WHERE rol_id = 3;
     `);
 
-    // Crear índices para mejorar rendimiento - Método compatible con MySQL
-    // Verificar y crear índice para usuario_id
-    try {
-      await pool.query(`
-        CREATE INDEX idx_permisos_usuario ON PermisosAlmacen(usuario_id);
-      `);
-      console.log('✅ Índice idx_permisos_usuario creado');
-    } catch (error) {
-      if (error.code === 'ER_DUP_KEYNAME') {
-        console.log('ℹ️ Índice idx_permisos_usuario ya existe');
-      } else {
-        console.error('⚠️ Error creando índice idx_permisos_usuario:', error.message);
-      }
-    }
+    // Crear índices para mejorar rendimiento
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_permisos_usuario ON PermisosAlmacen(usuario_id);
+    `);
     
-    // Verificar y crear índice para rol_id en Usuario
-    try {
-      await pool.query(`
-        CREATE INDEX idx_usuario_rol ON Usuario(rol_id);
-      `);
-      console.log('✅ Índice idx_usuario_rol creado');
-    } catch (error) {
-      if (error.code === 'ER_DUP_KEYNAME') {
-        console.log('ℹ️ Índice idx_usuario_rol ya existe');
-      } else {
-        console.error('⚠️ Error creando índice idx_usuario_rol:', error.message);
-      }
-    }
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_usuario_rol ON Usuario(rol_id);
+    `);
     
-    // Verificar y crear índice para activo en Usuario
-    try {
-      await pool.query(`
-        CREATE INDEX idx_usuario_activo ON Usuario(activo);
-      `);
-      console.log('✅ Índice idx_usuario_activo creado');
-    } catch (error) {
-      if (error.code === 'ER_DUP_KEYNAME') {
-        console.log('ℹ️ Índice idx_usuario_activo ya existe');
-      } else {
-        console.error('⚠️ Error creando índice idx_usuario_activo:', error.message);
-      }
-    }
+    await pool.query(`
+      CREATE INDEX IF NOT EXISTS idx_usuario_activo ON Usuario(activo);
+    `);
 
     console.log('✅ Tabla PermisosAlmacen inicializada correctamente');
   } catch (error) {
     console.error('❌ Error inicializando tabla PermisosAlmacen:', error);
-    throw error; // Propagar el error para manejarlo en el servidor
   }
 };
 
@@ -170,12 +138,7 @@ const initializePermisosTable = async () => {
 const startSolicitudCleanupJob = () => {
   setInterval(async () => {
     console.log('🗑️ Ejecutando limpieza automática de solicitudes viejas...');
-    try {
-      await eliminarSolicitudesViejas();
-      console.log('✅ Limpieza de solicitudes completada');
-    } catch (error) {
-      console.error('❌ Error durante la limpieza de solicitudes:', error);
-    }
+    await eliminarSolicitudesViejas();
   }, 24 * 60 * 60 * 1000); // Cada 24 horas
 };
 
@@ -191,24 +154,16 @@ app.use('*', (req, res) => {
 // ==================== INICIAR SERVIDOR ====================
 const PORT = process.env.PORT || 5000;
 
-const startServer = async () => {
-  try {
-    // Inicializar base de datos
-    await initializeRoles();
-    await initializePermisosTable();
-    
-    // Iniciar trabajos programados
-    startSolicitudCleanupJob();
-    
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
-      console.log(`🌐 URL: https://labsync-1090.onrender.com`);
-      console.log('✅ Sistema LabSync inicializado completamente');
-    });
-  } catch (error) {
-    console.error('❌ Error al iniciar el servidor:', error);
-    process.exit(1); // Terminar el proceso si falla la inicialización
-  }
-};
-
-startServer();
+app.listen(PORT, '0.0.0.0', async () => {
+  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🌐 URL: https://labsync-1090.onrender.com`);
+  
+  // Inicializar base de datos
+  await initializeRoles();
+  await initializePermisosTable();
+  
+  // Iniciar trabajos programados
+  startSolicitudCleanupJob();
+  
+  console.log('✅ Sistema LabSync inicializado completamente');
+});
