@@ -27,27 +27,6 @@ export default function Catalog() {
 
   const LOW_STOCK_THRESHOLD = 50;
 
-  // Función para verificar si el usuario puede modificar stock
-  const canModifyStock = () => {
-    if (usuario?.rol === 'administrador') return true;
-    if (usuario?.rol === 'almacen' && usuario?.permisos?.modificar_stock) return true;
-    return false;
-  };
-
-  // Función para verificar si el usuario puede realizar solicitudes
-  const canMakeRequests = () => {
-    if (usuario?.rol === 'administrador') return false; // Administradores no pueden hacer solicitudes
-    if (usuario?.rol === 'almacen' && !usuario?.permisos?.modificar_stock) return false; // Almacén sin permisos no puede hacer solicitudes
-    return true; // Alumnos, docentes y almacén con permisos sí pueden
-  };
-
-  // Función para verificar si el usuario puede ver detalles e interactuar
-  const canViewDetails = () => {
-    if (usuario?.rol === 'administrador') return false; // Solo pueden ver reactivos
-    if (usuario?.rol === 'almacen' && !usuario?.permisos?.modificar_stock) return false; // Almacén sin permisos no puede interactuar
-    return true; // Todos los demás sí pueden
-  };
-
   useEffect(() => {
     if (!usuario) {
       router.push('/login');
@@ -105,8 +84,7 @@ export default function Catalog() {
 
         setAllMaterials(all);
 
-        // Solo mostrar alertas de stock bajo si puede modificar stock
-        if (canModifyStock()) {
+        if (usuario.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock) {
           const lowStock = all.filter(material =>
             material.cantidad > 0 &&
             material.cantidad <= LOW_STOCK_THRESHOLD
@@ -215,7 +193,7 @@ export default function Catalog() {
   };
 
   const displayStock = (material) => {
-    if (canModifyStock()) {
+    if (usuario?.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock) {
       return `${material.cantidad} ${getUnidad(material.tipo)}`;
     } else {
       return material.cantidad > 0 ? 'Disponible' : 'Agotado';
@@ -223,7 +201,7 @@ export default function Catalog() {
   };
 
   const getStockColor = (material) => {
-    if (!canModifyStock()) {
+    if (usuario?.rol !== 'almacen' || !usuario.permisos || !usuario.permisos.modificar_stock) {
       return material.cantidad > 0 ? 'text-green-600' : 'text-red-600';
     }
     
@@ -233,7 +211,7 @@ export default function Catalog() {
   };
 
   const addToCart = (material, cantidad) => {
-    if (!canMakeRequests()) {
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
       setError('No tienes permiso para solicitar materiales');
       return;
     }
@@ -266,7 +244,7 @@ export default function Catalog() {
   };
 
   const removeFromCart = (id, tipo) => {
-    if (!canMakeRequests()) {
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
       setError('No tienes permiso para modificar el carrito');
       return;
     }
@@ -274,7 +252,7 @@ export default function Catalog() {
   };
 
   const vaciarSeleccion = () => {
-    if (!canMakeRequests()) {
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
       setError('No tienes permiso para modificar el carrito');
       return;
     }
@@ -285,7 +263,7 @@ export default function Catalog() {
   const totalItems = selectedCart.reduce((sum, item) => sum + (item.cantidad || 0), 0);
 
   const handleSubmitRequest = async () => {
-    if (!canMakeRequests()) {
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
       setError('No tienes permiso para enviar solicitudes');
       return;
     }
@@ -332,7 +310,7 @@ export default function Catalog() {
   });
 
   const handleAdjustClick = (material) => {
-    if (!canModifyStock()) {
+    if (!usuario.permisos || !usuario.permisos.modificar_stock) {
       setError('No tienes permiso para ajustar el stock');
       return;
     }
@@ -344,8 +322,8 @@ export default function Catalog() {
 
   const handleDetailClick = (material, e) => {
     e.stopPropagation();
-    if (!canViewDetails()) {
-      // Para usuarios sin permisos, no mostrar error, simplemente no hacer nada
+    if (usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))) {
+      setError('No tienes permiso para ver los detalles del material');
       return;
     }
     console.log(`Clic en material: ${material.nombre}, ID: ${material.id}, Tipo: ${material.tipo}, Image Path: ${getImagePath(material)}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
@@ -357,7 +335,7 @@ export default function Catalog() {
   };
 
   const handleAdjustSubmit = async () => {
-    if (!materialToAdjust || !canModifyStock()) return;
+    if (!materialToAdjust) return;
     const amountNum = parseInt(adjustAmount);
     if (isNaN(amountNum)) {
       setError('Ingresa un número válido');
@@ -390,7 +368,7 @@ export default function Catalog() {
   };
 
   const dismissLowStockAlert = (materialId, tipo) => {
-    if (!canModifyStock()) {
+    if (!usuario.permisos || !usuario.permisos.modificar_stock) {
       setError('No tienes permiso para gestionar alertas de stock');
       return;
     }
@@ -513,19 +491,11 @@ export default function Catalog() {
           box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
           overflow: hidden;
           transition: transform 0.2s ease;
-        }
-
-        .material-card.clickable {
           cursor: pointer;
         }
 
-        .material-card.clickable:hover {
+        .material-card:hover {
           transform: translateY(-4px);
-        }
-
-        .material-card.non-clickable {
-          cursor: default;
-          opacity: 0.8;
         }
 
         .material-image {
@@ -1207,7 +1177,7 @@ export default function Catalog() {
                 <h1>Catálogo de Reactivos</h1>
               </div>
 
-              {canModifyStock() && lowStockMaterials.length > 0 && (
+              {usuario?.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock && lowStockMaterials.length > 0 && (
                 <div className="low-stock-alerts">
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
                     <div style={{ 
@@ -1314,7 +1284,7 @@ export default function Catalog() {
                       filteredMaterials.map((material) => (
                         <div
                           key={`${material.tipo}-${material.id}`}
-                          className={`material-card ${canViewDetails() ? 'clickable' : 'non-clickable'}`}
+                          className="material-card"
                           onClick={(e) => handleDetailClick(material, e)}
                         >
                           <img
@@ -1334,7 +1304,7 @@ export default function Catalog() {
                               {displayStock(material)}
                             </div>
                           </div>
-                          {canModifyStock() && (
+                          {(usuario?.rol === 'almacen' && usuario.permisos && usuario.permisos.modificar_stock) && (
                             <button
                               className="btn-adjust"
                               onClick={(e) => {
@@ -1354,60 +1324,58 @@ export default function Catalog() {
             </div>
           </div>
 
-          {canMakeRequests() && (
-            <div className="cart-container">
-              <div className="cart-header">
-                <h4>Carrito de Solicitud</h4>
-                <small>{totalItems} {totalItems === 1 ? 'material' : 'materiales'} seleccionados</small>
-              </div>
-              <div className="cart-body">
-                {selectedCart.length === 0 ? (
-                  <div className="empty-cart">
-                    <div className="empty-cart-icon">🛒</div>
-                    <p>Carrito vacío</p>
-                    <small>Selecciona materiales para crear un vale</small>
-                  </div>
-                ) : (
-                  <>
-                    {selectedCart.map((item) => (
-                      <div key={`${item.tipo}-${item.id}`} className="cart-item">
-                        <div>
-                          <div className="cart-item-name">{formatName(item.nombre)}</div>
-                          <div className="cart-item-quantity">
-                            {item.cantidad} {getUnidad(item.tipo)} ({item.tipo})
-                          </div>
-                        </div>
-                        <button
-                          className="btn-remove"
-                          onClick={() => removeFromCart(item.id, item.tipo)}
-                        >
-                          ×
-                        </button>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
-              {selectedCart.length > 0 && (
-                <div className="p-4">
-                  <button
-                    className="btn-create-vale"
-                    onClick={() => setShowRequestModal(true)}
-                    disabled={selectedCart.length === 0 || totalItems === 0}
-                  >
-                    Crear Vale
-                  </button>
-                  <button
-                    className="btn-clear mt-3"
-                    onClick={vaciarSeleccion}
-                    disabled={selectedCart.length === 0}
-                  >
-                    Vaciar Selección
-                  </button>
+          <div className="cart-container">
+            <div className="cart-header">
+              <h4>Carrito de Solicitud</h4>
+              <small>{totalItems} {totalItems === 1 ? 'material' : 'materiales'} seleccionados</small>
+            </div>
+            <div className="cart-body">
+              {selectedCart.length === 0 ? (
+                <div className="empty-cart">
+                  <div className="empty-cart-icon">🛒</div>
+                  <p>Carrito vacío</p>
+                  <small>Selecciona materiales para crear un vale</small>
                 </div>
+              ) : (
+                <>
+                  {selectedCart.map((item) => (
+                    <div key={`${item.tipo}-${item.id}`} className="cart-item">
+                      <div>
+                        <div className="cart-item-name">{formatName(item.nombre)}</div>
+                        <div className="cart-item-quantity">
+                          {item.cantidad} {getUnidad(item.tipo)} ({item.tipo})
+                        </div>
+                      </div>
+                      <button
+                        className="btn-remove"
+                        onClick={() => removeFromCart(item.id, item.tipo)}
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
-          )}
+            {selectedCart.length > 0 && (
+              <div className="p-4">
+                <button
+                  className="btn-create-vale"
+                  onClick={() => setShowRequestModal(true)}
+                  disabled={selectedCart.length === 0 || totalItems === 0 || usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))}
+                >
+                  Crear Vale
+                </button>
+                <button
+                  className="btn-clear mt-3"
+                  onClick={vaciarSeleccion}
+                  disabled={selectedCart.length === 0 || usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))}
+                >
+                  Vaciar Selección
+                </button>
+              </div>
+            )}
+          </div>
         </div>
 
         {showRequestModal && (
@@ -1451,6 +1419,7 @@ export default function Catalog() {
                 <button
                   className="btn-create-vale"
                   onClick={handleSubmitRequest}
+                  disabled={usuario.rol === 'administrador' || (usuario.rol === 'almacen' && (!usuario.permisos || !usuario.permisos.modificar_stock))}
                 >
                   Confirmar
                 </button>
@@ -1554,7 +1523,7 @@ export default function Catalog() {
                 ) : (
                   <p className="no-risks mt-4">No se han registrado riesgos para este material.</p>
                 )}
-                {canMakeRequests() && (
+                {usuario.rol !== 'administrador' && usuario.rol !== 'almacen' && (
                   <div className="mt-4">
                     <label className="form-label">Cantidad a solicitar</label>
                     <input
