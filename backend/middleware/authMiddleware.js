@@ -89,6 +89,61 @@ const verificarMultiplesRoles = (...rolesPermitidos) => {
   };
 };
 
+// Middleware específico para administradores (requerido por adminRoutes.js)
+const requireAdmin = (req, res, next) => {
+  try {
+    if (!req.usuario) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    // Verificar que el rol sea administrador (rol_id = 4)
+    if (req.usuario.rol_id !== 4) {
+      return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de administrador.' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error en requireAdmin:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// Middleware específico para docentes
+const requireDocente = (req, res, next) => {
+  try {
+    if (!req.usuario) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    if (req.usuario.rol_id !== 2) {
+      return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de docente.' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error en requireDocente:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// Middleware específico para almacén
+const requireAlmacen = (req, res, next) => {
+  try {
+    if (!req.usuario) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    if (req.usuario.rol_id !== 3) {
+      return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de almacén.' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error en requireAlmacen:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
 // Middleware específico para verificar permisos de almacén
 const verificarPermisosAlmacen = (tipoPermiso) => {
   return async (req, res, next) => {
@@ -180,6 +235,53 @@ const verificarAccesoSolicitudes = (req, res, next) => {
   return res.status(403).json({ error: 'Acceso denegado' });
 };
 
+// Middleware para verificar permisos de stock (almacén con permisos o admin)
+const requireStockPermission = (req, res, next) => {
+  try {
+    if (!req.usuario) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const { rol_id, permisos } = req.usuario;
+
+    // Administradores siempre tienen acceso
+    if (rol_id === 4) {
+      return next();
+    }
+
+    // Usuarios de almacén con permisos específicos
+    if (rol_id === 3 && permisos && permisos.modificar_stock) {
+      return next();
+    }
+
+    return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos para modificar stock.' });
+
+  } catch (error) {
+    console.error('Error en requireStockPermission:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// Middleware flexible para múltiples roles
+const requireRole = (allowedRoles) => {
+  return (req, res, next) => {
+    try {
+      if (!req.usuario) {
+        return res.status(401).json({ error: 'Usuario no autenticado' });
+      }
+
+      if (!allowedRoles.includes(req.usuario.rol_id)) {
+        return res.status(403).json({ error: 'Acceso denegado. Rol insuficiente.' });
+      }
+
+      next();
+    } catch (error) {
+      console.error('Error en requireRole:', error);
+      return res.status(500).json({ error: 'Error interno del servidor' });
+    }
+  };
+};
+
 module.exports = {
   verificarToken,
   verificarRol,
@@ -187,5 +289,11 @@ module.exports = {
   verificarPermisosAlmacen,
   verificarAccesoStock,
   verificarAccesoChat,
-  verificarAccesoSolicitudes
+  verificarAccesoSolicitudes,
+  // Nuevas funciones agregadas para compatibilidad
+  requireAdmin,
+  requireDocente,
+  requireAlmacen,
+  requireStockPermission,
+  requireRole
 };
