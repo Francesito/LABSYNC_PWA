@@ -15,8 +15,7 @@
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
-const { verificarToken, verificarRol, verificarPermisosAlmacen } = require('../middleware/authMiddleware');
-
+const { verificarToken, verificarRol } = require('../middleware/authMiddleware');
 
 /**
  * ========================
@@ -143,14 +142,13 @@ router.post(
   materialController.cancelSolicitud
 );
 
+// Ajustar inventario (con tipo en body)
 router.post(
   '/material/:id/ajustar',
   verificarToken,
   verificarRol([3]),
-  verificarPermisosAlmacen('stock'),
   materialController.adjustInventory
 );
-
 
 // Listar solicitudes entregadas (solo almacenistas)
 router.get(
