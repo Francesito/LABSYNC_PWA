@@ -13,7 +13,5 @@ router.post('/reset-password/:token', authController.resetPassword);
 
 // Nueva ruta protegida para verificar permisos de chat
 router.get('/permisos-chat', verificarToken, authController.verificarPermisosChat);
-router.get('/permisos-stock', verificarToken, authController.verificarPermisosStock);
-
 
 module.exports = router;
