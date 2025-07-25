@@ -115,18 +115,48 @@ const initializePermisosTable = async () => {
       WHERE rol_id = 3;
     `);
 
-    // Crear índices para mejorar rendimiento
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_permisos_usuario ON PermisosAlmacen(usuario_id);
-    `);
+    // Crear índices para mejorar rendimiento - Método compatible con MySQL
+    // Verificar y crear índice para usuario_id
+    try {
+      await pool.query(`
+        CREATE INDEX idx_permisos_usuario ON PermisosAlmacen(usuario_id);
+      `);
+      console.log('✅ Índice idx_permisos_usuario creado');
+    } catch (error) {
+      if (error.code === 'ER_DUP_KEYNAME') {
+        console.log('ℹ️ Índice idx_permisos_usuario ya existe');
+      } else {
+        console.error('⚠️ Error creando índice idx_permisos_usuario:', error.message);
+      }
+    }
     
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_usuario_rol ON Usuario(rol_id);
-    `);
+    // Verificar y crear índice para rol_id en Usuario
+    try {
+      await pool.query(`
+        CREATE INDEX idx_usuario_rol ON Usuario(rol_id);
+      `);
+      console.log('✅ Índice idx_usuario_rol creado');
+    } catch (error) {
+      if (error.code === 'ER_DUP_KEYNAME') {
+        console.log('ℹ️ Índice idx_usuario_rol ya existe');
+      } else {
+        console.error('⚠️ Error creando índice idx_usuario_rol:', error.message);
+      }
+    }
     
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_usuario_activo ON Usuario(activo);
-    `);
+    // Verificar y crear índice para activo en Usuario
+    try {
+      await pool.query(`
+        CREATE INDEX idx_usuario_activo ON Usuario(activo);
+      `);
+      console.log('✅ Índice idx_usuario_activo creado');
+    } catch (error) {
+      if (error.code === 'ER_DUP_KEYNAME') {
+        console.log('ℹ️ Índice idx_usuario_activo ya existe');
+      } else {
+        console.error('⚠️ Error creando índice idx_usuario_activo:', error.message);
+      }
+    }
 
     console.log('✅ Tabla PermisosAlmacen inicializada correctamente');
   } catch (error) {
