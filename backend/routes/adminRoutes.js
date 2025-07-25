@@ -4,13 +4,74 @@ const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const { sendEmail } = require('../utils/email');
-const { verificarToken, requireAdmin } = require('../middleware/authMiddleware');
 
 const router = express.Router();
 
-// Middleware para verificar autenticación y rol de administrador
-router.use(verificarToken); // Verifica el token JWT
-router.use(requireAdmin);   // Verifica que el rol sea administrador (rol_id = 4)
+// Middleware local para verificar token
+const verificarToken = async (req, res, next) => {
+  try {
+    const token = req.headers.authorization?.split(' ')[1];
+    
+    if (!token) {
+      return res.status(401).json({ error: 'Token de acceso requerido' });
+    }
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    const [usuarios] = await pool.query(
+      'SELECT id, nombre, correo_institucional, rol_id, activo FROM Usuario WHERE id = ?',
+      [decoded.id]
+    );
+
+    if (usuarios.length === 0) {
+      return res.status(401).json({ error: 'Usuario no encontrado' });
+    }
+
+    const usuario = usuarios[0];
+
+    if (!usuario.activo) {
+      return res.status(401).json({ error: 'Usuario inactivo' });
+    }
+
+    req.usuario = usuario;
+    next();
+
+  } catch (error) {
+    console.error('Error en verificarToken:', error);
+    
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ error: 'Token inválido' });
+    }
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ error: 'Token expirado' });
+    }
+    
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// Middleware local para verificar rol de administrador
+const requireAdmin = (req, res, next) => {
+  try {
+    if (!req.usuario) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    if (req.usuario.rol_id !== 4) {
+      return res.status(403).json({ error: 'Acceso denegado. Se requieren permisos de administrador.' });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Error en requireAdmin:', error);
+    return res.status(500).json({ error: 'Error interno del servidor' });
+  }
+};
+
+// Aplicar middlewares
+router.use(verificarToken);
+router.use(requireAdmin);
 
 // Generar contraseña aleatoria
 const generarContrasenaAleatoria = () => {
