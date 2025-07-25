@@ -142,6 +142,7 @@ const iniciarSesion = async (req, res) => {
     }
 
     const responseData = { 
+      success: true, // Agregar indicador de éxito
       token,
       usuario: {
         id: usuario.id,
@@ -238,6 +239,19 @@ const verificarPermisosChat = async (req, res) => {
   }
 };
 
+const cerrarSesion = async (req, res) => {
+  try {
+    // En el frontend se debe eliminar el token del localStorage
+    res.json({ 
+      success: true,
+      mensaje: 'Sesión cerrada exitosamente' 
+    });
+  } catch (error) {
+    console.error('Error al cerrar sesión:', error);
+    res.status(500).json({ error: 'Error al cerrar sesión' });
+  }
+};
+
 const forgotPassword = async (req, res) => {
   const { correo_institucional } = req.body;
 
@@ -325,6 +339,7 @@ module.exports = {
   verificarCorreo,
   iniciarSesion,
   verificarPermisosChat,
+  cerrarSesion,
   forgotPassword,
   resetPassword
 };
