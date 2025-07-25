@@ -1,233 +1,191 @@
+//frontend/lib/auth.js
 'use client';
+import { createContext, useContext, useEffect, useState } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 
-import { createContext, useContext, useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import axios from 'axios';
+// Función para decodificar JWT manualmente (sin librerías externas)
+const decodeJWT = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split('')
+        .map(function (c) {
+          return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        })
+        .join('')
+    );
+    return JSON.parse(jsonPayload);
+  } catch (error) {
+    console.error('Error decodificando JWT:', error);
+    return null;
+  }
+};
 
 const AuthContext = createContext();
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
-  }
-  return context;
-};
-
-export const AuthProvider = ({ children }) => {
+export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+  const pathname = usePathname();
 
-  // Función para obtener el rol en formato string
-  const getRoleName = (rolId) => {
-    switch (rolId) {
-      case 1:
-        return 'alumno';
-      case 2:
-        return 'docente';
-      case 3:
-        return 'almacen';
-      case 4:
-        return 'administrador';
-      default:
-        return 'unknown';
-    }
-  };
-
-  // Función para verificar y actualizar permisos del usuario
-  const actualizarPermisos = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token || !usuario) return;
-
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/permisos-chat`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data) {
-        setUsuario(prevUsuario => ({
-          ...prevUsuario,
-          permisos: {
-            acceso_chat: response.data.acceso_chat,
-            modificar_stock: response.data.modificar_stock
-          }
-        }));
-      }
-    } catch (error) {
-      console.error('Error al actualizar permisos:', error);
-    }
-  };
-
-  // Función de login
-  const login = async (correo_institucional, contrasena) => {
-    try {
-      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
-        correo_institucional,
-        contrasena,
-      });
-
-      const { token, usuario: userData } = response.data;
-
-      // Guardar token en localStorage
-      localStorage.setItem('token', token);
-
-      // Configurar usuario con permisos y rol
-      const usuarioCompleto = {
-        ...userData,
-        rol: userData.rol || getRoleName(userData.rol_id),
-        permisos: userData.permisos || null
-      };
-
-      setUsuario(usuarioCompleto);
-
-      return { success: true };
-    } catch (error) {
-      console.error('Error de login:', error);
-      const errorMessage = error.response?.data?.error || 'Error al iniciar sesión';
-      return { success: false, error: errorMessage };
-    }
-  };
-
-  // Función de logout
-  const logout = () => {
+  // Función para limpiar la sesión
+  const limpiarSesion = () => {
     localStorage.removeItem('token');
     setUsuario(null);
+  };
+
+  // Función para verificar si el token ha expirado
+  const tokenExpirado = (decoded) => {
+    if (!decoded.exp) return false;
+    const now = Date.now() / 1000;
+    return decoded.exp < now;
+  };
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    
+    // Rutas públicas que no requieren autenticación
+    const rutasPublicas = ['/login', '/register', '/forgot-password'];
+    const esRutaPublica = rutasPublicas.includes(pathname) || 
+                         pathname.startsWith('/reset-password') || 
+                         pathname.startsWith('/verificar');
+
+    if (token) {
+      try {
+        const decoded = decodeJWT(token);
+        
+        if (!decoded) {
+          console.error('Token inválido');
+          limpiarSesion();
+          if (!esRutaPublica) {
+            router.push('/login');
+          }
+          setLoading(false);
+          return;
+        }
+
+        // Verificar si el token ha expirado
+        if (tokenExpirado(decoded)) {
+          console.error('Token expirado');
+          limpiarSesion();
+          if (!esRutaPublica) {
+            router.push('/login');
+          }
+          setLoading(false);
+          return;
+        }
+
+        // Convertir rol_id a texto si es necesario
+        let rolNombre = decoded.rol || decoded.rol_id;
+        if (typeof rolNombre === 'number') {
+          switch (rolNombre) {
+            case 1:
+              rolNombre = 'alumno';
+              break;
+            case 2:
+              rolNombre = 'docente';
+              break;
+            case 3:
+              rolNombre = 'almacen';
+              break;
+            case 4:
+              rolNombre = 'administrador';
+              break;
+            default:
+              rolNombre = 'desconocido';
+          }
+        }
+
+        const usuarioData = {
+          id: decoded.id,
+          nombre: decoded.nombre,
+          correo: decoded.correo_institucional || decoded.correo,
+          rol: rolNombre,
+          rol_id: decoded.rol_id,
+        };
+
+        setUsuario(usuarioData);
+
+        // Redirecciones basadas en el estado de autenticación y rol
+        if (esRutaPublica && pathname !== '/reset-password' && !pathname.startsWith('/reset-password')) {
+          router.push('/catalog');
+        } else if (rolNombre === 'docente' && pathname === '/chat') {
+          router.push('/catalog');
+        } else if (
+          (rolNombre === 'alumno' || rolNombre === 'almacen') &&
+          pathname === '/solicitudes/pendientes'
+        ) {
+          router.push('/solicitudes');
+        } else if (rolNombre !== 'administrador' && pathname === '/configuracion') {
+          router.push('/catalog');
+        }
+
+      } catch (error) {
+        console.error('Error procesando token:', error);
+        limpiarSesion();
+        if (!esRutaPublica) {
+          router.push('/login');
+        }
+      }
+    } else {
+      // No hay token
+      if (!esRutaPublica) {
+        router.push('/login');
+      }
+    }
+    
+    setLoading(false);
+  }, [pathname, router]);
+
+  // Función para login
+  const login = (token, userData) => {
+    localStorage.setItem('token', token);
+    setUsuario(userData);
+    router.push('/catalog');
+  };
+
+  // Función para logout
+  const logout = () => {
+    limpiarSesion();
     router.push('/login');
   };
 
-  // Función para verificar si el usuario está autenticado
-  const verificarAutenticacion = async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setLoading(false);
-        return;
-      }
-
-      // Verificar la validez del token y obtener permisos actualizados
-      const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/permisos-chat`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data) {
-        // Decodificar el token para obtener información básica del usuario
-        const tokenData = JSON.parse(atob(token.split('.')[1]));
-        
-        const usuarioCompleto = {
-          id: tokenData.id,
-          nombre: tokenData.nombre,
-          correo: tokenData.correo_institucional,
-          rol_id: tokenData.rol_id,
-          rol: response.data.rol,
-          permisos: {
-            acceso_chat: response.data.acceso_chat,
-            modificar_stock: response.data.modificar_stock
-          }
-        };
-
-        setUsuario(usuarioCompleto);
-      }
-    } catch (error) {
-      console.error('Error al verificar autenticación:', error);
-      // Si hay error, limpiar el token inválido
-      localStorage.removeItem('token');
-      setUsuario(null);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Función para verificar si el usuario puede modificar stock
-  const puedeModificarStock = () => {
-    if (!usuario) return false;
-    
-    // Administradores siempre pueden
-    if (usuario.rol_id === 4) return true;
-    
-    // Usuarios de almacén solo si tienen el permiso
-    if (usuario.rol_id === 3 && usuario.permisos?.modificar_stock) return true;
-    
-    return false;
-  };
-
-  // Función para verificar si el usuario puede acceder al chat
-  const puedeAccederChat = () => {
-    if (!usuario) return false;
-    
-    // Alumnos siempre pueden
-    if (usuario.rol_id === 1) return true;
-    
-    // Administradores siempre pueden
-    if (usuario.rol_id === 4) return true;
-    
-    // Usuarios de almacén solo si tienen el permiso
-    if (usuario.rol_id === 3 && usuario.permisos?.acceso_chat) return true;
-    
-    // Docentes no tienen acceso al chat
-    return false;
-  };
-
-  // Función para verificar si el usuario puede hacer solicitudes
-  const puedeHacerSolicitudes = () => {
-    if (!usuario) return false;
-    
-    // Administradores no pueden hacer solicitudes
-    if (usuario.rol_id === 4) return false;
-    
-    // Alumnos y docentes siempre pueden
-    if (usuario.rol_id === 1 || usuario.rol_id === 2) return true;
-    
-    // Usuarios de almacén solo si NO tienen permisos de modificar stock
-    if (usuario.rol_id === 3 && !usuario.permisos?.modificar_stock) return true;
-    
-    return false;
-  };
-
-  // Función para verificar si el usuario puede ver detalles de materiales
-  const puedeVerDetalles = () => {
-    if (!usuario) return false;
-    
-    // Administradores solo pueden ver reactivos, no interactuar
-    if (usuario.rol_id === 4) return false;
-    
-    // Usuarios de almacén sin permisos no pueden interactuar
-    if (usuario.rol_id === 3 && !usuario.permisos?.modificar_stock) return false;
-    
-    // Todos los demás sí pueden
-    return true;
-  };
-
-  // Efecto para verificar autenticación al cargar
-  useEffect(() => {
-    verificarAutenticacion();
-  }, []);
-
-  // Efecto para actualizar permisos periódicamente (opcional)
-  useEffect(() => {
-    if (usuario && usuario.rol_id === 3) {
-      const interval = setInterval(actualizarPermisos, 5 * 60 * 1000); // Cada 5 minutos
-      return () => clearInterval(interval);
-    }
-  }, [usuario]);
-
-  const value = {
-    usuario,
-    loading,
-    login,
-    logout,
-    actualizarPermisos,
-    puedeModificarStock,
-    puedeAccederChat,
-    puedeHacerSolicitudes,
-    puedeVerDetalles
-  };
+  // Mostrar loading mientras se verifica la autenticación
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Cargando...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <AuthContext.Provider value={value}>
-      {children}
+    <AuthContext.Provider value={{ 
+      usuario, 
+      setUsuario, 
+      login, 
+      logout,
+      loading 
+    }}>
+      <div className="flex min-h-screen">
+        <main className="flex-1 bg-light p-1">
+          {children}
+        </main>
+      </div>
     </AuthContext.Provider>
   );
-};
+}
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+}
