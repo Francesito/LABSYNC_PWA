@@ -1,3 +1,4 @@
+// backend/routes/messageRoutes.js
 const express = require('express');
 const router = express.Router();
 const messageController = require('../controllers/messageController');
@@ -10,35 +11,31 @@ const {
 // Todas las rutas requieren autenticación
 router.use(verificarToken);
 
-// Middleware que verifica tanto el rol como los permisos específicos de chat
+// ✅ Middleware que verifica tanto el rol como los permisos específicos de chat
 const verificarAccesoChat = [
   verificarMultiplesRoles(1, 3, 4), // Permitir alumnos, almacén y admin
   verificarPermisosAlmacen('chat')   // Verificar permisos específicos para almacén
 ];
 
-// Obtener lista de contactos (alumno verá todos almacenistas; almacenista verá solo sus alumnos)
-// Unprotected version (fallback or public preview)
-router.get('/users', messageController.getContactos);
+// ==================== RUTAS DEL CHAT ====================
 
-// Protected version with chat access
-router.get('/users', verificarAccesoChat, messageController.getContactos); // Using getContactos instead of obtenerUsuarios
+// Obtener lista de contactos 
+// - Alumno verá todos los almacenistas
+// - Almacenista verá solo alumnos con quienes ha chateado
+router.get('/users', verificarAccesoChat, messageController.getContactos);
 
 // Obtener mensajes con un usuario específico
-// Protected version
-router.get('/:userId', verificarAccesoChat, messageController.getMessages); // Using getMessages instead of obtenerMensajes
-// Unprotected version (fallback)
-router.get('/:userId', messageController.getMessages);
+router.get('/:userId', verificarAccesoChat, messageController.getMessages);
 
 // Enviar mensaje
-// Protected version
-router.post('/send', verificarAccesoChat, messageController.sendMessage); // Using sendMessage instead of enviarMensaje
-// Unprotected version (fallback)
-router.post('/send', messageController.sendMessage);
+router.post('/send', verificarAccesoChat, messageController.sendMessage);
 
-// (Opcional) Obtener todos los usuarios de un rol
-router.get('/all', messageController.getAllByRole);
+// ==================== RUTAS OPCIONALES/ADMINISTRATIVAS ====================
 
-// Limpiar mensajes antiguos manualmente
-router.delete('/cleanup', messageController.cleanupMessages);
+// (Opcional) Obtener todos los usuarios de un rol específico
+router.get('/all', verificarAccesoChat, messageController.getAllByRole);
+
+// Limpiar mensajes antiguos manualmente (solo admin o almacén con permisos)
+router.delete('/cleanup', verificarMultiplesRoles(3, 4), messageController.cleanupMessages);
 
 module.exports = router;
