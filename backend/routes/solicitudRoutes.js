@@ -1,3 +1,4 @@
+//backend/routes/solicitudRoutes.js
 const express = require('express');
 const router = express.Router();
 const solicitudController = require('../controllers/solicitudController');
