@@ -215,15 +215,7 @@ const aprobarSolicitud = async (req, res) => {
   }
 };
 
-const obtenerTodasSolicitudes = async (req, res) => {
-  // Lógica para obtener todas las solicitudes
-  try {
-    const [solicitudes] = await db.query('SELECT * FROM Solicitud');
-    res.json(solicitudes);
-  } catch (error) {
-    res.status(500).json({ error: error.message });
-  }
-};
+
 
 // Rechazar solicitud
 const rechazarSolicitud = async (req, res) => {
@@ -345,6 +337,5 @@ module.exports = {
   rechazarSolicitud,
   obtenerSolicitudes,
   eliminarSolicitudesViejasHandler,
-  eliminarSolicitudesViejas,
-  obtenerTodasSolicitudes
+  eliminarSolicitudesViejas
 };
