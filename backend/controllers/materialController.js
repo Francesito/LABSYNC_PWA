@@ -156,6 +156,54 @@ const resetearTodoElStock = async (req, res) => {
   }
 };
 
+const actualizarMaterial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre, cantidad, tipo } = req.body;
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    await pool.query(
+      `UPDATE ${meta.table} SET nombre = ?, ${meta.field} = ? WHERE id = ?`,
+      [nombre, cantidad, id]
+    );
+    res.status(200).json({ message: 'Material actualizado' });
+  } catch (error) {
+    console.error('[Error] actualizarMaterial:', error);
+    res.status(500).json({ error: 'Error al actualizar material' });
+  }
+};
+
+const eliminarMaterial = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { tipo } = req.query;
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    await pool.query(`DELETE FROM ${meta.table} WHERE id = ?`, [id]);
+    res.status(200).json({ message: 'Material eliminado' });
+  } catch (error) {
+    console.error('[Error] eliminarMaterial:', error);
+    res.status(500).json({ error: 'Error al eliminar material' });
+  }
+};
+
+const actualizarStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cantidad, tipo } = req.body;
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    await pool.query(
+      `UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`,
+      [cantidad, id]
+    );
+    res.status(200).json({ message: 'Stock actualizado' });
+  } catch (error) {
+    console.error('[Error] actualizarStock:', error);
+    res.status(500).json({ error: 'Error al actualizar stock' });
+  }
+};
+
 /** Obtener líquidos */
 const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
