@@ -91,6 +91,71 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
  * ========================================
  */
 
+const crearMaterial = async (req, res) => {
+  try {
+    const { tipo, nombre, cantidad } = req.body;
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    const [result] = await pool.query(
+      `INSERT INTO ${meta.table} (nombre, ${meta.field}) VALUES (?, ?)`,
+      [nombre, cantidad]
+    );
+    res.status(201).json({ message: 'Material creado', id: result.insertId });
+  } catch (error) {
+    console.error('[Error] crearMaterial:', error);
+    res.status(500).json({ error: 'Error al crear material' });
+  }
+};
+
+const registrarEntradaStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cantidad, tipo } = req.body;
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    await pool.query(
+      `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} + ? WHERE id = ?`,
+      [cantidad, id]
+    );
+    res.status(200).json({ message: 'Entrada de stock registrada' });
+  } catch (error) {
+    console.error('[Error] registrarEntradaStock:', error);
+    res.status(500).json({ error: 'Error al registrar entrada' });
+  }
+};
+
+const registrarSalidaStock = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { cantidad, tipo } = req.body;
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    const [stock] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
+    if (stock[0][meta.field] < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
+    await pool.query(
+      `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} - ? WHERE id = ?`,
+      [cantidad, id]
+    );
+    res.status(200).json({ message: 'Salida de stock registrada' });
+  } catch (error) {
+    console.error('[Error] registrarSalidaStock:', error);
+    res.status(500).json({ error: 'Error al registrar salida' });
+  }
+};
+
+const resetearTodoElStock = async (req, res) => {
+  try {
+    await pool.query('UPDATE MaterialLiquido SET cantidad_disponible_ml = 0');
+    await pool.query('UPDATE MaterialSolido SET cantidad_disponible_g = 0');
+    await pool.query('UPDATE MaterialEquipo SET cantidad_disponible_u = 0');
+    await pool.query('UPDATE MaterialLaboratorio SET cantidad_disponible = 0');
+    res.status(200).json({ message: 'Stock reseteado completamente' });
+  } catch (error) {
+    console.error('[Error] resetearTodoElStock:', error);
+    res.status(500).json({ error: 'Error al resetear stock' });
+  }
+};
+
 /** Obtener líquidos */
 const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
@@ -810,5 +875,9 @@ module.exports = {
   deliverSolicitud,
   getSolicitudDetalle,
   cancelSolicitud,
-  adjustInventory
+  adjustInventory,
+  crearMaterial,
+  registrarEntradaStock,
+  registrarSalidaStock,
+  resetearTodoElStock
 }; 
