@@ -77,7 +77,7 @@ const requireDocente = (req, res, next) => {
   next();
 };
 
-// ✅ NUEVA FUNCIÓN: Verificar permisos específicos de almacén
+// ✅ FUNCIÓN MEJORADA: Verificar permisos específicos de almacén (CHAT Y STOCK)
 const verificarPermisosAlmacen = (permisoRequerido) => {
   return async (req, res, next) => {
     // Solo aplica a usuarios de almacén (rol 3)
@@ -112,6 +112,8 @@ const verificarPermisosAlmacen = (permisoRequerido) => {
     }
   };
 };
+
+// ✅ NUEVA FUNCIÓN: Verificar múltiples roles y permisos específicos
 const verificarMultiplesRoles = (...rolesPermitidos) => {
   return (req, res, next) => {
     if (!req.usuario || !rolesPermitidos.includes(req.usuario.rol_id)) {
@@ -121,6 +123,18 @@ const verificarMultiplesRoles = (...rolesPermitidos) => {
   };
 };
 
+// ✅ NUEVA FUNCIÓN: Verificar acceso específico para modificar stock
+const verificarAccesoStock = [
+  (req, res, next) => {
+    // Solo almacén y administradores pueden modificar stock
+    if (!req.usuario || ![3, 4].includes(req.usuario.rol_id)) {
+      return res.status(403).json({ error: 'Acceso denegado. Solo personal de almacén puede modificar stock.' });
+    }
+    next();
+  },
+  verificarPermisosAlmacen('stock') // Verificar permisos específicos para almacén
+];
+
 module.exports = {
   verificarToken,
   verificarRol,
@@ -129,5 +143,6 @@ module.exports = {
   requireAlmacen,
   requireDocente,
   verificarPermisosAlmacen,
-  verificarMultiplesRoles
+  verificarMultiplesRoles,
+  verificarAccesoStock
 };
