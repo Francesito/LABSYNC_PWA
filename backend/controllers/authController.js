@@ -115,6 +115,7 @@ const iniciarSesion = async (req, res) => {
   }
 };
 
+// ✅ FUNCIÓN MEJORADA: Verificar permisos de chat Y stock
 const verificarPermisosChat = async (req, res) => {
   try {
     const usuario = req.usuario; // Viene del middleware verificarToken
@@ -125,7 +126,7 @@ const verificarPermisosChat = async (req, res) => {
 
     const userRole = usuario.rol_id;
     
-    // Si es alumno (rol_id: 1), siempre tiene acceso al chat
+    // Si es alumno (rol_id: 1), siempre tiene acceso al chat pero NO al stock
     if (userRole === 1) {
       return res.json({ 
         acceso_chat: true,
@@ -134,7 +135,7 @@ const verificarPermisosChat = async (req, res) => {
       });
     }
     
-    // Si es docente (rol_id: 2), no tiene acceso al chat
+    // Si es docente (rol_id: 2), no tiene acceso al chat ni al stock
     if (userRole === 2) {
       return res.json({ 
         acceso_chat: false,
@@ -186,6 +187,71 @@ const verificarPermisosChat = async (req, res) => {
   } catch (error) {
     console.error('Error al verificar permisos de chat:', error);
     res.status(500).json({ error: 'Error al verificar permisos' });
+  }
+};
+
+// ✅ NUEVA FUNCIÓN: Verificar específicamente permisos de stock
+const verificarPermisosStock = async (req, res) => {
+  try {
+    const usuario = req.usuario; // Viene del middleware verificarToken
+    
+    if (!usuario) {
+      return res.status(401).json({ error: 'Usuario no autenticado' });
+    }
+
+    const userRole = usuario.rol_id;
+    
+    // Solo almacén y administradores pueden tener permisos de stock
+    if (userRole === 1 || userRole === 2) {
+      return res.json({ 
+        modificar_stock: false,
+        rol: userRole === 1 ? 'alumno' : 'docente',
+        mensaje: 'Este rol no tiene acceso a modificar stock'
+      });
+    }
+    
+    // Si es almacen (rol_id: 3), verificar permisos específicos
+    if (userRole === 3) {
+      const [permisosRows] = await pool.query(
+        'SELECT modificar_stock FROM PermisosAlmacen WHERE usuario_id = ?',
+        [usuario.id]
+      );
+      
+      if (permisosRows.length === 0) {
+        return res.json({ 
+          modificar_stock: false,
+          rol: 'almacen',
+          mensaje: 'Permisos no configurados'
+        });
+      }
+      
+      const permisos = permisosRows[0];
+      return res.json({ 
+        modificar_stock: Boolean(permisos.modificar_stock),
+        rol: 'almacen',
+        mensaje: permisos.modificar_stock ? 'Tienes permisos para modificar stock' : 'No tienes permisos para modificar stock'
+      });
+    }
+    
+    // Si es administrador (rol_id: 4), tiene todos los permisos
+    if (userRole === 4) {
+      return res.json({ 
+        modificar_stock: true,
+        rol: 'administrador',
+        mensaje: 'Administrador tiene todos los permisos'
+      });
+    }
+    
+    // Rol no reconocido
+    return res.json({ 
+      modificar_stock: false,
+      rol: 'unknown',
+      mensaje: 'Rol no reconocido'
+    });
+    
+  } catch (error) {
+    console.error('Error al verificar permisos de stock:', error);
+    res.status(500).json({ error: 'Error al verificar permisos de stock' });
   }
 };
 
@@ -276,6 +342,7 @@ module.exports = {
   verificarCorreo,
   iniciarSesion,
   verificarPermisosChat,
+  verificarPermisosStock,
   forgotPassword,
   resetPassword
 };
