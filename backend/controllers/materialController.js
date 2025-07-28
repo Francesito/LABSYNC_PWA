@@ -178,6 +178,26 @@ const getHistorialMovimientos = async (req, res) => {
   res.status(200).json({ message: 'Historial de movimientos no implementado aún' });
 };
 
+const getEstadisticasCompletas = async (req, res) => {
+  try {
+    // Ejemplo: Consulta estadísticas agregadas (ajusta según tu esquema)
+    const [stats] = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 1) AS alumnos,
+        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 2) AS docentes,
+        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 3) AS almacenes,
+        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 4) AS administradores,
+        (SELECT COUNT(*) FROM Solicitudes WHERE estado = 'pendiente') AS solicitudes_pendientes,
+        (SELECT COUNT(*) FROM Solicitudes WHERE estado = 'aprobada') AS solicitudes_aprobadas,
+        (SELECT COUNT(*) FROM Solicitudes WHERE estado = 'entregada') AS solicitudes_entregadas
+    `);
+    res.status(200).json({ estadisticas: stats[0] });
+  } catch (error) {
+    console.error('[Error] getEstadisticasCompletas:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas completas' });
+  }
+};
+
 const actualizarMaterial = async (req, res) => {
   try {
     const { id } = req.params;
@@ -948,6 +968,7 @@ module.exports = {
   adjustInventory,
   crearMaterial,
   registrarEntradaStock,
+  getEstadisticasCompletas,
   registrarSalidaStock,
   resetearTodoElStock,
   actualizarMaterial,
