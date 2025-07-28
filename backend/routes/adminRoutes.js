@@ -22,6 +22,8 @@ const generarContrasenaAleatoria = () => {
   return result;
 };
 
+// ==================== GESTIÓN DE USUARIOS ====================
+
 // Crear nuevo usuario
 router.post('/crear-usuario', async (req, res) => {
   const { nombre, correo_institucional, rol_id, contrasena } = req.body;
@@ -157,7 +159,9 @@ router.get('/usuarios-almacen', async (req, res) => {
   }
 });
 
-// Actualizar permisos de usuario
+// ==================== GESTIÓN DE PERMISOS ====================
+
+// ✅ Actualizar permisos de usuario (MEJORADO para manejar ambos permisos)
 router.put('/actualizar-permisos', async (req, res) => {
   const { usuario_id, campo, valor } = req.body;
 
@@ -202,6 +206,53 @@ router.put('/actualizar-permisos', async (req, res) => {
       );
     }
 
+    res.json({ mensaje: `Permiso ${campo} actualizado correctamente` });
+
+  } catch (error) {
+    console.error('Error al actualizar permisos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ✅ NUEVA RUTA: Actualizar múltiples permisos a la vez
+router.put('/actualizar-todos-permisos', async (req, res) => {
+  const { usuario_id, acceso_chat, modificar_stock } = req.body;
+
+  if (!usuario_id || acceso_chat === undefined || modificar_stock === undefined) {
+    return res.status(400).json({ error: 'Datos incompletos' });
+  }
+
+  try {
+    // Verificar que el usuario existe y es de almacén
+    const [usuario] = await pool.query(
+      'SELECT * FROM Usuario WHERE id = ? AND rol_id = 3',
+      [usuario_id]
+    );
+
+    if (usuario.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    // Verificar si ya existe registro de permisos
+    const [permisos] = await pool.query(
+      'SELECT * FROM PermisosAlmacen WHERE usuario_id = ?',
+      [usuario_id]
+    );
+
+    if (permisos.length === 0) {
+      // Crear registro de permisos
+      await pool.query(
+        'INSERT INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock) VALUES (?, ?, ?)',
+        [usuario_id, acceso_chat, modificar_stock]
+      );
+    } else {
+      // Actualizar permisos existentes
+      await pool.query(
+        'UPDATE PermisosAlmacen SET acceso_chat = ?, modificar_stock = ? WHERE usuario_id = ?',
+        [acceso_chat, modificar_stock, usuario_id]
+      );
+    }
+
     res.json({ mensaje: 'Permisos actualizados correctamente' });
 
   } catch (error) {
@@ -209,6 +260,37 @@ router.put('/actualizar-permisos', async (req, res) => {
     res.status(500).json({ error: 'Error interno del servidor' });
   }
 });
+
+// ✅ NUEVA RUTA: Obtener permisos específicos de un usuario
+router.get('/permisos-usuario/:userId', async (req, res) => {
+  const { userId } = req.params;
+
+  try {
+    const [permisos] = await pool.query(`
+      SELECT 
+        u.id,
+        u.nombre,
+        u.correo_institucional,
+        u.rol_id,
+        COALESCE(p.acceso_chat, FALSE) as acceso_chat,
+        COALESCE(p.modificar_stock, FALSE) as modificar_stock
+      FROM Usuario u
+      LEFT JOIN PermisosAlmacen p ON u.id = p.usuario_id
+      WHERE u.id = ?
+    `, [userId]);
+
+    if (permisos.length === 0) {
+      return res.status(404).json({ error: 'Usuario no encontrado' });
+    }
+
+    res.json(permisos[0]);
+  } catch (error) {
+    console.error('Error al obtener permisos:', error);
+    res.status(500).json({ error: 'Error interno del servidor' });
+  }
+});
+
+// ==================== GESTIÓN DE ESTADO DE USUARIOS ====================
 
 // Bloquear usuario
 router.put('/bloquear-usuario', async (req, res) => {
@@ -302,6 +384,8 @@ router.delete('/eliminar-usuario', async (req, res) => {
   }
 });
 
+// ==================== CONSULTAS Y REPORTES ====================
+
 // Obtener todos los usuarios (para estadísticas)
 router.get('/usuarios', async (req, res) => {
   try {
@@ -311,9 +395,21 @@ router.get('/usuarios', async (req, res) => {
         u.nombre,
         u.correo_institucional,
         u.activo,
-        r.nombre as rol
+        r.nombre as rol,
+        CASE 
+          WHEN u.rol_id = 3 THEN COALESCE(p.acceso_chat, FALSE)
+          WHEN u.rol_id = 1 THEN TRUE
+          WHEN u.rol_id = 4 THEN TRUE
+          ELSE FALSE
+        END as acceso_chat,
+        CASE 
+          WHEN u.rol_id = 3 THEN COALESCE(p.modificar_stock, FALSE)
+          WHEN u.rol_id = 4 THEN TRUE
+          ELSE FALSE
+        END as modificar_stock
       FROM Usuario u
       JOIN Rol r ON u.rol_id = r.id
+      LEFT JOIN PermisosAlmacen p ON u.id = p.usuario_id AND u.rol_id = 3
       ORDER BY u.nombre ASC
     `);
 
@@ -339,7 +435,21 @@ router.get('/estadisticas', async (req, res) => {
       ORDER BY r.id
     `);
 
-    res.json(stats);
+    // ✅ NUEVA: Estadísticas adicionales de permisos de almacén
+    const [permisosStats] = await pool.query(`
+      SELECT 
+        COUNT(*) as total_almacen,
+        SUM(CASE WHEN acceso_chat = TRUE THEN 1 ELSE 0 END) as con_chat,
+        SUM(CASE WHEN modificar_stock = TRUE THEN 1 ELSE 0 END) as con_stock
+      FROM PermisosAlmacen p
+      JOIN Usuario u ON p.usuario_id = u.id
+      WHERE u.activo = TRUE
+    `);
+
+    res.json({
+      roles: stats,
+      permisos_almacen: permisosStats[0] || { total_almacen: 0, con_chat: 0, con_stock: 0 }
+    });
   } catch (error) {
     console.error('Error al obtener estadísticas:', error);
     res.status(500).json({ error: 'Error interno del servidor' });
