@@ -1,7 +1,7 @@
 //backend/routes/solicitudRoutes.js
 const express = require('express');
 const router = express.Router();
-const solicitudController = require('../controllers/solicitudController');
+const solicitudController = require('../controllers/materialController');
 const { 
   verificarToken, 
   verificarRol, 
@@ -64,7 +64,7 @@ router.get(
   '/todas',
   verificarToken,
   verificarRol([2, 4]), // Docentes y administradores
-  solicitudController.obtenerTodasSolicitudes
+  solicitudController.getAllSolicitudes
 );
 
 // Obtener solicitudes pendientes de aprobación
