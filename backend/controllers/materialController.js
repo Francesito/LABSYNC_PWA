@@ -927,5 +927,8 @@ module.exports = {
   crearMaterial,
   registrarEntradaStock,
   registrarSalidaStock,
-  resetearTodoElStock
+  resetearTodoElStock,
+  actualizarMaterial,
+  eliminarMaterial,
+  actualizarStock
 }; 
