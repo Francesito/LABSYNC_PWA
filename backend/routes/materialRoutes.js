@@ -134,17 +134,12 @@ router.post(
   '/solicitud/:id/cancelar',
   verificarToken,
   (req, res, next) => {
-    // Si es alumno (rol 1), no necesita permisos especiales
     if (req.usuario.rol_id === 1) {
-      return next();
+      return verificarRol([1])(req, res, next); // Verifica rol de alumno
     }
-    // Si es almacenista (rol 3), necesita permisos de stock
     if (req.usuario.rol_id === 3) {
-      return verificarAccesoStock[0](req, res, () => {
-        verificarAccesoStock[1](req, res, next);
-      });
+      return verificarAccesoStock(req, res, next); // Usa el array completo
     }
-    // Otros roles no permitidos
     return res.status(403).json({ error: 'No tienes permisos para cancelar solicitudes' });
   },
   materialController.cancelSolicitud
