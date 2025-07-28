@@ -14,6 +14,7 @@
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
+console.log('materialController.cancelSolicitud:', materialController.cancelSolicitud);
 const { 
   verificarToken, 
   verificarRol, 
