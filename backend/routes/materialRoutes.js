@@ -14,7 +14,17 @@
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
+console.log('materialController.crearSolicitudes:', materialController.crearSolicitudes);
+console.log('materialController.crearSolicitudConAdeudo:', materialController.crearSolicitudConAdeudo);
+console.log('materialController.approveSolicitud:', materialController.approveSolicitud);
+console.log('materialController.rejectSolicitud:', materialController.rejectSolicitud);
+console.log('materialController.deliverSolicitud:', materialController.deliverSolicitud);
+console.log('materialController.adjustInventory:', materialController.adjustInventory);
 console.log('materialController.cancelSolicitud:', materialController.cancelSolicitud);
+console.log('materialController.crearMaterial:', materialController.crearMaterial);
+console.log('materialController.registrarEntradaStock:', materialController.registrarEntradaStock);
+console.log('materialController.registrarSalidaStock:', materialController.registrarSalidaStock);
+console.log('materialController.resetearTodoElStock:', materialController.resetearTodoElStock);
 const { 
   verificarToken, 
   verificarRol, 
