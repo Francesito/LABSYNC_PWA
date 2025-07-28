@@ -27,7 +27,7 @@ app.use(cors({
     'https://localhost:3000'                 // Para desarrollo local con HTTPS
   ],
   credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
   allowedHeaders: ['Content-Type', 'Authorization']
 }));
 
@@ -39,7 +39,8 @@ app.get('/', (req, res) => {
   res.json({ 
     message: '🚀 LabSync Backend funcionando correctamente',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    version: '2.0.0 - Con control de permisos de stock'
   });
 });
 
@@ -47,9 +48,14 @@ app.get('/', (req, res) => {
 app.get('/health', async (req, res) => {
   try {
     await pool.query('SELECT 1');
+    
+    // ✅ NUEVO: Verificar también la tabla de permisos
+    const [permisosCount] = await pool.query('SELECT COUNT(*) as total FROM PermisosAlmacen');
+    
     res.json({ 
       status: 'OK', 
       database: 'Connected',
+      permisos_configurados: permisosCount[0].total,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -62,14 +68,14 @@ app.get('/health', async (req, res) => {
 });
 
 // ==================== RUTAS DE LA API ====================
-// Rutas existentes (sin cambios)
+// Rutas existentes (con mejoras de permisos)
 app.use('/api/auth', authRoutes);
 app.use('/api/materials', materialRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/solicitudes', solicitudRoutes);
 app.use('/api/adeudos', adeudoRoutes);
 
-// Nueva ruta de administrador
+// Nueva ruta de administrador (con gestión de permisos completa)
 app.use('/api/admin', adminRoutes);
 
 // ==================== INICIALIZACIÓN DE ROLES ====================
@@ -114,6 +120,12 @@ const initializePermisosTable = async () => {
       WHERE rol_id = 3;
     `);
 
+    // ✅ NUEVO: Verificar que los administradores no tengan registros en PermisosAlmacen
+    await pool.query(`
+      DELETE FROM PermisosAlmacen 
+      WHERE usuario_id IN (SELECT id FROM Usuario WHERE rol_id = 4);
+    `);
+
     // Crear índices para mejorar rendimiento
     await pool.query(`
       CREATE INDEX IF NOT EXISTS idx_permisos_usuario ON PermisosAlmacen(usuario_id);
@@ -127,7 +139,20 @@ const initializePermisosTable = async () => {
       CREATE INDEX IF NOT EXISTS idx_usuario_activo ON Usuario(activo);
     `);
 
+    // ✅ NUEVO: Mostrar estadísticas de permisos inicializados
+    const [stats] = await pool.query(`
+      SELECT 
+        COUNT(*) as total_permisos,
+        SUM(acceso_chat) as con_chat,
+        SUM(modificar_stock) as con_stock
+      FROM PermisosAlmacen
+    `);
+
     console.log('✅ Tabla PermisosAlmacen inicializada correctamente');
+    console.log(`📊 Permisos configurados: ${stats[0].total_permisos} usuarios de almacén`);
+    console.log(`💬 Con acceso a chat: ${stats[0].con_chat}`);
+    console.log(`📦 Con acceso a stock: ${stats[0].con_stock}`);
+    
   } catch (error) {
     console.error('❌ Error inicializando tabla PermisosAlmacen:', error);
   }
@@ -142,12 +167,44 @@ const startSolicitudCleanupJob = () => {
   }, 24 * 60 * 60 * 1000); // Cada 24 horas
 };
 
+// ✅ NUEVO: CRONJOB para limpiar mensajes antiguos
+const { cleanupOldMessages } = require('./controllers/messageController');
+
+const startMessageCleanupJob = () => {
+  setInterval(async () => {
+    console.log('🗑️ Ejecutando limpieza automática de mensajes antiguos...');
+    try {
+      const deletedCount = await cleanupOldMessages();
+      console.log(`✅ Eliminados ${deletedCount} mensajes antiguos`);
+    } catch (error) {
+      console.error('❌ Error en limpieza de mensajes:', error);
+    }
+  }, 12 * 60 * 60 * 1000); // Cada 12 horas
+};
+
 // ==================== MANEJO DE ERRORES 404 ====================
 app.use('*', (req, res) => {
   res.status(404).json({
     error: 'Ruta no encontrada',
     path: req.originalUrl,
-    method: req.method
+    method: req.method,
+    disponibles: [
+      '/api/auth/*',
+      '/api/materials/*',
+      '/api/messages/*', 
+      '/api/solicitudes/*',
+      '/api/adeudos/*',
+      '/api/admin/*'
+    ]
+  });
+});
+
+// ==================== MANEJO DE ERRORES GLOBALES ====================
+app.use((error, req, res, next) => {
+  console.error('Error no manejado:', error);
+  res.status(500).json({
+    error: 'Error interno del servidor',
+    message: process.env.NODE_ENV === 'development' ? error.message : 'Algo salió mal'
   });
 });
 
@@ -155,15 +212,23 @@ app.use('*', (req, res) => {
 const PORT = process.env.PORT || 5000;
 
 app.listen(PORT, '0.0.0.0', async () => {
-  console.log(`🚀 Servidor corriendo en puerto ${PORT}`);
+  console.log(`🚀 Servidor LabSync corriendo en puerto ${PORT}`);
   console.log(`🌐 URL: https://labsync-1090.onrender.com`);
+  console.log(`📅 Fecha de inicio: ${new Date().toISOString()}`);
   
   // Inicializar base de datos
+  console.log('🔧 Inicializando sistema...');
   await initializeRoles();
   await initializePermisosTable();
   
   // Iniciar trabajos programados
+  console.log('⏰ Iniciando trabajos programados...');
   startSolicitudCleanupJob();
+  startMessageCleanupJob();
   
   console.log('✅ Sistema LabSync inicializado completamente');
+  console.log('🔐 Funcionalidades de permisos:');
+  console.log('   - Control de acceso a chat por usuario');
+  console.log('   - Control de acceso a modificación de stock');
+  console.log('   - Gestión completa de permisos desde panel admin');
 });
