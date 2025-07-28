@@ -143,6 +143,24 @@ const registrarSalidaStock = async (req, res) => {
   }
 };
 
+const getUsuariosConPermisos = async (req, res) => {
+  try {
+    // Consulta para obtener usuarios con sus permisos (ajusta según tu esquema)
+    const [usuarios] = await pool.query(`
+      SELECT u.id, u.nombre, u.correo_institucional, u.rol_id, r.nombre AS rol_nombre,
+             p.acceso_chat, p.modificar_stock
+      FROM Usuario u
+      LEFT JOIN PermisosAlmacen p ON u.id = p.usuario_id
+      JOIN Rol r ON u.rol_id = r.id
+      ORDER BY u.rol_id, u.nombre
+    `);
+    res.status(200).json({ usuarios });
+  } catch (error) {
+    console.error('[Error] getUsuariosConPermisos:', error);
+    res.status(500).json({ error: 'Error al obtener usuarios con permisos' });
+  }
+};
+
 const resetearTodoElStock = async (req, res) => {
   try {
     await pool.query('UPDATE MaterialLiquido SET cantidad_disponible_ml = 0');
@@ -933,6 +951,7 @@ module.exports = {
   registrarSalidaStock,
   resetearTodoElStock,
   actualizarMaterial,
+  getUsuariosConPermisos,
   eliminarMaterial,
   actualizarStock,
   getHistorialMovimientos
