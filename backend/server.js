@@ -152,7 +152,6 @@ const initializePermisosTable = async () => {
     console.log(`📊 Permisos configurados: ${stats[0].total_permisos} usuarios de almacén`);
     console.log(`💬 Con acceso a chat: ${stats[0].con_chat}`);
     console.log(`📦 Con acceso a stock: ${stats[0].con_stock}`);
-    
   } catch (error) {
     console.error('❌ Error inicializando tabla PermisosAlmacen:', error);
   }
