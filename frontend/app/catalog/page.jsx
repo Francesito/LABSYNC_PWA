@@ -24,106 +24,242 @@ export default function Catalog() {
   const [selectedRiesgoFisico, setSelectedRiesgoFisico] = useState('');
   const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
+  
+  // ✅ NUEVOS ESTADOS para gestión de permisos
+  const [userPermissions, setUserPermissions] = useState({
+    acceso_chat: false,
+    modificar_stock: false,
+    rol: null
+  });
+  const [permissionsLoading, setPermissionsLoading] = useState(true);
+  const [permissionsError, setPermissionsError] = useState('');
 
   const LOW_STOCK_THRESHOLD = 50;
 
-  // Función para verificar si el usuario puede modificar stock
+  // ✅ NUEVA FUNCIÓN: Cargar permisos del usuario
+  const loadUserPermissions = async () => {
+    try {
+      setPermissionsLoading(true);
+      const token = localStorage.getItem('token');
+      
+      if (!token) {
+        router.push('/login');
+        return;
+      }
+
+      // Obtener permisos de stock desde el backend
+      const response = await axios.get(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/permisos-stock`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      console.log('Permisos de stock obtenidos:', response.data);
+      
+      setUserPermissions({
+        acceso_chat: response.data.acceso_chat || false,
+        modificar_stock: response.data.modificar_stock || false,
+        rol: response.data.rol
+      });
+
+      setPermissionsError('');
+    } catch (error) {
+      console.error('Error al cargar permisos:', error);
+      setPermissionsError('Error al verificar permisos de usuario');
+      
+      if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        router.push('/login');
+      } else if (error.response?.status === 403) {
+        setPermissionsError('Usuario bloqueado. Contacta al administrador.');
+      }
+    } finally {
+      setPermissionsLoading(false);
+    }
+  };
+
+  // ✅ FUNCIÓN MEJORADA: Verificar si el usuario puede modificar stock
   const canModifyStock = () => {
-    if (usuario?.rol === 'administrador') return true;
-    if (usuario?.rol === 'almacen' && usuario?.permisos?.modificar_stock) return true;
+    // Administradores siempre tienen permisos
+    if (userPermissions.rol === 'administrador') return true;
+    
+    // Almacenistas necesitan permisos específicos
+    if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) return true;
+    
+    // Otros roles no pueden modificar stock
     return false;
   };
 
-  // Función para verificar si el usuario puede realizar solicitudes
+  // ✅ FUNCIÓN MEJORADA: Verificar si el usuario puede realizar solicitudes
   const canMakeRequests = () => {
-    if (usuario?.rol === 'administrador') return false; // Administradores no pueden hacer solicitudes
-    if (usuario?.rol === 'almacen' && !usuario?.permisos?.modificar_stock) return false; // Almacén sin permisos no puede hacer solicitudes
-    return true; // Alumnos, docentes y almacén con permisos sí pueden
+    // Administradores no pueden hacer solicitudes (solo gestionar)
+    if (userPermissions.rol === 'administrador') return false;
+    
+    // Alumnos siempre pueden hacer solicitudes
+    if (userPermissions.rol === 'alumno') return true;
+    
+    // Docentes pueden hacer solicitudes
+    if (userPermissions.rol === 'docente') return true;
+    
+    // Almacenistas sin permisos de stock no pueden hacer solicitudes
+    if (userPermissions.rol === 'almacen' && !userPermissions.modificar_stock) return false;
+    
+    // Almacenistas con permisos sí pueden
+    if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) return true;
+    
+    return false;
   };
 
-  // Función para verificar si el usuario puede ver detalles e interactuar
+  // ✅ FUNCIÓN MEJORADA: Verificar si el usuario puede ver detalles e interactuar
   const canViewDetails = () => {
-    if (usuario?.rol === 'administrador') return false; // Solo pueden ver reactivos
-    if (usuario?.rol === 'almacen' && !usuario?.permisos?.modificar_stock) return false; // Almacén sin permisos no puede interactuar
-    return true; // Todos los demás sí pueden
+    // Administradores solo pueden ver (sin interactuar)
+    if (userPermissions.rol === 'administrador') return false;
+    
+    // Almacenistas sin permisos no pueden interactuar
+    if (userPermissions.rol === 'almacen' && !userPermissions.modificar_stock) return false;
+    
+    // Todos los demás pueden ver detalles
+    return true;
   };
 
+  // ✅ NUEVA FUNCIÓN: Manejar errores de permisos
+  const handlePermissionError = (action) => {
+    const messages = {
+      'modify_stock': 'No tienes permisos para modificar el stock. Contacta al administrador.',
+      'make_request': 'No tienes permisos para realizar solicitudes.',
+      'view_details': 'No tienes permisos para ver los detalles de este material.',
+      'adjust_stock': 'Solo usuarios con permisos de stock pueden ajustar inventario.',
+      'low_stock_alerts': 'Solo usuarios con permisos de stock pueden gestionar alertas.'
+    };
+    
+    setError(messages[action] || 'No tienes permisos para realizar esta acción.');
+    
+    // Limpiar error después de 5 segundos
+    setTimeout(() => setError(''), 5000);
+  };
+
+  // ✅ NUEVA FUNCIÓN: Realizar llamada segura a API con manejo de permisos
+  const makeSecureApiCall = async (url, options = {}) => {
+    try {
+      const token = localStorage.getItem('token');
+      const config = {
+        ...options,
+        headers: {
+          ...options.headers,
+          Authorization: `Bearer ${token}`
+        }
+      };
+      
+      const response = await axios(url, config);
+      return response;
+    } catch (error) {
+      if (error.response?.status === 403) {
+        if (error.response.data?.error?.includes('permisos de stock')) {
+          handlePermissionError('modify_stock');
+        } else if (error.response.data?.error?.includes('solicitudes')) {
+          handlePermissionError('make_request');
+        } else {
+          setError('No tienes permisos para realizar esta acción.');
+        }
+      } else if (error.response?.status === 401) {
+        localStorage.removeItem('token');
+        router.push('/login');
+      } else {
+        setError('Error al procesar la solicitud: ' + (error.response?.data?.error || error.message));
+      }
+      throw error;
+    }
+  };
+
+  // ✅ useEffect principal actualizado con carga de permisos
   useEffect(() => {
     if (!usuario) {
       router.push('/login');
       return;
     }
 
-    if (usuario.rol === 'administrador') {
-      setError('Solo puedes ver los reactivos como administrador');
-    }
-
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-
-        const [liquidoRes, solidoRes, laboratorioRes, equipoRes] = await Promise.all([
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/liquidos`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/solidos`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/laboratorio`),
-          axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/equipos`),
-        ]);
-
-        const liquidos = liquidoRes.data.map((m) => ({
-          ...m,
-          tipo: 'liquido',
-          cantidad: m.cantidad_disponible_ml ?? 0,
-        }));
-
-        const solidos = solidoRes.data.map((m) => ({
-          ...m,
-          tipo: 'solido',
-          cantidad: m.cantidad_disponible_g ?? 0,
-        }));
-
-        const laboratorio = laboratorioRes.data.map((m) => ({
-          ...m,
-          tipo: 'laboratorio',
-          cantidad: m.cantidad_disponible ?? 0,
-        }));
-
-        const equipos = equipoRes.data.map((m) => ({
-          ...m,
-          tipo: 'equipo',
-          cantidad: m.cantidad_disponible_u ?? 0,
-          riesgos_fisicos: '',
-          riesgos_salud: '',
-          riesgos_ambientales: ''
-        }));
-
-        let all = [...liquidos, ...solidos, ...laboratorio, ...equipos];
-        if (usuario.rol === 'alumno') {
-          all = all.filter(m => m.tipo === 'laboratorio' || m.tipo === 'equipo');
-        } else if (usuario.rol === 'docente') {
-          all = all.filter(m => m.tipo === 'liquido' || m.tipo === 'solido');
-        }
-
-        setAllMaterials(all);
-
-        // Solo mostrar alertas de stock bajo si puede modificar stock
-        if (canModifyStock()) {
-          const lowStock = all.filter(material =>
-            material.cantidad > 0 &&
-            material.cantidad <= LOW_STOCK_THRESHOLD
-          );
-          setLowStockMaterials(lowStock);
-        }
-
-      } catch (err) {
-        console.error(err);
-        setError('Error al cargar el catálogo');
-      } finally {
-        setLoading(false);
-      }
+    const initializeComponent = async () => {
+      // Cargar permisos primero
+      await loadUserPermissions();
+      
+      // Luego cargar materiales
+      await fetchMaterials();
     };
 
-    fetchData();
+    initializeComponent();
   }, [usuario, router]);
+
+  // ✅ FUNCIÓN SEPARADA: Cargar materiales
+  const fetchMaterials = async () => {
+    try {
+      setLoading(true);
+
+      if (userPermissions.rol === 'administrador') {
+        setError('Como administrador, solo puedes ver los reactivos (sin interacción)');
+      }
+
+      const [liquidoRes, solidoRes, laboratorioRes, equipoRes] = await Promise.all([
+        makeSecureApiCall(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/liquidos`),
+        makeSecureApiCall(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/solidos`),
+        makeSecureApiCall(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/laboratorio`),
+        makeSecureApiCall(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/tipo/equipos`),
+      ]);
+
+      const liquidos = liquidoRes.data.map((m) => ({
+        ...m,
+        tipo: 'liquido',
+        cantidad: m.cantidad_disponible_ml ?? 0,
+      }));
+
+      const solidos = solidoRes.data.map((m) => ({
+        ...m,
+        tipo: 'solido',
+        cantidad: m.cantidad_disponible_g ?? 0,
+      }));
+
+      const laboratorio = laboratorioRes.data.map((m) => ({
+        ...m,
+        tipo: 'laboratorio',
+        cantidad: m.cantidad_disponible ?? 0,
+      }));
+
+      const equipos = equipoRes.data.map((m) => ({
+        ...m,
+        tipo: 'equipo',
+        cantidad: m.cantidad_disponible_u ?? 0,
+        riesgos_fisicos: '',
+        riesgos_salud: '',
+        riesgos_ambientales: ''
+      }));
+
+      let all = [...liquidos, ...solidos, ...laboratorio, ...equipos];
+      
+      // Filtrar materiales según el rol del usuario
+      if (userPermissions.rol === 'alumno') {
+        all = all.filter(m => m.tipo === 'laboratorio' || m.tipo === 'equipo');
+      } else if (userPermissions.rol === 'docente') {
+        all = all.filter(m => m.tipo === 'liquido' || m.tipo === 'solido');
+      }
+
+      setAllMaterials(all);
+
+      // Solo mostrar alertas de stock bajo si puede modificar stock
+      if (canModifyStock()) {
+        const lowStock = all.filter(material =>
+          material.cantidad > 0 &&
+          material.cantidad <= LOW_STOCK_THRESHOLD
+        );
+        setLowStockMaterials(lowStock);
+      }
+
+    } catch (err) {
+      console.error('Error al cargar materiales:', err);
+      if (!err.response || err.response.status !== 403) {
+        setError('Error al cargar el catálogo');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const formatName = (name) =>
     name
@@ -232,9 +368,10 @@ export default function Catalog() {
     return 'text-green-600';
   };
 
+  // ✅ FUNCIÓN ACTUALIZADA: Añadir al carrito con verificación de permisos
   const addToCart = (material, cantidad) => {
     if (!canMakeRequests()) {
-      setError('No tienes permiso para solicitar materiales');
+      handlePermissionError('make_request');
       return;
     }
     
@@ -265,17 +402,19 @@ export default function Catalog() {
     setDetailAmount('');
   };
 
+  // ✅ FUNCIÓN ACTUALIZADA: Remover del carrito con verificación de permisos
   const removeFromCart = (id, tipo) => {
     if (!canMakeRequests()) {
-      setError('No tienes permiso para modificar el carrito');
+      handlePermissionError('make_request');
       return;
     }
     setSelectedCart((prev) => prev.filter((item) => !(item.id === id && item.tipo === tipo)));
   };
 
+  // ✅ FUNCIÓN ACTUALIZADA: Vaciar selección con verificación de permisos
   const vaciarSeleccion = () => {
     if (!canMakeRequests()) {
-      setError('No tienes permiso para modificar el carrito');
+      handlePermissionError('make_request');
       return;
     }
     setSelectedCart([]);
@@ -284,9 +423,10 @@ export default function Catalog() {
 
   const totalItems = selectedCart.reduce((sum, item) => sum + (item.cantidad || 0), 0);
 
+  // ✅ FUNCIÓN ACTUALIZADA: Enviar solicitud con llamada segura a API
   const handleSubmitRequest = async () => {
     if (!canMakeRequests()) {
-      setError('No tienes permiso para enviar solicitudes');
+      handlePermissionError('make_request');
       return;
     }
     
@@ -296,28 +436,29 @@ export default function Catalog() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
+      await makeSecureApiCall(
         `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes`,
         {
-          materiales: selectedCart.map((item) => ({
-            material_id: item.id,
-            cantidad: item.cantidad,
-            tipo: item.tipo
-          })),
-          motivo: 'Solicitud desde catálogo',
-          fecha_solicitud: new Date().toISOString().split('T')[0],
-          aprobar_automatico: usuario.rol === 'docente',
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+          method: 'POST',
+          data: {
+            materiales: selectedCart.map((item) => ({
+              material_id: item.id,
+              cantidad: item.cantidad,
+              tipo: item.tipo
+            })),
+            motivo: 'Solicitud desde catálogo',
+            fecha_solicitud: new Date().toISOString().split('T')[0],
+            aprobar_automatico: userPermissions.rol === 'docente',
+          }
+        }
       );
 
       setSelectedCart([]);
       setShowRequestModal(false);
       router.push('/solicitudes');
     } catch (err) {
-      console.error(err);
-      setError('Error al enviar solicitud');
+      console.error('Error al enviar solicitud:', err);
+      // El error ya se maneja en makeSecureApiCall
     }
   };
 
@@ -331,9 +472,10 @@ export default function Catalog() {
     return matchesSearch && matchesRiesgoFisico && matchesRiesgoSalud;
   });
 
+  // ✅ FUNCIÓN ACTUALIZADA: Manejar clic en ajustar con verificación de permisos
   const handleAdjustClick = (material) => {
     if (!canModifyStock()) {
-      setError('No tienes permiso para ajustar el stock');
+      handlePermissionError('adjust_stock');
       return;
     }
     setMaterialToAdjust(material);
@@ -342,6 +484,7 @@ export default function Catalog() {
     setError('');
   };
 
+  // ✅ FUNCIÓN ACTUALIZADA: Manejar clic en detalles con verificación de permisos
   const handleDetailClick = (material, e) => {
     e.stopPropagation();
     if (!canViewDetails()) {
@@ -356,8 +499,13 @@ export default function Catalog() {
     setError('');
   };
 
+  // ✅ FUNCIÓN ACTUALIZADA: Enviar ajuste con llamada segura a API
   const handleAdjustSubmit = async () => {
-    if (!materialToAdjust || !canModifyStock()) return;
+    if (!materialToAdjust || !canModifyStock()) {
+      handlePermissionError('adjust_stock');
+      return;
+    }
+    
     const amountNum = parseInt(adjustAmount);
     if (isNaN(amountNum)) {
       setError('Ingresa un número válido');
@@ -365,15 +513,17 @@ export default function Catalog() {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
+      await makeSecureApiCall(
         `${process.env.NEXT_PUBLIC_API_URL}/api/materials/material/${materialToAdjust.id}/ajustar`,
         {
-          cantidad: amountNum,
-          tipo: materialToAdjust.tipo
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+          method: 'POST',
+          data: {
+            cantidad: amountNum,
+            tipo: materialToAdjust.tipo
+          }
+        }
       );
+      
       setShowAdjustModal(false);
       setAdjustAmount('');
       setAllMaterials(prev =>
@@ -384,20 +534,142 @@ export default function Catalog() {
         )
       );
     } catch (err) {
-      console.error(err);
-      setError('Error al ajustar inventario');
+      console.error('Error al ajustar inventario:', err);
+      // El error ya se maneja en makeSecureApiCall
     }
   };
 
+  // ✅ FUNCIÓN ACTUALIZADA: Descartar alerta de stock bajo con verificación de permisos
   const dismissLowStockAlert = (materialId, tipo) => {
     if (!canModifyStock()) {
-      setError('No tienes permiso para gestionar alertas de stock');
+      handlePermissionError('low_stock_alerts');
       return;
     }
     setLowStockMaterials(prev => 
       prev.filter(material => !(material.id === materialId && material.tipo === tipo))
     );
   };
+
+  // ✅ MOSTRAR LOADING si los permisos están cargando
+  if (permissionsLoading || loading) {
+    return (
+      <>
+        <style jsx>{`
+          .loading-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin-left: 16rem;
+            background: #f8f9fa;
+          }
+          .loading-content {
+            text-align: center;
+            background: white;
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          }
+          .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid #e5e7eb;
+            border-top: 3px solid #1e3a8a;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+          }
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          .loading-text {
+            color: #6b7280;
+            font-size: 1rem;
+          }
+        `}</style>
+        <div className="loading-container">
+          <div className="loading-content">
+            <div className="spinner"></div>
+            <div className="loading-text">
+              {permissionsLoading ? 'Verificando permisos...' : 'Cargando catálogo...'}
+            </div>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // ✅ MOSTRAR ERROR DE PERMISOS si hay problemas
+  if (permissionsError) {
+    return (
+      <>
+        <style jsx>{`
+          .error-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin-left: 16rem;
+            background: #f8f9fa;
+          }
+          .error-content {
+            text-align: center;
+            background: white;
+            padding: 3rem;
+            border-radius: 8px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            max-width: 500px;
+          }
+          .error-icon {
+            font-size: 3rem;
+            color: #ef4444;
+            margin-bottom: 1rem;
+          }
+          .error-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1f2937;
+            margin-bottom: 1rem;
+          }
+          .error-message {
+            color: #6b7280;
+            font-size: 1rem;
+            margin-bottom: 2rem;
+          }
+          .retry-button {
+            background: #1e3a8a;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 0.75rem 1.5rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.15s ease;
+          }
+          .retry-button:hover {
+            background: #1e40af;
+          }
+        `}</style>
+        <div className="error-container">
+          <div className="error-content">
+            <div className="error-icon">⚠️</div>
+            <h2 className="error-title">Error de Permisos</h2>
+            <p className="error-message">{permissionsError}</p>
+            <button 
+              className="retry-button" 
+              onClick={() => {
+                setPermissionsError('');
+                loadUserPermissions();
+              }}
+            >
+              Reintentar
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
@@ -426,6 +698,45 @@ export default function Catalog() {
           font-size: 1.75rem;
           font-weight: 600;
           margin: 0;
+        }
+
+        .permissions-info {
+          background: #eff6ff;
+          border: 1px solid #bfdbfe;
+          border-radius: 6px;
+          padding: 1rem 1.5rem;
+          margin-bottom: 1rem;
+          color: #1e40af;
+          font-size: 0.875rem;
+        }
+
+        .permissions-info .permission-item {
+          display: flex;
+          align-items: center;
+          margin-bottom: 0.5rem;
+        }
+
+        .permissions-info .permission-item:last-child {
+          margin-bottom: 0;
+        }
+
+        .permission-badge {
+          display: inline-block;
+          padding: 0.25rem 0.5rem;
+          border-radius: 4px;
+          font-size: 0.75rem;
+          font-weight: 500;
+          margin-right: 0.5rem;
+        }
+
+        .permission-enabled {
+          background: #dcfce7;
+          color: #166534;
+        }
+
+        .permission-disabled {
+          background: #fee2e2;
+          color: #991b1b;
         }
 
         .low-stock-alerts {
@@ -679,6 +990,12 @@ export default function Catalog() {
 
         .btn-adjust:hover {
           background: #d97706;
+        }
+
+        .btn-adjust:disabled {
+          background: #d1d5db;
+          cursor: not-allowed;
+          opacity: 0.6;
         }
 
         .btn-add-to-cart {
@@ -1207,6 +1524,37 @@ export default function Catalog() {
                 <h1>Catálogo de Reactivos</h1>
               </div>
 
+              {/* ✅ NUEVA SECCIÓN: Mostrar información de permisos del usuario */}
+              <div className="permissions-info">
+                <h4 style={{ margin: 0, color: '#1e40af', fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>
+                  Estado de Permisos - {userPermissions.rol ? userPermissions.rol.charAt(0).toUpperCase() + userPermissions.rol.slice(1) : 'Cargando...'}
+                </h4>
+                <div className="permission-item">
+                  <span className={`permission-badge ${canMakeRequests() ? 'permission-enabled' : 'permission-disabled'}`}>
+                    {canMakeRequests() ? '✓' : '✗'} Realizar Solicitudes
+                  </span>
+                  <span style={{ fontSize: '0.875rem' }}>
+                    {canMakeRequests() ? 'Puedes crear vales de material' : 'No puedes crear solicitudes'}
+                  </span>
+                </div>
+                <div className="permission-item">
+                  <span className={`permission-badge ${canModifyStock() ? 'permission-enabled' : 'permission-disabled'}`}>
+                    {canModifyStock() ? '✓' : '✗'} Modificar Stock
+                  </span>
+                  <span style={{ fontSize: '0.875rem' }}>
+                    {canModifyStock() ? 'Puedes ajustar inventario' : 'Solo puedes consultar'}
+                  </span>
+                </div>
+                <div className="permission-item">
+                  <span className={`permission-badge ${canViewDetails() ? 'permission-enabled' : 'permission-disabled'}`}>
+                    {canViewDetails() ? '✓' : '✗'} Interacción con Materiales
+                  </span>
+                  <span style={{ fontSize: '0.875rem' }}>
+                    {canViewDetails() ? 'Puedes ver detalles y agregar al carrito' : 'Vista limitada'}
+                  </span>
+                </div>
+              </div>
+
               {canModifyStock() && lowStockMaterials.length > 0 && (
                 <div className="low-stock-alerts">
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
@@ -1263,7 +1611,7 @@ export default function Catalog() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
 
-                {usuario?.rol !== 'alumno' && (
+                {userPermissions.rol !== 'alumno' && (
                   <>
                     <select
                       className="filter-select"
@@ -1341,6 +1689,7 @@ export default function Catalog() {
                                 e.stopPropagation();
                                 handleAdjustClick(material);
                               }}
+                              disabled={!canModifyStock()}
                             >
                               Ajustar Stock
                             </button>
@@ -1380,6 +1729,7 @@ export default function Catalog() {
                         <button
                           className="btn-remove"
                           onClick={() => removeFromCart(item.id, item.tipo)}
+                          disabled={!canMakeRequests()}
                         >
                           ×
                         </button>
@@ -1393,14 +1743,14 @@ export default function Catalog() {
                   <button
                     className="btn-create-vale"
                     onClick={() => setShowRequestModal(true)}
-                    disabled={selectedCart.length === 0 || totalItems === 0}
+                    disabled={selectedCart.length === 0 || totalItems === 0 || !canMakeRequests()}
                   >
                     Crear Vale
                   </button>
                   <button
                     className="btn-clear mt-3"
                     onClick={vaciarSeleccion}
-                    disabled={selectedCart.length === 0}
+                    disabled={selectedCart.length === 0 || !canMakeRequests()}
                   >
                     Vaciar Selección
                   </button>
@@ -1435,7 +1785,7 @@ export default function Catalog() {
                     </div>
                   ))}
                 </div>
-                {usuario?.rol !== 'docente' && (
+                {userPermissions.rol !== 'docente' && (
                   <div className="security-alert mt-4">
                     Esta solicitud será revisada por un docente antes de ser aprobada.
                   </div>
@@ -1451,6 +1801,7 @@ export default function Catalog() {
                 <button
                   className="btn-create-vale"
                   onClick={handleSubmitRequest}
+                  disabled={!canMakeRequests()}
                 >
                   Confirmar
                 </button>
@@ -1471,6 +1822,11 @@ export default function Catalog() {
               </div>
               <div className="modal-body p-4">
                 {error && <div className="alert-custom mb-3">{error}</div>}
+                {!canModifyStock() && (
+                  <div className="alert-custom mb-3">
+                    ⚠️ No tienes permisos para modificar el stock. Esta funcionalidad está restringida.
+                  </div>
+                )}
                 <div className="mb-3">
                   <label className="form-label">
                     Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
@@ -1482,6 +1838,7 @@ export default function Catalog() {
                     onChange={(e) => setAdjustAmount(e.target.value)}
                     placeholder="Nueva cantidad"
                     min="0"
+                    disabled={!canModifyStock()}
                   />
                 </div>
               </div>
@@ -1495,7 +1852,7 @@ export default function Catalog() {
                 <button
                   className="btn-adjust"
                   onClick={handleAdjustSubmit}
-                  disabled={!adjustAmount || parseInt(adjustAmount) < 0}
+                  disabled={!adjustAmount || parseInt(adjustAmount) < 0 || !canModifyStock()}
                 >
                   Guardar
                 </button>
@@ -1516,6 +1873,14 @@ export default function Catalog() {
               </div>
               <div className="modal-body p-4 align-items-start">
                 {error && <div className="alert-custom mb-3">{error}</div>}
+                
+                {/* ✅ NUEVA SECCIÓN: Mostrar restricciones de permisos en el modal */}
+                {!canViewDetails() && (
+                  <div className="security-alert mb-3">
+                    ⚠️ Vista limitada: Como {userPermissions.rol}, solo puedes consultar la información básica del material.
+                  </div>
+                )}
+                
                 <img
                   src={getImagePath(selectedMaterial)}
                   alt={formatName(selectedMaterial.nombre)}
@@ -1530,6 +1895,20 @@ export default function Catalog() {
                   <br />
                   Stock: {displayStock(selectedMaterial)}
                 </p>
+                
+                {/* ✅ Mostrar información de permisos específicos */}
+                {userPermissions.rol === 'administrador' && (
+                  <div className="info-alert mt-3">
+                    Como administrador, puedes ver toda la información pero no puedes realizar solicitudes ni modificar directamente el stock desde este módulo.
+                  </div>
+                )}
+                
+                {userPermissions.rol === 'almacen' && !userPermissions.modificar_stock && (
+                  <div className="security-alert mt-3">
+                    Tienes permisos limitados de almacén. Para modificar stock o realizar solicitudes, contacta al administrador.
+                  </div>
+                )}
+                
                 {selectedMaterial.riesgos_fisicos || selectedMaterial.riesgos_salud || selectedMaterial.riesgos_ambientales ? (
                   <div>
                     <h5 className="mt-4">Riesgos</h5>
@@ -1554,7 +1933,8 @@ export default function Catalog() {
                 ) : (
                   <p className="no-risks mt-4">No se han registrado riesgos para este material.</p>
                 )}
-                {canMakeRequests() && (
+                
+                {canMakeRequests() && canViewDetails() && (
                   <div className="mt-4">
                     <label className="form-label">Cantidad a solicitar</label>
                     <input
@@ -1565,14 +1945,50 @@ export default function Catalog() {
                       placeholder="Ingresa cantidad"
                       min="1"
                       max={selectedMaterial.cantidad}
+                      disabled={selectedMaterial.cantidad === 0}
                     />
                     <button
                       className="btn-add-to-cart mt-3"
                       onClick={() => addToCart(selectedMaterial, detailAmount)}
-                      disabled={!detailAmount || parseInt(detailAmount) <= 0 || parseInt(detailAmount) > selectedMaterial.cantidad}
+                      disabled={
+                        !detailAmount || 
+                        parseInt(detailAmount) <= 0 || 
+                        parseInt(detailAmount) > selectedMaterial.cantidad ||
+                        selectedMaterial.cantidad === 0 ||
+                        !canMakeRequests()
+                      }
                     >
-                      Añadir al carrito
+                      {selectedMaterial.cantidad === 0 ? 'Material Agotado' : 'Añadir al carrito'}
                     </button>
+                    
+                    {/* ✅ NUEVA SECCIÓN: Información adicional sobre el proceso de solicitud */}
+                    {userPermissions.rol === 'alumno' && (
+                      <div className="info-alert mt-3">
+                        💡 Como alumno, tu solicitud necesitará aprobación docente antes de procesarse.
+                      </div>
+                    )}
+                    
+                    {userPermissions.rol === 'docente' && (
+                      <div className="info-alert mt-3">
+                        ⚡ Como docente, tu solicitud será aprobada automáticamente.
+                      </div>
+                    )}
+                    
+                    {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
+                      <div className="info-alert mt-3">
+                        🔧 Como personal de almacén con permisos, puedes tanto solicitar materiales como ajustar el inventario.
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* ✅ NUEVA SECCIÓN: Mostrar por qué no puede hacer solicitudes */}
+                {!canMakeRequests() && canViewDetails() && (
+                  <div className="security-alert mt-4">
+                    {userPermissions.rol === 'administrador' 
+                      ? '🔒 Los administradores gestionan el sistema pero no realizan solicitudes directamente.'
+                      : '🔒 No tienes permisos para realizar solicitudes. Contacta al administrador.'
+                    }
                   </div>
                 )}
               </div>
