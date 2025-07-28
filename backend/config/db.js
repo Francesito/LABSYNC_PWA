@@ -1,5 +1,5 @@
-const mysql = require('mysql2/promise');
 require('dotenv').config();
+const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
   host: process.env.DB_HOST,
@@ -8,25 +8,26 @@ const pool = mysql.createPool({
   database: process.env.DB_NAME,
   port: process.env.DB_PORT || 3306,
   ssl: {
-    rejectUnauthorized: false
+    rejectUnauthorized: true // Verifica el certificado SSL de Aiven
   },
-  acquireTimeout: 60000,      // 60 segundos para obtener conexión
-  timeout: 60000,             // 60 segundos para queries
-  reconnect: true,            // Reconectar automáticamente
-  connectionLimit: 10,        // Máximo 10 conexiones
-  queueLimit: 0,              // Sin límite en la cola
-  enableKeepAlive: true,      // Mantener conexiones vivas
-  keepAliveInitialDelay: 0
+  waitForConnections: true, // Maneja reconexiones automáticamente
+  connectionLimit: 10, // Máximo 10 conexiones
+  queueLimit: 0, // Sin límite en la cola de consultas
+  connectTimeout: 60000 // 60 segundos para establecer conexión
 });
 
 // Probar conexión al inicio
-pool.getConnection()
-  .then(connection => {
+async function testConnection() {
+  try {
+    const connection = await pool.getConnection();
     console.log('✅ Conexión a la base de datos exitosa');
     connection.release();
-  })
-  .catch(error => {
+  } catch (error) {
     console.error('❌ Error conectando a la base de datos:', error.message);
-  });
+    process.exit(1); // Finaliza el proceso si la conexión falla
+  }
+}
+
+testConnection();
 
 module.exports = pool;
