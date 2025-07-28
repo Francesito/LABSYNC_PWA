@@ -26,6 +26,7 @@ console.log('materialController.registrarEntradaStock:', materialController.regi
 console.log('materialController.registrarSalidaStock:', materialController.registrarSalidaStock);
 console.log('materialController.resetearTodoElStock:', materialController.resetearTodoElStock);
 console.log('materialController.getUsuariosConPermisos:', materialController.getUsuariosConPermisos);
+console.log('materialController.getEstadisticasCompletas:', materialController.getEstadisticasCompletas);
 const { 
   verificarToken, 
   verificarRol, 
