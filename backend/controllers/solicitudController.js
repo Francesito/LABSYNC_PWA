@@ -147,6 +147,7 @@ const crearSolicitudConAdeudo = async (req, res) => {
       return res.status(400).json({ error: 'Tipo de material inválido' });
     }
 
+
     const [stockResult] = await pool.query(
       `SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`,
       [material_id]
@@ -211,6 +212,16 @@ const aprobarSolicitud = async (req, res) => {
   } catch (error) {
     console.error('Error al aprobar solicitud:', error);
     res.status(500).json({ error: 'Error al aprobar solicitud' });
+  }
+};
+
+const obtenerTodasSolicitudes = async (req, res) => {
+  // Lógica para obtener todas las solicitudes
+  try {
+    const [solicitudes] = await db.query('SELECT * FROM Solicitud');
+    res.json(solicitudes);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
@@ -334,5 +345,6 @@ module.exports = {
   rechazarSolicitud,
   obtenerSolicitudes,
   eliminarSolicitudesViejasHandler,
-  eliminarSolicitudesViejas
+  eliminarSolicitudesViejas,
+  obtenerTodasSolicitudes
 };
