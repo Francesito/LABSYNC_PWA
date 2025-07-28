@@ -98,48 +98,38 @@ const initializeRoles = async () => {
 // ==================== INICIALIZACIÓN DE TABLA PERMISOS ====================
 const initializePermisosTable = async () => {
   try {
-    // Crear tabla PermisosAlmacen si no existe
+    // Verificar y crear tabla PermisosAlmacen si no existe
     await pool.query(`
       CREATE TABLE IF NOT EXISTS PermisosAlmacen (
-        id INT AUTO_INCREMENT PRIMARY KEY,
+        id INT NOT NULL AUTO_INCREMENT,
         usuario_id INT NOT NULL,
-        acceso_chat BOOLEAN DEFAULT FALSE,
-        modificar_stock BOOLEAN DEFAULT FALSE,
+        acceso_chat TINYINT(1) DEFAULT 0,
+        modificar_stock TINYINT(1) DEFAULT 0,
         fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-        FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE,
-        UNIQUE KEY unique_usuario (usuario_id)
+        PRIMARY KEY (id),
+        UNIQUE KEY unique_usuario (usuario_id),
+        KEY idx_permisos_usuario (usuario_id),
+        CONSTRAINT PermisosAlmacen_ibfk_1 FOREIGN KEY (usuario_id) REFERENCES Usuario(id) ON DELETE CASCADE
       );
     `);
 
     // Insertar permisos por defecto para usuarios de almacén existentes
     await pool.query(`
       INSERT IGNORE INTO PermisosAlmacen (usuario_id, acceso_chat, modificar_stock)
-      SELECT id, FALSE, FALSE 
+      SELECT id, 0, 0 
       FROM Usuario 
-      WHERE rol_id = 3;
+      WHERE rol_id = 3 
+      ON DUPLICATE KEY UPDATE acceso_chat = 0, modificar_stock = 0;
     `);
 
-    // ✅ NUEVO: Verificar que los administradores no tengan registros en PermisosAlmacen
+    // Eliminar permisos de administradores
     await pool.query(`
       DELETE FROM PermisosAlmacen 
       WHERE usuario_id IN (SELECT id FROM Usuario WHERE rol_id = 4);
     `);
 
-    // Crear índices para mejorar rendimiento
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_permisos_usuario ON PermisosAlmacen(usuario_id);
-    `);
-    
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_usuario_rol ON Usuario(rol_id);
-    `);
-    
-    await pool.query(`
-      CREATE INDEX IF NOT EXISTS idx_usuario_activo ON Usuario(activo);
-    `);
-
-    // ✅ NUEVO: Mostrar estadísticas de permisos inicializados
+    // Mostrar estadísticas
     const [stats] = await pool.query(`
       SELECT 
         COUNT(*) as total_permisos,
