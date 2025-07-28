@@ -70,14 +70,6 @@ router.get(
   materialController.getUserSolicitudes
 );
 
-// Cancelar solicitud pendiente (solo alumno)
-router.post(
-  '/solicitud/:id/cancelar',
-  verificarToken,
-  verificarRol([1]),
-  materialController.cancelSolicitud
-);
-
 /**
  * ========================
  * RUTAS PARA DOCENTES (ROL 2)
