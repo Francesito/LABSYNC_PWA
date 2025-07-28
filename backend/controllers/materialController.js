@@ -107,6 +107,32 @@ const crearMaterial = async (req, res) => {
   }
 };
 
+const getReporteUsoPeriodo = async (req, res) => {
+  try {
+    const { inicio, fin } = req.query; // Espera parámetros de fecha (ejemplo: ?inicio=2025-07-01&fin=2025-07-31)
+    if (!inicio || !fin) {
+      return res.status(400).json({ error: 'Parámetros "inicio" y "fin" son requeridos' });
+    }
+
+    // Ejemplo: Consulta un reporte de uso por período (ajusta según tu esquema)
+    const [reporte] = await pool.query(`
+      SELECT 
+        m.nombre AS material_nombre,
+        COUNT(s.id) AS solicitudes,
+        SUM(s.cantidad) AS cantidad_total
+      FROM Solicitudes s
+      JOIN Material m ON s.material_id = m.id
+      WHERE s.fecha BETWEEN ? AND ?
+      GROUP BY m.nombre
+      ORDER BY cantidad_total DESC
+    `, [inicio, fin]);
+    res.status(200).json({ reporte });
+  } catch (error) {
+    console.error('[Error] getReporteUsoPeriodo:', error);
+    res.status(500).json({ error: 'Error al obtener reporte de uso por período' });
+  }
+};
+
 const registrarEntradaStock = async (req, res) => {
   try {
     const { id } = req.params;
@@ -973,6 +999,7 @@ module.exports = {
   resetearTodoElStock,
   actualizarMaterial,
   getUsuariosConPermisos,
+  getReporteUsoPeriodo,
   eliminarMaterial,
   actualizarStock,
   getHistorialMovimientos
