@@ -133,6 +133,224 @@ const getReporteUsoPeriodo = async (req, res) => {
   }
 };
 
+const getMaterialesStockBajo = async (req, res) => {
+  try {
+    const umbral = 10; // Umbral configurable (ajusta según necesidad)
+    const [liquidos] = await pool.query(
+      `SELECT id, nombre, cantidad_disponible_ml AS stock 
+       FROM MaterialLiquido 
+       WHERE cantidad_disponible_ml < ?`,
+      [umbral]
+    );
+    const [solidos] = await pool.query(
+      `SELECT id, nombre, cantidad_disponible_g AS stock 
+       FROM MaterialSolido 
+       WHERE cantidad_disponible_g < ?`,
+      [umbral]
+    );
+    const [equipos] = await pool.query(
+      `SELECT id, nombre, cantidad_disponible_u AS stock 
+       FROM MaterialEquipo 
+       WHERE cantidad_disponible_u < ?`,
+      [umbral]
+    );
+    const [laboratorio] = await pool.query(
+      `SELECT id, nombre, cantidad_disponible AS stock 
+       FROM MaterialLaboratorio 
+       WHERE cantidad_disponible < ?`,
+      [umbral]
+    );
+    const materialesBajo = [...liquidos, ...solidos, ...equipos, ...laboratorio];
+    res.status(200).json({ materiales: materialesBajo });
+  } catch (error) {
+    console.error('[Error] getMaterialesStockBajo:', error);
+    res.status(500).json({ error: 'Error al obtener materiales con stock bajo' });
+  }
+};
+
+/**
+ * Crear categoría de materiales
+ */
+const crearCategoria = async (req, res) => {
+  try {
+    const { nombre } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre de categoría requerido' });
+    const [result] = await pool.query(
+      `INSERT INTO CategoriaMaterial (nombre) VALUES (?)`,
+      [nombre]
+    );
+    res.status(201).json({ message: 'Categoría creada', id: result.insertId });
+  } catch (error) {
+    console.error('[Error] crearCategoria:', error);
+    res.status(500).json({ error: 'Error al crear categoría' });
+  }
+};
+
+/**
+ * Actualizar categoría de materiales
+ */
+const actualizarCategoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { nombre } = req.body;
+    if (!nombre) return res.status(400).json({ error: 'Nombre de categoría requerido' });
+    const [result] = await pool.query(
+      `UPDATE CategoriaMaterial SET nombre = ? WHERE id = ?`,
+      [nombre, id]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
+    res.status(200).json({ message: 'Categoría actualizada' });
+  } catch (error) {
+    console.error('[Error] actualizarCategoria:', error);
+    res.status(500).json({ error: 'Error al actualizar categoría' });
+  }
+};
+
+/**
+ * Eliminar categoría de materiales
+ */
+const eliminarCategoria = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [result] = await pool.query(
+      `DELETE FROM CategoriaMaterial WHERE id = ?`,
+      [id]
+    );
+    if (result.affectedRows === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
+    res.status(200).json({ message: 'Categoría eliminada' });
+  } catch (error) {
+    console.error('[Error] eliminarCategoria:', error);
+    res.status(500).json({ error: 'Error al eliminar categoría' });
+  }
+};
+
+/**
+ * Obtener reporte de materiales más solicitados
+ */
+const getReporteMasSolicitados = async (req, res) => {
+  try {
+    const [reporte] = await pool.query(`
+      SELECT 
+        m.nombre AS material_nombre,
+        COUNT(s.id) AS solicitudes,
+        SUM(s.cantidad) AS cantidad_total
+      FROM SolicitudItem s
+      JOIN MaterialLiquido m ON s.material_id = m.id AND s.tipo = 'liquido'
+      UNION
+      SELECT 
+        m.nombre AS material_nombre,
+        COUNT(s.id) AS solicitudes,
+        SUM(s.cantidad) AS cantidad_total
+      FROM SolicitudItem s
+      JOIN MaterialSolido m ON s.material_id = m.id AND s.tipo = 'solido'
+      UNION
+      SELECT 
+        m.nombre AS material_nombre,
+        COUNT(s.id) AS solicitudes,
+        SUM(s.cantidad) AS cantidad_total
+      FROM SolicitudItem s
+      JOIN MaterialEquipo m ON s.material_id = m.id AND s.tipo = 'equipo'
+      UNION
+      SELECT 
+        m.nombre AS material_nombre,
+        COUNT(s.id) AS solicitudes,
+        SUM(s.cantidad) AS cantidad_total
+      FROM SolicitudItem s
+      JOIN MaterialLaboratorio m ON s.material_id = m.id AND s.tipo = 'laboratorio'
+      GROUP BY m.nombre
+      ORDER BY cantidad_total DESC
+      LIMIT 10
+    `);
+    res.status(200).json({ reporte });
+  } catch (error) {
+    console.error('[Error] getReporteMasSolicitados:', error);
+    res.status(500).json({ error: 'Error al obtener reporte de materiales más solicitados' });
+  }
+};
+
+/**
+ * Obtener reporte de eficiencia de entrega
+ */
+const getReporteEficienciaEntrega = async (req, res) => {
+  try {
+    const [reporte] = await pool.query(`
+      SELECT 
+        s.folio,
+        COUNT(CASE WHEN s.estado = 'entregada' THEN 1 END) / COUNT(*) * 100 AS porcentaje_entrega,
+        AVG(DATEDIFF(s.fecha_entrega, s.fecha_solicitud)) AS dias_promedio_entrega
+      FROM Solicitud s
+      GROUP BY s.folio
+      HAVING COUNT(*) > 0
+      ORDER BY porcentaje_entrega DESC
+    `);
+    res.status(200).json({ reporte });
+  } catch (error) {
+    console.error('[Error] getReporteEficienciaEntrega:', error);
+    res.status(500).json({ error: 'Error al obtener reporte de eficiencia de entrega' });
+  }
+};
+
+/**
+ * Verificar integridad de datos
+ */
+const validarIntegridadDatos = async (req, res) => {
+  try {
+    const [inconsistencias] = await pool.query(`
+      SELECT 
+        'Material sin stock' AS tipo_error,
+        COUNT(*) AS cantidad
+      FROM MaterialLiquido WHERE cantidad_disponible_ml < 0
+      UNION
+      SELECT 
+        'Material sin stock',
+        COUNT(*)
+      FROM MaterialSolido WHERE cantidad_disponible_g < 0
+      UNION
+      SELECT 
+        'Material sin stock',
+        COUNT(*)
+      FROM MaterialEquipo WHERE cantidad_disponible_u < 0
+      UNION
+      SELECT 
+        'Material sin stock',
+        COUNT(*)
+      FROM MaterialLaboratorio WHERE cantidad_disponible < 0
+      UNION
+      SELECT 
+        'Solicitud sin items',
+        COUNT(*)
+      FROM Solicitud s
+      LEFT JOIN SolicitudItem si ON s.id = si.solicitud_id
+      WHERE si.solicitud_id IS NULL
+    `);
+    res.status(200).json({ inconsistencias });
+  } catch (error) {
+    console.error('[Error] validarIntegridadDatos:', error);
+    res.status(500).json({ error: 'Error al validar integridad de datos' });
+  }
+};
+
+/**
+ * Obtener estado del sistema de materiales
+ */
+const getEstadoSistema = async (req, res) => {
+  try {
+    const [estado] = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM MaterialLiquido) +
+        (SELECT COUNT(*) FROM MaterialSolido) +
+        (SELECT COUNT(*) FROM MaterialEquipo) +
+        (SELECT COUNT(*) FROM MaterialLaboratorio) AS total_materiales,
+        (SELECT COUNT(*) FROM Solicitud WHERE estado = 'pendiente') AS solicitudes_pendientes,
+        NOW() AS ultima_actualizacion
+    `);
+    res.status(200).json({ estado: estado[0] });
+  } catch (error) {
+    console.error('[Error] getEstadoSistema:', error);
+    res.status(500).json({ error: 'Error al obtener estado del sistema' });
+  }
+};
+
 const registrarEntradaStock = async (req, res) => {
   try {
     const { id } = req.params;
@@ -1000,6 +1218,14 @@ module.exports = {
   actualizarMaterial,
   getUsuariosConPermisos,
   getReporteUsoPeriodo,
+  getMaterialesStockBajo,
+  crearCategoria,
+  actualizarCategoria,
+  eliminarCategoria,
+  getReporteMasSolicitados,
+  getReporteEficienciaEntrega,
+  validarIntegridadDatos,
+  getEstadoSistema,
   eliminarMaterial,
   actualizarStock,
   getHistorialMovimientos
