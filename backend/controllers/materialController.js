@@ -157,21 +157,7 @@ const resetearTodoElStock = async (req, res) => {
 };
 
 const getHistorialMovimientos = async (req, res) => {
-  try {
-    // Ejemplo: Consulta un historial ficticio de movimientos (ajusta según tu esquema de base de datos)
-    const [movimientos] = await pool.query(`
-      SELECT m.*, u.nombre AS usuario_nombre, mt.nombre AS material_nombre
-      FROM Movimientos m
-      JOIN Usuario u ON m.usuario_id = u.id
-      JOIN Material mt ON m.material_id = mt.id
-      WHERE m.tipo IN ('entrada', 'salida')
-      ORDER BY m.fecha DESC
-    `);
-    res.status(200).json({ movimientos });
-  } catch (error) {
-    console.error('[Error] getHistorialMovimientos:', error);
-    res.status(500).json({ error: 'Error al obtener historial de movimientos' });
-  }
+  res.status(200).json({ message: 'Historial de movimientos no implementado aún' });
 };
 
 const actualizarMaterial = async (req, res) => {
