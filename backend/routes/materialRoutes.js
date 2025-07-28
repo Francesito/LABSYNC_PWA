@@ -2,37 +2,42 @@
  * ========================================
  * LabSync - Rutas de Material
  *
- * Versión actualizada
+ * Versión actualizada con control de permisos de stock
  * Incluye rutas separadas por rol
  * y soporte para tipos (liquido, solido, equipo, laboratorio)
  * con soporte de query param en get/:id
  *
- * Autor: ChatGPT Asistente
+ * Autor: Sistema LabSync
  * Fecha: 2025
  * ========================================
  */
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
-const { verificarToken, verificarRol } = require('../middleware/authMiddleware');
+const { 
+  verificarToken, 
+  verificarRol, 
+  verificarAccesoStock,
+  requireAdmin 
+} = require('../middleware/authMiddleware');
 
 /**
  * ========================
- * RUTAS PÚBLICAS
+ * RUTAS PÚBLICAS (SOLO LECTURA)
  * ========================
  */
-// Lista todos los materiales (las 4 subtablas unidas)
-router.get('/', materialController.getMaterials);
+// Lista todos los materiales (las 4 subtablas unidas) - LECTURA
+router.get('/', verificarToken, materialController.getMaterials);
 
-// Obtener un material específico por ID y TIPO
+// Obtener un material específico por ID y TIPO - LECTURA
 // Ejemplo: GET /api/materials/123?tipo=liquido
-router.get('/:id', materialController.getMaterialById);
+router.get('/:id', verificarToken, materialController.getMaterialById);
 
-// Rutas específicas para listar por tipo
-router.get('/tipo/liquidos', materialController.getLiquidos);
-router.get('/tipo/solidos', materialController.getSolidos);
-router.get('/tipo/equipos', materialController.getEquipos);
-router.get('/tipo/laboratorio', materialController.getLaboratorio);
+// Rutas específicas para listar por tipo - LECTURA
+router.get('/tipo/liquidos', verificarToken, materialController.getLiquidos);
+router.get('/tipo/solidos', verificarToken, materialController.getSolidos);
+router.get('/tipo/equipos', verificarToken, materialController.getEquipos);
+router.get('/tipo/laboratorio', verificarToken, materialController.getLaboratorio);
 
 /**
  * ========================
@@ -111,10 +116,10 @@ router.post(
 
 /**
  * ========================
- * RUTAS PARA ALMACENISTAS (ROL 3)
+ * RUTAS PARA ALMACENISTAS (ROL 3) - CON CONTROL DE PERMISOS DE STOCK
  * ========================
  */
-// Listar solicitudes aprobadas
+// Listar solicitudes aprobadas (solo lectura, sin permisos especiales)
 router.get(
   '/solicitudes/aprobadas',
   verificarToken,
@@ -122,30 +127,101 @@ router.get(
   materialController.getApprovedSolicitudes
 );
 
-// Marcar como entregada o cancelar (almacenista puede cancelar también)
+// ✅ RUTAS QUE REQUIEREN PERMISOS DE STOCK
+
+// Marcar como entregada (requiere permisos de stock)
 router.post(
   '/solicitud/:id/entregar',
   verificarToken,
-  verificarRol([3]),
+  verificarAccesoStock, // Verificar permisos de stock
   materialController.deliverSolicitud
 );
 
+// Cancelar solicitud (almacenista requiere permisos de stock)
 router.post(
   '/solicitud/:id/cancelar',
   verificarToken,
-  verificarRol([1, 3]), // Tanto alumnos como almacenistas pueden cancelar
+  (req, res, next) => {
+    // Si es alumno (rol 1), no necesita permisos especiales
+    if (req.usuario.rol_id === 1) {
+      return next();
+    }
+    // Si es almacenista (rol 3), necesita permisos de stock
+    if (req.usuario.rol_id === 3) {
+      return verificarAccesoStock[0](req, res, () => {
+        verificarAccesoStock[1](req, res, next);
+      });
+    }
+    // Otros roles no permitidos
+    return res.status(403).json({ error: 'No tienes permisos para cancelar solicitudes' });
+  },
   materialController.cancelSolicitud
 );
 
-// Ajustar inventario (con tipo en body)
+// Ajustar inventario (requiere permisos de stock)
 router.post(
   '/material/:id/ajustar',
   verificarToken,
-  verificarRol([3]),
+  verificarAccesoStock, // Verificar permisos de stock
   materialController.adjustInventory
 );
 
-// Listar solicitudes entregadas (solo almacenistas)
+// ✅ NUEVAS RUTAS PARA GESTIÓN DE STOCK
+
+// Crear nuevo material (requiere permisos de stock)
+router.post(
+  '/crear',
+  verificarToken,
+  verificarAccesoStock,
+  materialController.crearMaterial
+);
+
+// Actualizar material existente (requiere permisos de stock)
+router.put(
+  '/:id/actualizar',
+  verificarToken,
+  verificarAccesoStock,
+  materialController.actualizarMaterial
+);
+
+// Eliminar material (requiere permisos de stock)
+router.delete(
+  '/:id/eliminar',
+  verificarToken,
+  verificarAccesoStock,
+  materialController.eliminarMaterial
+);
+
+// Actualizar stock específico de un material (requiere permisos de stock)
+router.patch(
+  '/:id/stock',
+  verificarToken,
+  verificarAccesoStock,
+  materialController.actualizarStock
+);
+
+// Registrar entrada de stock (requiere permisos de stock)
+router.post(
+  '/:id/entrada',
+  verificarToken,
+  verificarAccesoStock,
+  materialController.registrarEntradaStock
+);
+
+// Registrar salida de stock (requiere permisos de stock)
+router.post(
+  '/:id/salida',
+  verificarToken,
+  verificarAccesoStock,
+  materialController.registrarSalidaStock
+);
+
+/**
+ * ========================
+ * RUTAS DE CONSULTA PARA ALMACENISTAS (SIN PERMISOS ESPECIALES)
+ * ========================
+ */
+// Listar solicitudes entregadas (solo almacenistas - lectura)
 router.get(
   '/solicitudes/entregadas',
   verificarToken,
@@ -153,12 +229,131 @@ router.get(
   materialController.getDeliveredSolicitudes
 );
 
-// Detalle de una solicitud entregada (almacenista)
+// Detalle de una solicitud entregada (almacenista - lectura)
 router.get(
   '/solicitudes/:id',
   verificarToken,
   verificarRol([3]),
   materialController.getSolicitudDetalle
+);
+
+// Obtener historial de movimientos de stock (almacenista - lectura)
+router.get(
+  '/historial-movimientos',
+  verificarToken,
+  verificarRol([3, 4]),
+  materialController.getHistorialMovimientos
+);
+
+// Obtener materiales con stock bajo (almacenista - lectura)
+router.get(
+  '/stock-bajo',
+  verificarToken,
+  verificarRol([3, 4]),
+  materialController.getMaterialesStockBajo
+);
+
+/**
+ * ========================
+ * RUTAS SOLO PARA ADMINISTRADORES (ROL 4)
+ * ========================
+ */
+// Crear categorías de materiales (solo admin)
+router.post(
+  '/categorias',
+  verificarToken,
+  requireAdmin,
+  materialController.crearCategoria
+);
+
+// Actualizar categorías (solo admin)
+router.put(
+  '/categorias/:id',
+  verificarToken,
+  requireAdmin,
+  materialController.actualizarCategoria
+);
+
+// Eliminar categorías (solo admin)
+router.delete(
+  '/categorias/:id',
+  verificarToken,
+  requireAdmin,
+  materialController.eliminarCategoria
+);
+
+// Obtener estadísticas completas (solo admin)
+router.get(
+  '/estadisticas/completas',
+  verificarToken,
+  requireAdmin,
+  materialController.getEstadisticasCompletas
+);
+
+// Obtener todos los usuarios con sus permisos (solo admin)
+router.get(
+  '/usuarios-permisos',
+  verificarToken,
+  requireAdmin,
+  materialController.getUsuariosConPermisos
+);
+
+// Resetear stock de todos los materiales (solo admin - emergencia)
+router.post(
+  '/resetear-stock',
+  verificarToken,
+  requireAdmin,
+  materialController.resetearTodoElStock
+);
+
+/**
+ * ========================
+ * RUTAS DE REPORTES Y ESTADÍSTICAS
+ * ========================
+ */
+// Reporte de uso de materiales por período (docentes y admin)
+router.get(
+  '/reportes/uso-periodo',
+  verificarToken,
+  verificarRol([2, 4]),
+  materialController.getReporteUsoPeriodo
+);
+
+// Reporte de materiales más solicitados (docentes y admin)
+router.get(
+  '/reportes/mas-solicitados',
+  verificarToken,
+  verificarRol([2, 4]),
+  materialController.getReporteMasSolicitados
+);
+
+// Reporte de eficiencia de entrega (almacén y admin)
+router.get(
+  '/reportes/eficiencia-entrega',
+  verificarToken,
+  verificarRol([3, 4]),
+  materialController.getReporteEficienciaEntrega
+);
+
+/**
+ * ========================
+ * RUTAS DE VALIDACIÓN Y SALUD
+ * ========================
+ */
+// Verificar integridad de datos (admin)
+router.get(
+  '/validar-integridad',
+  verificarToken,
+  requireAdmin,
+  materialController.validarIntegridadDatos
+);
+
+// Obtener estado del sistema de materiales (admin)
+router.get(
+  '/estado-sistema',
+  verificarToken,
+  requireAdmin,
+  materialController.getEstadoSistema
 );
 
 /**
