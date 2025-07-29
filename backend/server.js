@@ -157,14 +157,18 @@ const startSolicitudCleanupJob = () => {
 };
 
 // ✅ NUEVO: CRONJOB para limpiar mensajes antiguos
-const { cleanupOldMessages } = require('./controllers/messageController');
-
 const startMessageCleanupJob = () => {
   setInterval(async () => {
     console.log('🗑️ Ejecutando limpieza automática de mensajes antiguos...');
     try {
-      const deletedCount = await cleanupOldMessages();
-      console.log(`✅ Eliminados ${deletedCount} mensajes antiguos`);
+      // Verificar si la función existe antes de llamarla
+      const { cleanupOldMessages } = require('./controllers/messageController');
+      if (typeof cleanupOldMessages === 'function') {
+        const deletedCount = await cleanupOldMessages();
+        console.log(`✅ Eliminados ${deletedCount} mensajes antiguos`);
+      } else {
+        console.log('⚠️ Función cleanupOldMessages no disponible');
+      }
     } catch (error) {
       console.error('❌ Error en limpieza de mensajes:', error);
     }
@@ -205,17 +209,42 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log(`🌐 URL: https://labsync-1090.onrender.com`);
   console.log(`📅 Fecha de inicio: ${new Date().toISOString()}`);
   
-  // Inicializar base de datos
   console.log('🔧 Inicializando sistema...');
-  await initializeRoles();
-  await initializePermisosTable();
+  
+  // Intentar conectar a la base de datos con reintentos
+  const connectWithRetry = async (retries = 5) => {
+    for (let i = 0; i < retries; i++) {
+      try {
+        console.log(`🔄 Intento de conexión ${i + 1}/${retries}...`);
+        await pool.query('SELECT 1');
+        console.log('✅ Conexión a base de datos establecida');
+        
+        // Solo inicializar si la conexión es exitosa
+        await initializeRoles();
+        await initializePermisosTable();
+        break;
+      } catch (error) {
+        console.error(`❌ Error de conexión intento ${i + 1}:`, error.message);
+        
+        if (i === retries - 1) {
+          console.error('❌ No se pudo establecer conexión después de varios intentos');
+          console.log('⚠️ Servidor iniciado SIN conexión a base de datos');
+        } else {
+          console.log(`⏳ Reintentando en 3 segundos...`);
+          await new Promise(resolve => setTimeout(resolve, 3000));
+        }
+      }
+    }
+  };
+  
+  await connectWithRetry();
   
   // Iniciar trabajos programados
   console.log('⏰ Iniciando trabajos programados...');
   startSolicitudCleanupJob();
   startMessageCleanupJob();
   
-  console.log('✅ Sistema LabSync inicializado completamente');
+  console.log('✅ Sistema LabSync inicializado');
   console.log('🔐 Funcionalidades de permisos:');
   console.log('   - Control de acceso a chat por usuario');
   console.log('   - Control de acceso a modificación de stock');
