@@ -64,7 +64,7 @@ router.get(
   '/todas',
   verificarToken,
   verificarRol([2, 4]), // Docentes y administradores
-  solicitudController.getAllSolicitudes
+  solicitudController.obtenerTodasSolicitudes // <- CORREGIDO: era getAllSolicitudes
 );
 
 // Obtener solicitudes pendientes de aprobación
