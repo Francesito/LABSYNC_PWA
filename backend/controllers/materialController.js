@@ -11,7 +11,7 @@
  *
  * Versión: Extensiva (>400 líneas) para compatibilidad total
  * Autor: ChatGPT Asistente
- * Fecha: 2025
+ * Fecha: 24 de julio de 2025
  *
  * ==========================================================================================
  */
@@ -28,7 +28,7 @@ const crypto = require('crypto');
 
 /** Log helper con timestamp */
 function logRequest(name) {
-  const timestamp = new Date().toISOString();
+  const timestamp = new Date().toISOString(); // Ejemplo: 2025-07-24T20:20:00.000Z
   console.log(`[${timestamp}] [MaterialController] >> ${name}`);
 }
 
@@ -36,8 +36,8 @@ function logRequest(name) {
 function detectTableAndField(tipo) {
   switch (tipo) {
     case 'liquido': return { table: 'MaterialLiquido', field: 'cantidad_disponible_ml' };
-    case 'solido':  return { table: 'MaterialSolido',  field: 'cantidad_disponible_g'  };
-    case 'equipo':  return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
+    case 'solido': return { table: 'MaterialSolido', field: 'cantidad_disponible_g' };
+    case 'equipo': return { table: 'MaterialEquipo', field: 'cantidad_disponible_u' };
     case 'laboratorio': return { table: 'MaterialLaboratorio', field: 'cantidad_disponible' };
     default: return null;
   }
@@ -91,414 +91,15 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
  * ========================================
  */
 
-const crearMaterial = async (req, res) => {
-  try {
-    const { tipo, nombre, cantidad } = req.body;
-    const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
-    const [result] = await pool.query(
-      `INSERT INTO ${meta.table} (nombre, ${meta.field}) VALUES (?, ?)`,
-      [nombre, cantidad]
-    );
-    res.status(201).json({ message: 'Material creado', id: result.insertId });
-  } catch (error) {
-    console.error('[Error] crearMaterial:', error);
-    res.status(500).json({ error: 'Error al crear material' });
-  }
-};
-
-const getReporteUsoPeriodo = async (req, res) => {
-  try {
-    const { inicio, fin } = req.query; // Espera parámetros de fecha (ejemplo: ?inicio=2025-07-01&fin=2025-07-31)
-    if (!inicio || !fin) {
-      return res.status(400).json({ error: 'Parámetros "inicio" y "fin" son requeridos' });
-    }
-
-    // Ejemplo: Consulta un reporte de uso por período (ajusta según tu esquema)
-    const [reporte] = await pool.query(`
-      SELECT 
-        m.nombre AS material_nombre,
-        COUNT(s.id) AS solicitudes,
-        SUM(s.cantidad) AS cantidad_total
-      FROM Solicitudes s
-      JOIN Material m ON s.material_id = m.id
-      WHERE s.fecha BETWEEN ? AND ?
-      GROUP BY m.nombre
-      ORDER BY cantidad_total DESC
-    `, [inicio, fin]);
-    res.status(200).json({ reporte });
-  } catch (error) {
-    console.error('[Error] getReporteUsoPeriodo:', error);
-    res.status(500).json({ error: 'Error al obtener reporte de uso por período' });
-  }
-};
-
-const getMaterialesStockBajo = async (req, res) => {
-  try {
-    const umbral = 10; // Umbral configurable (ajusta según necesidad)
-    const [liquidos] = await pool.query(
-      `SELECT id, nombre, cantidad_disponible_ml AS stock 
-       FROM MaterialLiquido 
-       WHERE cantidad_disponible_ml < ?`,
-      [umbral]
-    );
-    const [solidos] = await pool.query(
-      `SELECT id, nombre, cantidad_disponible_g AS stock 
-       FROM MaterialSolido 
-       WHERE cantidad_disponible_g < ?`,
-      [umbral]
-    );
-    const [equipos] = await pool.query(
-      `SELECT id, nombre, cantidad_disponible_u AS stock 
-       FROM MaterialEquipo 
-       WHERE cantidad_disponible_u < ?`,
-      [umbral]
-    );
-    const [laboratorio] = await pool.query(
-      `SELECT id, nombre, cantidad_disponible AS stock 
-       FROM MaterialLaboratorio 
-       WHERE cantidad_disponible < ?`,
-      [umbral]
-    );
-    const materialesBajo = [...liquidos, ...solidos, ...equipos, ...laboratorio];
-    res.status(200).json({ materiales: materialesBajo });
-  } catch (error) {
-    console.error('[Error] getMaterialesStockBajo:', error);
-    res.status(500).json({ error: 'Error al obtener materiales con stock bajo' });
-  }
-};
-
-/**
- * Crear categoría de materiales
- */
-const crearCategoria = async (req, res) => {
-  try {
-    const { nombre } = req.body;
-    if (!nombre) return res.status(400).json({ error: 'Nombre de categoría requerido' });
-    const [result] = await pool.query(
-      `INSERT INTO CategoriaMaterial (nombre) VALUES (?)`,
-      [nombre]
-    );
-    res.status(201).json({ message: 'Categoría creada', id: result.insertId });
-  } catch (error) {
-    console.error('[Error] crearCategoria:', error);
-    res.status(500).json({ error: 'Error al crear categoría' });
-  }
-};
-
-/**
- * Actualizar categoría de materiales
- */
-const actualizarCategoria = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nombre } = req.body;
-    if (!nombre) return res.status(400).json({ error: 'Nombre de categoría requerido' });
-    const [result] = await pool.query(
-      `UPDATE CategoriaMaterial SET nombre = ? WHERE id = ?`,
-      [nombre, id]
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
-    res.status(200).json({ message: 'Categoría actualizada' });
-  } catch (error) {
-    console.error('[Error] actualizarCategoria:', error);
-    res.status(500).json({ error: 'Error al actualizar categoría' });
-  }
-};
-
-/**
- * Eliminar categoría de materiales
- */
-const eliminarCategoria = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const [result] = await pool.query(
-      `DELETE FROM CategoriaMaterial WHERE id = ?`,
-      [id]
-    );
-    if (result.affectedRows === 0) return res.status(404).json({ error: 'Categoría no encontrada' });
-    res.status(200).json({ message: 'Categoría eliminada' });
-  } catch (error) {
-    console.error('[Error] eliminarCategoria:', error);
-    res.status(500).json({ error: 'Error al eliminar categoría' });
-  }
-};
-
-/**
- * Obtener reporte de materiales más solicitados
- */
-const getReporteMasSolicitados = async (req, res) => {
-  try {
-    const [reporte] = await pool.query(`
-      SELECT 
-        m.nombre AS material_nombre,
-        COUNT(s.id) AS solicitudes,
-        SUM(s.cantidad) AS cantidad_total
-      FROM SolicitudItem s
-      JOIN MaterialLiquido m ON s.material_id = m.id AND s.tipo = 'liquido'
-      UNION
-      SELECT 
-        m.nombre AS material_nombre,
-        COUNT(s.id) AS solicitudes,
-        SUM(s.cantidad) AS cantidad_total
-      FROM SolicitudItem s
-      JOIN MaterialSolido m ON s.material_id = m.id AND s.tipo = 'solido'
-      UNION
-      SELECT 
-        m.nombre AS material_nombre,
-        COUNT(s.id) AS solicitudes,
-        SUM(s.cantidad) AS cantidad_total
-      FROM SolicitudItem s
-      JOIN MaterialEquipo m ON s.material_id = m.id AND s.tipo = 'equipo'
-      UNION
-      SELECT 
-        m.nombre AS material_nombre,
-        COUNT(s.id) AS solicitudes,
-        SUM(s.cantidad) AS cantidad_total
-      FROM SolicitudItem s
-      JOIN MaterialLaboratorio m ON s.material_id = m.id AND s.tipo = 'laboratorio'
-      GROUP BY m.nombre
-      ORDER BY cantidad_total DESC
-      LIMIT 10
-    `);
-    res.status(200).json({ reporte });
-  } catch (error) {
-    console.error('[Error] getReporteMasSolicitados:', error);
-    res.status(500).json({ error: 'Error al obtener reporte de materiales más solicitados' });
-  }
-};
-
-/**
- * Obtener reporte de eficiencia de entrega
- */
-const getReporteEficienciaEntrega = async (req, res) => {
-  try {
-    const [reporte] = await pool.query(`
-      SELECT 
-        s.folio,
-        COUNT(CASE WHEN s.estado = 'entregada' THEN 1 END) / COUNT(*) * 100 AS porcentaje_entrega,
-        AVG(DATEDIFF(s.fecha_entrega, s.fecha_solicitud)) AS dias_promedio_entrega
-      FROM Solicitud s
-      GROUP BY s.folio
-      HAVING COUNT(*) > 0
-      ORDER BY porcentaje_entrega DESC
-    `);
-    res.status(200).json({ reporte });
-  } catch (error) {
-    console.error('[Error] getReporteEficienciaEntrega:', error);
-    res.status(500).json({ error: 'Error al obtener reporte de eficiencia de entrega' });
-  }
-};
-
-/**
- * Verificar integridad de datos
- */
-const validarIntegridadDatos = async (req, res) => {
-  try {
-    const [inconsistencias] = await pool.query(`
-      SELECT 
-        'Material sin stock' AS tipo_error,
-        COUNT(*) AS cantidad
-      FROM MaterialLiquido WHERE cantidad_disponible_ml < 0
-      UNION
-      SELECT 
-        'Material sin stock',
-        COUNT(*)
-      FROM MaterialSolido WHERE cantidad_disponible_g < 0
-      UNION
-      SELECT 
-        'Material sin stock',
-        COUNT(*)
-      FROM MaterialEquipo WHERE cantidad_disponible_u < 0
-      UNION
-      SELECT 
-        'Material sin stock',
-        COUNT(*)
-      FROM MaterialLaboratorio WHERE cantidad_disponible < 0
-      UNION
-      SELECT 
-        'Solicitud sin items',
-        COUNT(*)
-      FROM Solicitud s
-      LEFT JOIN SolicitudItem si ON s.id = si.solicitud_id
-      WHERE si.solicitud_id IS NULL
-    `);
-    res.status(200).json({ inconsistencias });
-  } catch (error) {
-    console.error('[Error] validarIntegridadDatos:', error);
-    res.status(500).json({ error: 'Error al validar integridad de datos' });
-  }
-};
-
-/**
- * Obtener estado del sistema de materiales
- */
-const getEstadoSistema = async (req, res) => {
-  try {
-    const [estado] = await pool.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM MaterialLiquido) +
-        (SELECT COUNT(*) FROM MaterialSolido) +
-        (SELECT COUNT(*) FROM MaterialEquipo) +
-        (SELECT COUNT(*) FROM MaterialLaboratorio) AS total_materiales,
-        (SELECT COUNT(*) FROM Solicitud WHERE estado = 'pendiente') AS solicitudes_pendientes,
-        NOW() AS ultima_actualizacion
-    `);
-    res.status(200).json({ estado: estado[0] });
-  } catch (error) {
-    console.error('[Error] getEstadoSistema:', error);
-    res.status(500).json({ error: 'Error al obtener estado del sistema' });
-  }
-};
-
-const registrarEntradaStock = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { cantidad, tipo } = req.body;
-    const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
-    await pool.query(
-      `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} + ? WHERE id = ?`,
-      [cantidad, id]
-    );
-    res.status(200).json({ message: 'Entrada de stock registrada' });
-  } catch (error) {
-    console.error('[Error] registrarEntradaStock:', error);
-    res.status(500).json({ error: 'Error al registrar entrada' });
-  }
-};
-
-const registrarSalidaStock = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { cantidad, tipo } = req.body;
-    const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
-    const [stock] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
-    if (stock[0][meta.field] < cantidad) return res.status(400).json({ error: 'Stock insuficiente' });
-    await pool.query(
-      `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} - ? WHERE id = ?`,
-      [cantidad, id]
-    );
-    res.status(200).json({ message: 'Salida de stock registrada' });
-  } catch (error) {
-    console.error('[Error] registrarSalidaStock:', error);
-    res.status(500).json({ error: 'Error al registrar salida' });
-  }
-};
-
-const getUsuariosConPermisos = async (req, res) => {
-  try {
-    // Consulta para obtener usuarios con sus permisos (ajusta según tu esquema)
-    const [usuarios] = await pool.query(`
-      SELECT u.id, u.nombre, u.correo_institucional, u.rol_id, r.nombre AS rol_nombre,
-             p.acceso_chat, p.modificar_stock
-      FROM Usuario u
-      LEFT JOIN PermisosAlmacen p ON u.id = p.usuario_id
-      JOIN Rol r ON u.rol_id = r.id
-      ORDER BY u.rol_id, u.nombre
-    `);
-    res.status(200).json({ usuarios });
-  } catch (error) {
-    console.error('[Error] getUsuariosConPermisos:', error);
-    res.status(500).json({ error: 'Error al obtener usuarios con permisos' });
-  }
-};
-
-const resetearTodoElStock = async (req, res) => {
-  try {
-    await pool.query('UPDATE MaterialLiquido SET cantidad_disponible_ml = 0');
-    await pool.query('UPDATE MaterialSolido SET cantidad_disponible_g = 0');
-    await pool.query('UPDATE MaterialEquipo SET cantidad_disponible_u = 0');
-    await pool.query('UPDATE MaterialLaboratorio SET cantidad_disponible = 0');
-    res.status(200).json({ message: 'Stock reseteado completamente' });
-  } catch (error) {
-    console.error('[Error] resetearTodoElStock:', error);
-    res.status(500).json({ error: 'Error al resetear stock' });
-  }
-};
-
-const getHistorialMovimientos = async (req, res) => {
-  res.status(200).json({ message: 'Historial de movimientos no implementado aún' });
-};
-
-const getEstadisticasCompletas = async (req, res) => {
-  try {
-    // Ejemplo: Consulta estadísticas agregadas (ajusta según tu esquema)
-    const [stats] = await pool.query(`
-      SELECT 
-        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 1) AS alumnos,
-        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 2) AS docentes,
-        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 3) AS almacenes,
-        (SELECT COUNT(*) FROM Usuario WHERE rol_id = 4) AS administradores,
-        (SELECT COUNT(*) FROM Solicitudes WHERE estado = 'pendiente') AS solicitudes_pendientes,
-        (SELECT COUNT(*) FROM Solicitudes WHERE estado = 'aprobada') AS solicitudes_aprobadas,
-        (SELECT COUNT(*) FROM Solicitudes WHERE estado = 'entregada') AS solicitudes_entregadas
-    `);
-    res.status(200).json({ estadisticas: stats[0] });
-  } catch (error) {
-    console.error('[Error] getEstadisticasCompletas:', error);
-    res.status(500).json({ error: 'Error al obtener estadísticas completas' });
-  }
-};
-
-const actualizarMaterial = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nombre, cantidad, tipo } = req.body;
-    const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
-    await pool.query(
-      `UPDATE ${meta.table} SET nombre = ?, ${meta.field} = ? WHERE id = ?`,
-      [nombre, cantidad, id]
-    );
-    res.status(200).json({ message: 'Material actualizado' });
-  } catch (error) {
-    console.error('[Error] actualizarMaterial:', error);
-    res.status(500).json({ error: 'Error al actualizar material' });
-  }
-};
-
-const eliminarMaterial = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { tipo } = req.query;
-    const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
-    await pool.query(`DELETE FROM ${meta.table} WHERE id = ?`, [id]);
-    res.status(200).json({ message: 'Material eliminado' });
-  } catch (error) {
-    console.error('[Error] eliminarMaterial:', error);
-    res.status(500).json({ error: 'Error al eliminar material' });
-  }
-};
-
-const actualizarStock = async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { cantidad, tipo } = req.body;
-    const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
-    await pool.query(
-      `UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`,
-      [cantidad, id]
-    );
-    res.status(200).json({ message: 'Stock actualizado' });
-  } catch (error) {
-    console.error('[Error] actualizarStock:', error);
-    res.status(500).json({ error: 'Error al actualizar stock' });
-  }
-};
-
 /** Obtener líquidos */
 const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialLiquido');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
-    res.status(500).json({ error: 'Error al obtener materiales líquidos' });
+    res.status(500).json({ error: 'Error al obtener materiales líquidos: ' + error.message });
   }
 };
 
@@ -506,11 +107,11 @@ const getLiquidos = async (req, res) => {
 const getSolidos = async (req, res) => {
   logRequest('getSolidos');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialSolido');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
-    res.status(500).json({ error: 'Error al obtener materiales sólidos' });
+    res.status(500).json({ error: 'Error al obtener materiales sólidos: ' + error.message });
   }
 };
 
@@ -518,11 +119,11 @@ const getSolidos = async (req, res) => {
 const getEquipos = async (req, res) => {
   logRequest('getEquipos');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialEquipo');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
-    res.status(500).json({ error: 'Error al obtener equipos' });
+    res.status(500).json({ error: 'Error al obtener equipos: ' + error.message });
   }
 };
 
@@ -530,11 +131,11 @@ const getEquipos = async (req, res) => {
 const getLaboratorio = async (req, res) => {
   logRequest('getLaboratorio');
   try {
-    const [rows] = await pool.query('SELECT * FROM MaterialLaboratorio');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
-    res.status(500).json({ error: 'Error al obtener materiales de laboratorio' });
+    res.status(500).json({ error: 'Error al obtener materiales de laboratorio: ' + error.message });
   }
 };
 
@@ -554,9 +155,7 @@ const getLaboratorio = async (req, res) => {
  * 
  */
 
-/**
- * Obtener TODAS las solicitudes (para DOCENTE)
- */
+/** Obtener TODAS las solicitudes (para DOCENTE) */
 const getAllSolicitudes = async (req, res) => {
   logRequest('getAllSolicitudes');
   try {
@@ -565,7 +164,7 @@ const getAllSolicitudes = async (req, res) => {
     res.json(rows);
   } catch (error) {
     console.error('[Error] getAllSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
   }
 };
 
@@ -581,26 +180,9 @@ const crearSolicitudes = async (req, res) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const usuario_id = decoded.id;
-    const rol_id = decoded.rol_id;
-
-    console.log('[DEBUG] Usuario decodificado:', { usuario_id, rol_id });
-
+    const { id: usuario_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
     if (![1, 2].includes(rol_id)) {
       return res.status(403).json({ error: 'Solo alumnos o docentes pueden crear solicitudes' });
-    }
-
-    // Verificar si el alumno tiene adeudos pendientes
-    if (rol_id === 1) {
-      const [adeudos] = await pool.query(
-        'SELECT COUNT(*) as count FROM Adeudo WHERE usuario_id = ? AND cantidad_pendiente > 0',
-        [usuario_id]
-      );
-      
-      if (adeudos[0].count > 0) {
-        return res.status(400).json({ error: 'No puedes crear solicitudes mientras tengas adeudos pendientes' });
-      }
     }
 
     const [user] = await pool.query('SELECT nombre FROM Usuario WHERE id = ?', [usuario_id]);
@@ -609,17 +191,12 @@ const crearSolicitudes = async (req, res) => {
     const folio = generarFolio();
     const estadoInicial = (rol_id === 2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
     let docente_id = null, profesor = 'Sin asignar';
-    
     if (estadoInicial === 'aprobada') {
-      docente_id = usuario_id; 
-      profesor = user[0].nombre;
+      docente_id = usuario_id; profesor = user[0].nombre;
     } else {
       const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 LIMIT 1');
-      docente_id = docente[0]?.id; 
-      profesor = docente[0]?.nombre || profesor;
+      docente_id = docente[0]?.id; profesor = docente[0]?.nombre || profesor;
     }
-
-    console.log('[DEBUG] Creando solicitud con estado:', estadoInicial);
 
     const [result] = await pool.query(
       `INSERT INTO Solicitud
@@ -629,53 +206,27 @@ const crearSolicitudes = async (req, res) => {
     );
     const solicitudId = result.insertId;
 
-    // Verificar stock y crear items
     for (const mat of materiales) {
       const { material_id, cantidad, tipo } = mat;
-      
-      // Verificar stock disponible
-      const meta = detectTableAndField(tipo);
-      if (!meta) {
-        return res.status(400).json({ error: `Tipo de material inválido: ${tipo}` });
-      }
-
-      const [stockResult] = await pool.query(
-        `SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`,
-        [material_id]
-      );
-
-      if (!stockResult.length) {
-        return res.status(404).json({ error: `Material no encontrado: ${material_id}` });
-      }
-
-      const stockDisponible = stockResult[0][meta.field];
-      if (stockDisponible < cantidad) {
-        return res.status(400).json({ 
-          error: `Stock insuficiente para el material ${material_id}. Disponible: ${stockDisponible}, Solicitado: ${cantidad}` 
-        });
-      }
-
-      // Crear item de solicitud
       await pool.query(
         `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?,?,?,?)`,
         [solicitudId, material_id, tipo, cantidad]
       );
-
-      // Si es alumno con solicitud pendiente, descontar del stock
-      if (rol_id === 1 && estadoInicial === 'pendiente') {
-        await pool.query(
-          `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} - ? WHERE id = ?`,
-          [cantidad, material_id]
-        );
-        console.log(`[DEBUG] Stock descontado para material ${material_id}: ${cantidad}`);
+      if (rol_id === 1) {
+        const meta = detectTableAndField(tipo);
+        if (meta) {
+          await pool.query(
+            `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} - ? WHERE id = ?`,
+            [cantidad, material_id]
+          );
+        }
       }
     }
 
-    console.log('[DEBUG] Solicitud creada exitosamente:', { solicitudId, folio });
     res.status(201).json({ message: 'Solicitud creada', solicitudId, folio });
-  } catch(err) {
+  } catch (err) {
     console.error('[Error] crearSolicitudes:', err);
-    res.status(500).json({ error: 'Error al registrar solicitud' });
+    res.status(500).json({ error: 'Error al registrar solicitud: ' + err.message });
   }
 };
 
@@ -712,26 +263,17 @@ const crearSolicitudConAdeudo = async (req, res) => {
     const docente_id = docente[0]?.id || null;
     const profesor = docente[0]?.nombre || 'Sin asignar';
 
-    const folio = generarFolio();
-
-    const [result] = await pool.query(
-      `INSERT INTO Solicitud 
-        (usuario_id, fecha_solicitud, motivo, monto_adeudo, estado, docente_id, nombre_alumno, profesor, folio)
-       VALUES (?, ?, ?, ?, 'pendiente', ?, ?, ?, ?)`,
-      [usuario_id, fecha_solicitud, motivo, monto_adeudo, docente_id, user[0].nombre, profesor, folio]
-    );
-
-    const solicitudId = result.insertId;
-
     await pool.query(
-      `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?,?,?,?)`,
-      [solicitudId, material_id, tipo, 1]
+      `INSERT INTO Solicitud 
+        (usuario_id, material_id, tipo, cantidad, fecha_solicitud, motivo, monto_adeudo, estado, docente_id, nombre_alumno, profesor)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?)`,
+      [usuario_id, material_id, tipo, 1, fecha_solicitud, motivo, monto_adeudo, docente_id, user[0].nombre, profesor]
     );
 
     res.status(201).json({ message: 'Solicitud con adeudo registrada correctamente' });
   } catch (error) {
     console.error('[Error] crearSolicitudConAdeudo:', error);
-    res.status(500).json({ error: 'Error al crear solicitud con adeudo' });
+    res.status(500).json({ error: 'Error al crear solicitud con adeudo: ' + error.message });
   }
 };
 
@@ -746,11 +288,12 @@ const crearSolicitudConAdeudo = async (req, res) => {
  */
 
 /**
- * Obtener solicitudes del usuario
- */
+ * Obtener solicitudes del usuario */
 const getUserSolicitudes = async (req, res) => {
   logRequest('getUserSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
 
   try {
     const { id: usuario_id } = jwt.verify(token, process.env.JWT_SECRET);
@@ -759,19 +302,18 @@ const getUserSolicitudes = async (req, res) => {
     const query = SELECT_SOLICITUDES_CON_NOMBRE.replace(
       '/*AND_CONDITION*/',
       `AND s.usuario_id = ?`
-    ) + ' ORDER BY s.fecha_solicitud DESC';
+    );
 
     const [rows] = await pool.query(query, [usuario_id]);
     res.json(rows);
   } catch (error) {
     console.error('[Error] getUserSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
+    res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
   }
 };
 
 /**
- * Obtener solicitudes aprobadas
- */
+ * Obtener solicitudes aprobadas */
 const getApprovedSolicitudes = async (req, res) => {
   logRequest('getApprovedSolicitudes');
 
@@ -780,19 +322,18 @@ const getApprovedSolicitudes = async (req, res) => {
     const query = SELECT_SOLICITUDES_CON_NOMBRE.replace(
       '/*AND_CONDITION*/',
       "AND s.estado = 'aprobada'"
-    ) + ' ORDER BY s.fecha_solicitud DESC';
+    );
 
     const [rows] = await pool.query(query);
     res.json(rows);
   } catch (error) {
     console.error('[Error] getApprovedSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes aprobadas' });
+    res.status(500).json({ error: 'Error al obtener solicitudes aprobadas: ' + error.message });
   }
 };
 
 /**
- * Obtener solicitudes pendientes
- */
+ * Obtener solicitudes pendientes */
 const getPendingSolicitudes = async (req, res) => {
   logRequest('getPendingSolicitudes');
 
@@ -800,13 +341,13 @@ const getPendingSolicitudes = async (req, res) => {
     const query = SELECT_SOLICITUDES_CON_NOMBRE.replace(
       '/*AND_CONDITION*/',
       "AND s.estado = 'pendiente'"
-    ) + ' ORDER BY s.fecha_solicitud DESC';
+    );
 
     const [rows] = await pool.query(query);
     res.json(rows);
   } catch (error) {
     console.error('[Error] getPendingSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes pendientes' });
+    res.status(500).json({ error: 'Error al obtener solicitudes pendientes: ' + error.message });
   }
 };
 
@@ -817,8 +358,7 @@ const getPendingSolicitudes = async (req, res) => {
  */
 
 /**
- * Aprobar solicitud
- */
+ * Aprobar solicitud */
 const approveSolicitud = async (req, res) => {
   logRequest(`approveSolicitud`);
 
@@ -841,53 +381,26 @@ const approveSolicitud = async (req, res) => {
     res.status(200).json({ message: 'Solicitud aprobada' });
   } catch (error) {
     console.error('[Error] approveSolicitud:', error);
-    res.status(500).json({ error: 'Error al aprobar solicitud' });
+    res.status(500).json({ error: 'Error al aprobar solicitud: ' + error.message });
   }
 };
 
 /**
- * Rechazar solicitud
- */
+ * Rechazar solicitud */
 const rejectSolicitud = async (req, res) => {
   const { id } = req.params;
   logRequest(`rejectSolicitud - ID=${id}`);
-  
   try {
-    // Verificar que la solicitud existe y obtener sus items para restaurar stock
-    const [solicitud] = await pool.query('SELECT estado, usuario_id FROM Solicitud WHERE id = ?', [id]);
-    if (!solicitud.length) {
-      return res.status(404).json({ error: 'Solicitud no encontrada' });
-    }
-
-    // Si la solicitud estaba pendiente, restaurar el stock (porque se había descontado al crearla)
-    if (solicitud[0].estado === 'pendiente') {
-      const [items] = await pool.query(
-        'SELECT material_id, tipo, cantidad FROM SolicitudItem WHERE solicitud_id = ?',
-        [id]
-      );
-
-      for (const item of items) {
-        const meta = detectTableAndField(item.tipo);
-        if (meta) {
-          await pool.query(
-            `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} + ? WHERE id = ?`,
-            [item.cantidad, item.material_id]
-          );
-        }
-      }
-    }
-
     await pool.query('UPDATE Solicitud SET estado = ? WHERE id = ?', ['rechazada', id]);
     res.status(200).json({ message: 'Solicitud rechazada' });
   } catch (error) {
     console.error('[Error] rejectSolicitud:', error);
-    res.status(500).json({ error: 'Error al rechazar solicitud' });
+    res.status(500).json({ error: 'Error al rechazar solicitud: ' + error.message });
   }
 };
 
 /**
- * Marcar como entregada
- */
+ * Marcar solicitud como entregada + generar adeudos con fecha_entrega */
 const deliverSolicitud = async (req, res) => {
   logRequest('deliverSolicitud');
   const { id } = req.params;
@@ -929,7 +442,7 @@ const deliverSolicitud = async (req, res) => {
             tipo,
             cantidad_pendiente,
             fecha_entrega)
-         VALUES (?,         ?,                  ?,          ?,           ?,        ?,                 NOW())`,
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
         [
           id,
           it.solicitud_item_id,
@@ -946,7 +459,7 @@ const deliverSolicitud = async (req, res) => {
     console.error('[Error] deliverSolicitud:', err);
     return res
       .status(500)
-      .json({ error: 'Error al entregar solicitud' });
+      .json({ error: 'Error al entregar solicitud: ' + err.message });
   }
 };
 
@@ -960,6 +473,8 @@ const cancelSolicitud = async (req, res) => {
   const { id } = req.params;
   logRequest(`cancelSolicitud - ID=${id}`);
   const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
 
   try {
     const { id: usuario_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
@@ -1011,7 +526,7 @@ const cancelSolicitud = async (req, res) => {
 
   } catch (error) {
     console.error('[Error] cancelSolicitud:', error);
-    res.status(500).json({ error: 'Error al cancelar solicitud' });
+    res.status(500).json({ error: 'Error al cancelar solicitud: ' + error.message });
   }
 };
 
@@ -1027,9 +542,13 @@ const adjustInventory = async (req, res) => {
   const { cantidad, tipo } = req.body;
   const token = req.headers.authorization?.split(' ')[1];
 
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
   try {
     const { rol_id } = jwt.verify(token, process.env.JWT_SECRET);
-    if (rol_id !== 3) return res.status(403).json({ error: 'Solo almacenistas pueden ajustar inventario' });
+    if (rol_id !== 3 && !req.user?.permisos?.modificar_stock) {
+      return res.status(403).json({ error: 'Solo almacenistas con permisos de stock pueden ajustar inventario' });
+    }
 
     if (isNaN(cantidad)) return res.status(400).json({ error: 'Cantidad debe ser un número válido' });
 
@@ -1039,32 +558,192 @@ const adjustInventory = async (req, res) => {
     const [material] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
     if (!material.length) return res.status(404).json({ error: 'Material no encontrado' });
 
-    if (cantidad < 0) return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
+    const nuevaCantidad = material[0][meta.field] + parseInt(cantidad);
+    if (nuevaCantidad < 0) return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
 
-    await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [cantidad, id]);
-    res.status(200).json({ message: 'Inventario actualizado correctamente', nuevoStock: cantidad });
+    await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevaCantidad, id]);
+    res.status(200).json({ message: 'Inventario actualizado correctamente', nuevoStock: nuevaCantidad });
   } catch (error) {
     console.error('[Error] adjustInventory:', error);
-    res.status(500).json({ error: 'Error al ajustar inventario' });
+    res.status(500).json({ error: 'Error al ajustar inventario: ' + error.message });
   }
 };
+
+/**
+ * ========================================
+ * RUTAS ADICIONALES PARA ADMINISTRADORES
+ * ========================================
+ */
+
+/** Obtener estadísticas de materiales (solo admin) */
+const getEstadisticas = async (req, res) => {
+  logRequest('getEstadisticas');
+  try {
+    const { rol_id } = req.usuario;
+    if (rol_id !== 4) return res.status(403).json({ error: 'Solo administradores pueden ver estadísticas' });
+
+    const [liquidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_ml) as stock FROM MaterialLiquido');
+    const [solidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_g) as stock FROM MaterialSolido');
+    const [equipos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_u) as stock FROM MaterialEquipo');
+    const [laboratorio] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible) as stock FROM MaterialLaboratorio');
+
+    const stats = {
+      liquidos: { total: liquidos[0].total, stock: liquidos[0].stock || 0 },
+      solidos: { total: solidos[0].total, stock: solidos[0].stock || 0 },
+      equipos: { total: equipos[0].total, stock: equipos[0].stock || 0 },
+      laboratorio: { total: laboratorio[0].total, stock: laboratorio[0].stock || 0 },
+      total_items: liquidos[0].total + solidos[0].total + equipos[0].total + laboratorio[0].total,
+      total_stock: (liquidos[0].stock || 0) + (solidos[0].stock || 0) + (equipos[0].stock || 0) + (laboratorio[0].stock || 0)
+    };
+
+    res.json(stats);
+  } catch (error) {
+    console.error('[Error] getEstadisticas:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas: ' + error.message });
+  }
+};
+
+/** Obtener historial de movimientos (solo admin) */
+const getHistorialMovimientos = async (req, res) => {
+  logRequest('getHistorialMovimientos');
+  try {
+    const { rol_id } = req.usuario;
+    if (rol_id !== 4) return res.status(403).json({ error: 'Solo administradores pueden ver el historial' });
+
+    const [rows] = await pool.query(`
+      SELECT m.*, u.nombre AS usuario
+      FROM MovimientosInventario m
+      JOIN Usuario u ON m.usuario_id = u.id
+      ORDER BY m.fecha_movimiento DESC
+    `);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getHistorialMovimientos:', error);
+    res.status(500).json({ error: 'Error al obtener historial de movimientos: ' + error.message });
+  }
+};
+
+/**
+ * ========================================
+ * RUTAS ESPECIALES COMBINADAS
+ * ========================================
+ */
+
+/** Ajuste masivo de stock (almacenistas con permisos y admins) */
+const ajusteMasivoStock = async (req, res) => {
+  logRequest('ajusteMasivoStock');
+  const { ajustes } = req.body; // Array de { id, tipo, cantidad }
+  const token = req.headers.authorization?.split(' ')[1];
+
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+  try {
+    const { rol_id, permisos } = jwt.verify(token, process.env.JWT_SECRET);
+    if (rol_id !== 3 && rol_id !== 4 && !permisos?.modificar_stock) {
+      return res.status(403).json({ error: 'Acceso denegado. Requiere permisos de stock' });
+    }
+
+    if (!Array.isArray(ajustes) || ajustes.length === 0) {
+      return res.status(400).json({ error: 'Se requiere al menos un ajuste' });
+    }
+
+    for (const ajuste of ajustes) {
+      const { id, tipo, cantidad } = ajuste;
+      if (!id || !tipo || isNaN(cantidad)) {
+        return res.status(400).json({ error: 'Datos de ajuste inválidos' });
+      }
+
+      const meta = detectTableAndField(tipo);
+      if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+      const [material] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
+      if (!material.length) return res.status(404).json({ error: `Material ${id} no encontrado` });
+
+      const nuevaCantidad = material[0][meta.field] + parseInt(cantidad);
+      if (nuevaCantidad < 0) return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
+
+      await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevaCantidad, id]);
+      await pool.query(
+        `INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, fecha_movimiento)
+         VALUES (?, ?, ?, ?, NOW())`,
+        [req.usuario.id, id, tipo, cantidad]
+      );
+    }
+
+    res.status(200).json({ message: 'Ajuste masivo de stock completado' });
+  } catch (error) {
+    console.error('[Error] ajusteMasivoStock:', error);
+    res.status(500).json({ error: 'Error al ajustar stock masivo: ' + error.message });
+  }
+};
+
+/** Obtener materiales con stock bajo (almacenistas con permisos y admins) */
+const getMaterialesStockBajo = async (req, res) => {
+  logRequest('getMaterialesStockBajo');
+  try {
+    const { rol_id, permisos } = req.usuario;
+    if (rol_id !== 3 && rol_id !== 4 && !permisos?.modificar_stock) {
+      return res.status(403).json({ error: 'Acceso denegado. Requiere permisos de stock' });
+    }
+
+    const threshold = 10; // Umbral de stock bajo (ajustable)
+    const [liquidos] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible_ml AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido WHERE cantidad_disponible_ml < ?',
+      [threshold]
+    );
+    const [solidos] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible_g AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido WHERE cantidad_disponible_g < ?',
+      [threshold]
+    );
+    const [equipos] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible_u AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo WHERE cantidad_disponible_u < ?',
+      [threshold]
+    );
+    const [laboratorio] = await pool.query(
+      'SELECT id, nombre, cantidad_disponible AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio WHERE cantidad_disponible < ?',
+      [threshold]
+    );
+
+    const lowStock = [...liquidos, ...solidos, ...equipos, ...laboratorio].map(item => ({
+      ...item,
+      tipo: detectTableAndField(
+        item.stock === item.cantidad_disponible_ml ? 'liquido' :
+        item.stock === item.cantidad_disponible_g ? 'solido' :
+        item.stock === item.cantidad_disponible_u ? 'equipo' : 'laboratorio'
+      ).table.split('Material')[1].toLowerCase()
+    }));
+
+    res.json(lowStock);
+  } catch (error) {
+    console.error('[Error] getMaterialesStockBajo:', error);
+    res.status(500).json({ error: 'Error al obtener materiales con stock bajo: ' + error.message });
+  }
+};
+
+/**
+ * ========================================
+ * RUTAS GENERALES
+ * ========================================
+ */
 
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
-    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo FROM MaterialLiquido');
-    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo FROM MaterialSolido');
-    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo FROM MaterialLaboratorio');
-    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo FROM MaterialEquipo');
+    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
+    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
+    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
+    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
 
     const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
-    res.status(500).json({ error: 'Error al obtener materiales' });
+    res.status(500).json({ error: 'Error al obtener materiales: ' + error.message });
   }
 };
 
+/** Obtener un material específico por ID y TIPO */
 const getMaterialById = async (req, res) => {
   const { id } = req.params;
   const { tipo } = req.query;  // IMPORTANTE: ahora recibe el tipo
@@ -1085,13 +764,11 @@ const getMaterialById = async (req, res) => {
     res.json({ ...result[0], tipo });
   } catch (error) {
     console.error('[Error] getMaterialById:', error);
-    res.status(500).json({ error: 'Error al obtener material' });
+    res.status(500).json({ error: 'Error al obtener material: ' + error.message });
   }
 };
 
-/**
- * Listar solicitudes entregadas **con** adeudos pendientes (solo almacenistas)
- */
+/** Listar solicitudes entregadas CON adeudos pendientes */
 const getDeliveredSolicitudes = async (req, res) => {
   logRequest('getDeliveredSolicitudes');
   try {
@@ -1101,30 +778,21 @@ const getDeliveredSolicitudes = async (req, res) => {
         s.folio,
         s.nombre_alumno,
         s.profesor,
-        -- Tomamos la fecha de entrega del primer adeudo (insertada en deliverSolicitud)
         MIN(a.fecha_entrega) AS fecha_entrega 
       FROM Solicitud s
-      JOIN Adeudo a
-        ON a.solicitud_id = s.id
-      GROUP BY
-        s.id,
-        s.folio,
-        s.nombre_alumno,
-        s.profesor
+      JOIN Adeudo a ON a.solicitud_id = s.id
+      WHERE s.estado = 'entregado'
+      GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor
       ORDER BY fecha_entrega DESC
     `);
     res.json(rows);
   } catch (error) {
     console.error('[Error] getDeliveredSolicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes entregadas' });
+    res.status(500).json({ error: 'Error al obtener solicitudes entregadas: ' + error.message });
   }
 };
 
-/**
- * ========================================
- * Obtener detalle de una solicitud entregada
- * ========================================
- */
+/** Obtener detalle de una solicitud entregada */
 const getSolicitudDetalle = async (req, res) => {
   logRequest(`getSolicitudDetalle - ID=${req.params.id}`);
   try {
@@ -1137,10 +805,11 @@ const getSolicitudDetalle = async (req, res) => {
          s.folio,
          s.nombre_alumno,
          s.profesor,
-         /* Fecha de entrega = máxima fecha_entrega en los adeudos */
-         (SELECT MAX(a.fecha_entrega) 
-            FROM Solicitud s
-      WHERE s.id = ?`,
+         MIN(a.fecha_entrega) AS fecha_entrega
+       FROM Solicitud s
+       LEFT JOIN Adeudo a ON a.solicitud_id = s.id
+       WHERE s.id = ?
+       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor`,
       [id]
     );
     if (!solRows.length) {
@@ -1181,7 +850,715 @@ const getSolicitudDetalle = async (req, res) => {
     });
   } catch (err) {
     console.error('[Error] getSolicitudDetalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle de solicitud' });
+    res.status(500).json({ error: 'Error al obtener detalle de solicitud: ' + err.message });
+  }
+};
+
+// ========================================
+// FUNCIONES FALTANTES PARA materialController.js
+// ========================================
+
+// CREAR NUEVO MATERIAL
+const crearMaterial = async (req, res) => {
+  logRequest('crearMaterial');
+  const { nombre, descripcion, tipo, cantidad_inicial, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales } = req.body;
+
+  if (!nombre || !tipo || cantidad_inicial === undefined) {
+    return res.status(400).json({ error: 'Faltan datos obligatorios: nombre, tipo, cantidad_inicial' });
+  }
+
+  try {
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+    let query, params;
+    if (tipo === 'liquido' || tipo === 'solido') {
+      query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales) VALUES (?, ?, ?, ?, ?, ?, ?)`;
+      params = [nombre, descripcion, cantidad_inicial, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales];
+    } else {
+      query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id) VALUES (?, ?, ?, ?)`;
+      params = [nombre, descripcion, cantidad_inicial, categoria_id];
+    }
+
+    const [result] = await pool.query(query, params);
+
+    // Registrar movimiento de inventario
+    await pool.query(
+      'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.usuario.id, result.insertId, tipo, cantidad_inicial, 'entrada', 'Material creado']
+    );
+
+    res.status(201).json({ 
+      message: 'Material creado exitosamente', 
+      materialId: result.insertId,
+      tipo: tipo
+    });
+  } catch (error) {
+    console.error('[Error] crearMaterial:', error);
+    res.status(500).json({ error: 'Error al crear material: ' + error.message });
+  }
+};
+
+// ACTUALIZAR MATERIAL EXISTENTE
+const actualizarMaterial = async (req, res) => {
+  logRequest('actualizarMaterial');
+  const { id } = req.params;
+  const { nombre, descripcion, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales } = req.body;
+  const { tipo } = req.query;
+
+  if (!tipo) return res.status(400).json({ error: 'Parámetro tipo requerido' });
+
+  try {
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+    let query, params;
+    if (tipo === 'liquido' || tipo === 'solido') {
+      query = `UPDATE ${meta.table} SET nombre = ?, descripcion = ?, categoria_id = ?, riesgos_fisicos = ?, riesgos_salud = ?, riesgos_ambientales = ? WHERE id = ?`;
+      params = [nombre, descripcion, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, id];
+    } else {
+      query = `UPDATE ${meta.table} SET nombre = ?, descripcion = ?, categoria_id = ? WHERE id = ?`;
+      params = [nombre, descripcion, categoria_id, id];
+    }
+
+    const [result] = await pool.query(query, params);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Material no encontrado' });
+    }
+
+    res.json({ message: 'Material actualizado exitosamente' });
+  } catch (error) {
+    console.error('[Error] actualizarMaterial:', error);
+    res.status(500).json({ error: 'Error al actualizar material: ' + error.message });
+  }
+};
+
+// ELIMINAR MATERIAL
+const eliminarMaterial = async (req, res) => {
+  logRequest('eliminarMaterial');
+  const { id } = req.params;
+  const { tipo } = req.query;
+
+  if (!tipo) return res.status(400).json({ error: 'Parámetro tipo requerido' });
+
+  try {
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+    // Verificar si el material tiene solicitudes pendientes
+    const [solicitudesPendientes] = await pool.query(
+      'SELECT COUNT(*) as count FROM SolicitudItem si JOIN Solicitud s ON si.solicitud_id = s.id WHERE si.material_id = ? AND si.tipo = ? AND s.estado IN ("pendiente", "aprobada")',
+      [id, tipo]
+    );
+
+    if (solicitudesPendientes[0].count > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar material con solicitudes pendientes' });
+    }
+
+    const [result] = await pool.query(`DELETE FROM ${meta.table} WHERE id = ?`, [id]);
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Material no encontrado' });
+    }
+
+    res.json({ message: 'Material eliminado exitosamente' });
+  } catch (error) {
+    console.error('[Error] eliminarMaterial:', error);
+    res.status(500).json({ error: 'Error al eliminar material: ' + error.message });
+  }
+};
+
+// ACTUALIZAR STOCK ESPECÍFICO
+const actualizarStock = async (req, res) => {
+  logRequest('actualizarStock');
+  const { id } = req.params;
+  const { cantidad, tipo } = req.body;
+
+  if (!tipo || cantidad === undefined) {
+    return res.status(400).json({ error: 'Tipo y cantidad son requeridos' });
+  }
+
+  try {
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+    if (cantidad < 0) return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
+
+    const [result] = await pool.query(
+      `UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`,
+      [cantidad, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Material no encontrado' });
+    }
+
+    // Registrar movimiento
+    await pool.query(
+      'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.usuario.id, id, tipo, cantidad, 'ajuste', 'Actualización directa de stock']
+    );
+
+    res.json({ message: 'Stock actualizado exitosamente', nuevoStock: cantidad });
+  } catch (error) {
+    console.error('[Error] actualizarStock:', error);
+    res.status(500).json({ error: 'Error al actualizar stock: ' + error.message });
+  }
+};
+
+// REGISTRAR ENTRADA DE STOCK
+const registrarEntradaStock = async (req, res) => {
+  logRequest('registrarEntradaStock');
+  const { id } = req.params;
+  const { cantidad, tipo, motivo } = req.body;
+
+  if (!tipo || !cantidad || cantidad <= 0) {
+    return res.status(400).json({ error: 'Tipo y cantidad válida son requeridos' });
+  }
+
+  try {
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+    // Obtener stock actual
+    const [material] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
+    if (!material.length) return res.status(404).json({ error: 'Material no encontrado' });
+
+    const nuevoStock = material[0][meta.field] + parseInt(cantidad);
+
+    // Actualizar stock
+    await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevoStock, id]);
+
+    // Registrar movimiento
+    await pool.query(
+      'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.usuario.id, id, tipo, cantidad, 'entrada', motivo || 'Entrada de stock']
+    );
+
+    res.json({ 
+      message: 'Entrada de stock registrada exitosamente',
+      stockAnterior: material[0][meta.field],
+      cantidadAgregada: cantidad,
+      nuevoStock: nuevoStock
+    });
+  } catch (error) {
+    console.error('[Error] registrarEntradaStock:', error);
+    res.status(500).json({ error: 'Error al registrar entrada: ' + error.message });
+  }
+};
+
+// REGISTRAR SALIDA DE STOCK
+const registrarSalidaStock = async (req, res) => {
+  logRequest('registrarSalidaStock');
+  const { id } = req.params;
+  const { cantidad, tipo, motivo } = req.body;
+
+  if (!tipo || !cantidad || cantidad <= 0) {
+    return res.status(400).json({ error: 'Tipo y cantidad válida son requeridos' });
+  }
+
+  try {
+    const meta = detectTableAndField(tipo);
+    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+
+    // Obtener stock actual
+    const [material] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
+    if (!material.length) return res.status(404).json({ error: 'Material no encontrado' });
+
+    const stockActual = material[0][meta.field];
+    if (stockActual < cantidad) {
+      return res.status(400).json({ error: 'Stock insuficiente para la salida solicitada' });
+    }
+
+    const nuevoStock = stockActual - parseInt(cantidad);
+
+    // Actualizar stock
+    await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevoStock, id]);
+
+    // Registrar movimiento
+    await pool.query(
+      'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.usuario.id, id, tipo, -cantidad, 'salida', motivo || 'Salida de stock']
+    );
+
+    res.json({ 
+      message: 'Salida de stock registrada exitosamente',
+      stockAnterior: stockActual,
+      cantidadRetirada: cantidad,
+      nuevoStock: nuevoStock
+    });
+  } catch (error) {
+    console.error('[Error] registrarSalidaStock:', error);
+    res.status(500).json({ error: 'Error al registrar salida: ' + error.message });
+  }
+};
+
+// CREAR CATEGORÍA
+const crearCategoria = async (req, res) => {
+  logRequest('crearCategoria');
+  const { nombre } = req.body;
+
+  if (!nombre) return res.status(400).json({ error: 'Nombre de categoría requerido' });
+
+  try {
+    const [result] = await pool.query('INSERT INTO Categoria (nombre) VALUES (?)', [nombre]);
+    res.status(201).json({ 
+      message: 'Categoría creada exitosamente', 
+      categoriaId: result.insertId 
+    });
+  } catch (error) {
+    console.error('[Error] crearCategoria:', error);
+    if (error.code === 'ER_DUP_ENTRY') {
+      return res.status(400).json({ error: 'La categoría ya existe' });
+    }
+    res.status(500).json({ error: 'Error al crear categoría: ' + error.message });
+  }
+};
+
+// ACTUALIZAR CATEGORÍA
+const actualizarCategoria = async (req, res) => {
+  logRequest('actualizarCategoria');
+  const { id } = req.params;
+  const { nombre } = req.body;
+
+  if (!nombre) return res.status(400).json({ error: 'Nombre de categoría requerido' });
+
+  try {
+    const [result] = await pool.query('UPDATE Categoria SET nombre = ? WHERE id = ?', [nombre, id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Categoría no encontrada' });
+    }
+
+    res.json({ message: 'Categoría actualizada exitosamente' });
+  } catch (error) {
+    console.error('[Error] actualizarCategoria:', error);
+    res.status(500).json({ error: 'Error al actualizar categoría: ' + error.message });
+  }
+};
+
+// ELIMINAR CATEGORÍA
+const eliminarCategoria = async (req, res) => {
+  logRequest('eliminarCategoria');
+  const { id } = req.params;
+
+  try {
+    // Verificar si hay materiales usando esta categoría
+    const [materialesUsandoCategoria] = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM MaterialLiquido WHERE categoria_id = ?) +
+        (SELECT COUNT(*) FROM MaterialSolido WHERE categoria_id = ?) +
+        (SELECT COUNT(*) FROM MaterialEquipo WHERE categoria_id = ?) +
+        (SELECT COUNT(*) FROM MaterialLaboratorio WHERE categoria_id = ?) as total
+    `, [id, id, id, id]);
+
+    if (materialesUsandoCategoria[0].total > 0) {
+      return res.status(400).json({ error: 'No se puede eliminar categoría con materiales asociados' });
+    }
+
+    const [result] = await pool.query('DELETE FROM Categoria WHERE id = ?', [id]);
+    
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ error: 'Categoría no encontrada' });
+    }
+
+    res.json({ message: 'Categoría eliminada exitosamente' });
+  } catch (error) {
+    console.error('[Error] eliminarCategoria:', error);
+    res.status(500).json({ error: 'Error al eliminar categoría: ' + error.message });
+  }
+};
+
+// ESTADÍSTICAS COMPLETAS
+const getEstadisticasCompletas = async (req, res) => {
+  logRequest('getEstadisticasCompletas');
+  try {
+    // Estadísticas de materiales por tipo
+    const [liquidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_ml) as stock FROM MaterialLiquido');
+    const [solidos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_g) as stock FROM MaterialSolido');
+    const [equipos] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible_u) as stock FROM MaterialEquipo');
+    const [laboratorio] = await pool.query('SELECT COUNT(*) as total, SUM(cantidad_disponible) as stock FROM MaterialLaboratorio');
+
+    // Estadísticas de solicitudes
+    const [solicitudes] = await pool.query(`
+      SELECT 
+        estado,
+        COUNT(*) as cantidad
+      FROM Solicitud 
+      WHERE fecha_solicitud >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      GROUP BY estado
+    `);
+
+    // Usuarios por rol
+    const [usuarios] = await pool.query(`
+      SELECT 
+        r.nombre as rol,
+        COUNT(*) as cantidad
+      FROM Usuario u
+      JOIN Rol r ON u.rol_id = r.id
+      WHERE u.activo = 1
+      GROUP BY r.id, r.nombre
+    `);
+
+    // Materiales con stock bajo
+    const [stockBajo] = await pool.query(`
+      SELECT 
+        'liquido' as tipo, COUNT(*) as cantidad FROM MaterialLiquido WHERE cantidad_disponible_ml < 10
+      UNION ALL
+      SELECT 
+        'solido' as tipo, COUNT(*) as cantidad FROM MaterialSolido WHERE cantidad_disponible_g < 10
+      UNION ALL
+      SELECT 
+        'equipo' as tipo, COUNT(*) as cantidad FROM MaterialEquipo WHERE cantidad_disponible_u < 10
+      UNION ALL
+      SELECT 
+        'laboratorio' as tipo, COUNT(*) as cantidad FROM MaterialLaboratorio WHERE cantidad_disponible < 10
+    `);
+
+    // Movimientos recientes
+    const [movimientos] = await pool.query(`
+      SELECT 
+        tipo_movimiento,
+        COUNT(*) as cantidad,
+        SUM(ABS(cantidad)) as total_cantidad
+      FROM MovimientosInventario 
+      WHERE fecha_movimiento >= DATE_SUB(NOW(), INTERVAL 7 DAY)
+      GROUP BY tipo_movimiento
+    `);
+
+    const estadisticas = {
+      materiales: {
+        liquidos: { total: liquidos[0].total, stock: liquidos[0].stock || 0 },
+        solidos: { total: solidos[0].total, stock: solidos[0].stock || 0 },
+        equipos: { total: equipos[0].total, stock: equipos[0].stock || 0 },
+        laboratorio: { total: laboratorio[0].total, stock: laboratorio[0].stock || 0 }
+      },
+      solicitudes: solicitudes.reduce((acc, sol) => {
+        acc[sol.estado] = sol.cantidad;
+        return acc;
+      }, {}),
+      usuarios: usuarios.reduce((acc, user) => {
+        acc[user.rol] = user.cantidad;
+        return acc;
+      }, {}),
+      alertas: {
+        stockBajo: stockBajo.reduce((acc, item) => {
+          acc[item.tipo] = item.cantidad;
+          return acc;
+        }, {})
+      },
+      movimientos: movimientos.reduce((acc, mov) => {
+        acc[mov.tipo_movimiento] = {
+          cantidad: mov.cantidad,
+          total_cantidad: mov.total_cantidad
+        };
+        return acc;
+      }, {}),
+      resumen: {
+        total_materiales: liquidos[0].total + solidos[0].total + equipos[0].total + laboratorio[0].total,
+        total_usuarios: usuarios.reduce((sum, user) => sum + user.cantidad, 0),
+        total_solicitudes_mes: solicitudes.reduce((sum, sol) => sum + sol.cantidad, 0)
+      }
+    };
+
+    res.json(estadisticas);
+  } catch (error) {
+    console.error('[Error] getEstadisticasCompletas:', error);
+    res.status(500).json({ error: 'Error al obtener estadísticas: ' + error.message });
+  }
+};
+
+// OBTENER USUARIOS CON PERMISOS
+const getUsuariosConPermisos = async (req, res) => {
+  logRequest('getUsuariosConPermisos');
+  try {
+    const [usuarios] = await pool.query(`
+      SELECT 
+        u.id,
+        u.nombre,
+        u.correo_institucional,
+        r.nombre as rol,
+        u.activo,
+        COALESCE(p.acceso_chat, FALSE) as acceso_chat,
+        COALESCE(p.modificar_stock, FALSE) as modificar_stock,
+        p.fecha_actualizacion
+      FROM Usuario u
+      JOIN Rol r ON u.rol_id = r.id
+      LEFT JOIN PermisosAlmacen p ON u.id = p.usuario_id
+      ORDER BY r.id, u.nombre
+    `);
+
+    res.json(usuarios);
+  } catch (error) {
+    console.error('[Error] getUsuariosConPermisos:', error);
+    res.status(500).json({ error: 'Error al obtener usuarios: ' + error.message });
+  }
+};
+
+// RESETEAR TODO EL STOCK (EMERGENCIA)
+const resetearTodoElStock = async (req, res) => {
+  logRequest('resetearTodoElStock');
+  const { confirmacion } = req.body;
+
+  if (confirmacion !== 'RESETEAR_STOCK_COMPLETO') {
+    return res.status(400).json({ error: 'Confirmación requerida para esta operación crítica' });
+  }
+
+  try {
+    // Resetear todos los stocks a 0
+    await pool.query('UPDATE MaterialLiquido SET cantidad_disponible_ml = 0');
+    await pool.query('UPDATE MaterialSolido SET cantidad_disponible_g = 0');
+    await pool.query('UPDATE MaterialEquipo SET cantidad_disponible_u = 0');
+    await pool.query('UPDATE MaterialLaboratorio SET cantidad_disponible = 0');
+
+    // Registrar la acción crítica
+    await pool.query(
+      'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
+      [req.usuario.id, 0, 'sistema', 0, 'ajuste', 'RESET COMPLETO DE STOCK - OPERACIÓN DE EMERGENCIA']
+    );
+
+    res.json({ 
+      message: 'Stock completo reseteado a 0',
+      usuario: req.usuario.nombre,
+      fecha: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Error] resetearTodoElStock:', error);
+    res.status(500).json({ error: 'Error al resetear stock: ' + error.message });
+  }
+};
+
+// VALIDAR INTEGRIDAD DE DATOS
+const validarIntegridadDatos = async (req, res) => {
+  logRequest('validarIntegridadDatos');
+  try {
+    const problemas = [];
+
+    // Verificar stocks negativos
+    const [stocksNegativos] = await pool.query(`
+      SELECT 'liquido' as tipo, id, nombre, cantidad_disponible_ml as stock 
+      FROM MaterialLiquido WHERE cantidad_disponible_ml < 0
+      UNION ALL
+      SELECT 'solido' as tipo, id, nombre, cantidad_disponible_g as stock 
+      FROM MaterialSolido WHERE cantidad_disponible_g < 0
+      UNION ALL
+      SELECT 'equipo' as tipo, id, nombre, cantidad_disponible_u as stock 
+      FROM MaterialEquipo WHERE cantidad_disponible_u < 0
+      UNION ALL
+      SELECT 'laboratorio' as tipo, id, nombre, cantidad_disponible as stock 
+      FROM MaterialLaboratorio WHERE cantidad_disponible < 0
+    `);
+
+    if (stocksNegativos.length > 0) {
+      problemas.push({
+        tipo: 'stocks_negativos',
+        cantidad: stocksNegativos.length,
+        detalles: stocksNegativos
+      });
+    }
+
+    // Verificar solicitudes huérfanas
+    const [solicitudesHuerfanas] = await pool.query(`
+      SELECT s.id, s.folio, s.estado
+      FROM Solicitud s
+      LEFT JOIN Usuario u ON s.usuario_id = u.id
+      WHERE u.id IS NULL
+    `);
+
+    if (solicitudesHuerfanas.length > 0) {
+      problemas.push({
+        tipo: 'solicitudes_huerfanas',
+        cantidad: solicitudesHuerfanas.length,
+        detalles: solicitudesHuerfanas
+      });
+    }
+
+    // Verificar adeudos sin solicitud
+    const [adeudosHuerfanos] = await pool.query(`
+      SELECT a.id, a.usuario_id, a.cantidad_pendiente
+      FROM Adeudo a
+      LEFT JOIN Solicitud s ON a.solicitud_id = s.id
+      WHERE s.id IS NULL
+    `);
+
+    if (adeudosHuerfanos.length > 0) {
+      problemas.push({
+        tipo: 'adeudos_huerfanos',
+        cantidad: adeudosHuerfanos.length,
+        detalles: adeudosHuerfanos
+      });
+    }
+
+    // Verificar usuarios sin permisos de almacén
+    const [usuariosSinPermisos] = await pool.query(`
+      SELECT u.id, u.nombre
+      FROM Usuario u
+      LEFT JOIN PermisosAlmacen p ON u.id = p.usuario_id
+      WHERE u.rol_id = 3 AND p.id IS NULL
+    `);
+
+    if (usuariosSinPermisos.length > 0) {
+      problemas.push({
+        tipo: 'usuarios_sin_permisos',
+        cantidad: usuariosSinPermisos.length,
+        detalles: usuariosSinPermisos
+      });
+    }
+
+    res.json({
+      estado: problemas.length === 0 ? 'CORRECTO' : 'PROBLEMAS_ENCONTRADOS',
+      total_problemas: problemas.length,
+      problemas: problemas,
+      fecha_verificacion: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('[Error] validarIntegridadDatos:', error);
+    res.status(500).json({ error: 'Error al validar integridad: ' + error.message });
+  }
+};
+
+// ESTADO DEL SISTEMA
+const getEstadoSistema = async (req, res) => {
+  logRequest('getEstadoSistema');
+  try {
+    // Información de la base de datos
+    const [dbInfo] = await pool.query('SELECT VERSION() as version, NOW() as servidor_tiempo');
+    
+    // Contadores generales
+    const [contadores] = await pool.query(`
+      SELECT 
+        (SELECT COUNT(*) FROM Usuario WHERE activo = 1) as usuarios_activos,
+        (SELECT COUNT(*) FROM Solicitud WHERE fecha_solicitud = CURDATE()) as solicitudes_hoy,
+        (SELECT COUNT(*) FROM Mensaje WHERE DATE(fecha_envio) = CURDATE()) as mensajes_hoy,
+        (SELECT COUNT(*) FROM MovimientosInventario WHERE DATE(fecha_movimiento) = CURDATE()) as movimientos_hoy
+    `);
+
+    // Estado de permisos
+    const [permisos] = await pool.query(`
+      SELECT 
+        COUNT(*) as total_permisos,
+        SUM(acceso_chat) as con_chat,
+        SUM(modificar_stock) as con_stock
+      FROM PermisosAlmacen
+    `);
+
+    // Últimas actividades
+    const [ultimasActividades] = await pool.query(`
+      SELECT 'solicitud' as tipo, fecha_solicitud as fecha, nombre_alumno as detalle
+      FROM Solicitud 
+      ORDER BY fecha_solicitud DESC 
+      LIMIT 5
+    `);
+
+    res.json({
+      sistema: {
+        version_bd: dbInfo[0].version,
+        servidor_tiempo: dbInfo[0].servidor_tiempo,
+        uptime: process.uptime(),
+        memoria_uso: process.memoryUsage()
+      },
+      actividad_hoy: {
+        usuarios_activos: contadores[0].usuarios_activos,
+        solicitudes: contadores[0].solicitudes_hoy,
+        mensajes: contadores[0].mensajes_hoy,
+        movimientos: contadores[0].movimientos_hoy
+      },
+      permisos: {
+        total_configurados: permisos[0].total_permisos,
+        con_acceso_chat: permisos[0].con_chat,
+        con_acceso_stock: permisos[0].con_stock
+      },
+      ultimas_actividades: ultimasActividades,
+      estado: 'OPERATIVO'
+    });
+
+  } catch (error) {
+    console.error('[Error] getEstadoSistema:', error);
+    res.status(500).json({ error: 'Error al obtener estado del sistema: ' + error.message });
+  }
+};
+
+// REPORTES ADICIONALES
+const getReporteUsoPeriodo = async (req, res) => {
+  logRequest('getReporteUsoPeriodo');
+  const { fecha_inicio, fecha_fin } = req.query;
+
+  try {
+    const [reporte] = await pool.query(`
+      SELECT 
+        si.tipo,
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) as nombre_material,
+        COUNT(*) as veces_solicitado,
+        SUM(si.cantidad) as cantidad_total,
+        AVG(si.cantidad) as cantidad_promedio
+      FROM SolicitudItem si
+      JOIN Solicitud s ON si.solicitud_id = s.id
+      LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido ms ON si.tipo = 'solido' AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo' AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
+      WHERE s.fecha_solicitud BETWEEN ? AND ?
+      GROUP BY si.tipo, si.material_id
+      ORDER BY veces_solicitado DESC
+    `, [fecha_inicio || '2024-01-01', fecha_fin || new Date().toISOString().split('T')[0]]);
+
+    res.json(reporte);
+  } catch (error) {
+    console.error('[Error] getReporteUsoPeriodo:', error);
+    res.status(500).json({ error: 'Error al generar reporte: ' + error.message });
+  }
+};
+
+const getReporteMasSolicitados = async (req, res) => {
+  logRequest('getReporteMasSolicitados');
+  try {
+    const [reporte] = await pool.query(`
+      SELECT 
+        si.tipo,
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) as nombre_material,
+        COUNT(*) as total_solicitudes,
+        SUM(si.cantidad) as cantidad_total
+      FROM SolicitudItem si
+      JOIN Solicitud s ON si.solicitud_id = s.id
+      LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido ms ON si.tipo = 'solido' AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo' AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
+      WHERE s.fecha_solicitud >= DATE_SUB(CURDATE(), INTERVAL 90 DAY)
+      GROUP BY si.tipo, si.material_id
+      ORDER BY total_solicitudes DESC
+      LIMIT 20
+    `);
+
+    res.json(reporte);
+  } catch (error) {
+    console.error('[Error] getReporteMasSolicitados:', error);
+    res.status(500).json({ error: 'Error al generar reporte: ' + error.message });
+  }
+};
+
+const getReporteEficienciaEntrega = async (req, res) => {
+  logRequest('getReporteEficienciaEntrega');
+  try {
+    const [reporte] = await pool.query(`
+      SELECT 
+        DATE(s.fecha_solicitud) as fecha,
+        COUNT(*) as total_solicitudes,
+        SUM(CASE WHEN s.estado = 'entregado' THEN 1 ELSE 0 END) as entregadas,
+        SUM(CASE WHEN s.estado = 'pendiente' THEN 1 ELSE 0 END) as pendientes,
+        ROUND((SUM(CASE WHEN s.estado = 'entregado' THEN 1 ELSE 0 END) / COUNT(*)) * 100, 2) as porcentaje_eficiencia
+      FROM Solicitud s
+      WHERE s.fecha_solicitud >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)
+      GROUP BY DATE(s.fecha_solicitud)
+      ORDER BY fecha DESC
+    `);
+
+    res.json(reporte);
+  } catch (error) {
+    console.error('[Error] getReporteEficienciaEntrega:', error);
+    res.status(500).json({ error: 'Error al generar reporte: ' + error.message });
   }
 };
 
@@ -1210,23 +1587,8 @@ module.exports = {
   getSolicitudDetalle,
   cancelSolicitud,
   adjustInventory,
-  crearMaterial,
-  registrarEntradaStock,
-  getEstadisticasCompletas,
-  registrarSalidaStock,
-  resetearTodoElStock,
-  actualizarMaterial,
-  getUsuariosConPermisos,
-  getReporteUsoPeriodo,
-  getMaterialesStockBajo,
-  crearCategoria,
-  actualizarCategoria,
-  eliminarCategoria,
-  getReporteMasSolicitados,
-  getReporteEficienciaEntrega,
-  validarIntegridadDatos,
-  getEstadoSistema,
-  eliminarMaterial,
-  actualizarStock,
-  getHistorialMovimientos
-}; 
+  getEstadisticas,
+  getHistorialMovimientos,
+  ajusteMasivoStock,
+  getMaterialesStockBajo
+};
