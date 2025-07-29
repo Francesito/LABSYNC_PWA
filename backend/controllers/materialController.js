@@ -119,7 +119,7 @@ const getSolidos = async (req, res) => {
 const getEquipos = async (req, res) => {
   logRequest('getEquipos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u FROM MaterialEquipo');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
@@ -131,7 +131,7 @@ const getEquipos = async (req, res) => {
 const getLaboratorio = async (req, res) => {
   logRequest('getLaboratorio');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
+    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible FROM MaterialLaboratorio');
     res.json(rows);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
@@ -697,22 +697,21 @@ const getMaterialesStockBajo = async (req, res) => {
       [threshold]
     );
     const [equipos] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible_u AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo WHERE cantidad_disponible_u < ?',
+      'SELECT id, nombre, cantidad_disponible_u AS stock FROM MaterialEquipo WHERE cantidad_disponible_u < ?',
       [threshold]
     );
     const [laboratorio] = await pool.query(
-      'SELECT id, nombre, cantidad_disponible AS stock, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio WHERE cantidad_disponible < ?',
+      'SELECT id, nombre, cantidad_disponible AS stock FROM MaterialLaboratorio WHERE cantidad_disponible < ?',
       [threshold]
     );
 
-    const lowStock = [...liquidos, ...solidos, ...equipos, ...laboratorio].map(item => ({
-      ...item,
-      tipo: detectTableAndField(
-        item.stock === item.cantidad_disponible_ml ? 'liquido' :
-        item.stock === item.cantidad_disponible_g ? 'solido' :
-        item.stock === item.cantidad_disponible_u ? 'equipo' : 'laboratorio'
-      ).table.split('Material')[1].toLowerCase()
-    }));
+    // Agregar tipo a cada material
+    const liquidosConTipo = liquidos.map(item => ({ ...item, tipo: 'liquido' }));
+    const solidosConTipo = solidos.map(item => ({ ...item, tipo: 'solido' }));
+    const equiposConTipo = equipos.map(item => ({ ...item, tipo: 'equipo' }));
+    const laboratorioConTipo = laboratorio.map(item => ({ ...item, tipo: 'laboratorio' }));
+
+    const lowStock = [...liquidosConTipo, ...solidosConTipo, ...equiposConTipo, ...laboratorioConTipo];
 
     res.json(lowStock);
   } catch (error) {
@@ -732,8 +731,8 @@ const getMaterials = async (req, res) => {
   try {
     const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
     const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
-    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLaboratorio');
-    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialEquipo');
+    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible FROM MaterialLaboratorio');
+    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u FROM MaterialEquipo');
 
     const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
     res.json(materials);
@@ -875,18 +874,25 @@ const crearMaterial = async (req, res) => {
     if (tipo === 'liquido' || tipo === 'solido') {
       query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales) VALUES (?, ?, ?, ?, ?, ?, ?)`;
       params = [nombre, descripcion, cantidad_inicial, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales];
-    } else {
+    } else if (tipo === 'equipo') {
+      query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id) VALUES (?, ?, ?, ?)`;
+      params = [nombre, descripcion, cantidad_inicial, categoria_id];
+    } else if (tipo === 'laboratorio') {
       query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id) VALUES (?, ?, ?, ?)`;
       params = [nombre, descripcion, cantidad_inicial, categoria_id];
     }
 
     const [result] = await pool.query(query, params);
 
-    // Registrar movimiento de inventario
-    await pool.query(
-      'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.usuario.id, result.insertId, tipo, cantidad_inicial, 'entrada', 'Material creado']
-    );
+    // Solo registrar movimiento si existe la tabla MovimientosInventario
+    try {
+      await pool.query(
+        'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
+        [req.usuario?.id || 1, result.insertId, tipo, cantidad_inicial, 'entrada', 'Material creado']
+      );
+    } catch (movError) {
+      console.warn('[Warn] No se pudo registrar movimiento:', movError.message);
+    }
 
     res.status(201).json({ 
       message: 'Material creado exitosamente', 
@@ -916,7 +922,7 @@ const actualizarMaterial = async (req, res) => {
     if (tipo === 'liquido' || tipo === 'solido') {
       query = `UPDATE ${meta.table} SET nombre = ?, descripcion = ?, categoria_id = ?, riesgos_fisicos = ?, riesgos_salud = ?, riesgos_ambientales = ? WHERE id = ?`;
       params = [nombre, descripcion, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, id];
-    } else {
+    } else if (tipo === 'equipo' || tipo === 'laboratorio') {
       query = `UPDATE ${meta.table} SET nombre = ?, descripcion = ?, categoria_id = ? WHERE id = ?`;
       params = [nombre, descripcion, categoria_id, id];
     }
@@ -1030,11 +1036,15 @@ const registrarEntradaStock = async (req, res) => {
     // Actualizar stock
     await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevoStock, id]);
 
-    // Registrar movimiento
-    await pool.query(
-      'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
-      [req.usuario.id, id, tipo, cantidad, 'entrada', motivo || 'Entrada de stock']
-    );
+    // Registrar movimiento solo si la tabla existe
+    try {
+      await pool.query(
+        'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
+        [req.usuario?.id || 1, id, tipo, cantidad, 'entrada', motivo || 'Entrada de stock']
+      );
+    } catch (movError) {
+      console.warn('[Warn] No se pudo registrar movimiento:', movError.message);
+    }
 
     res.json({ 
       message: 'Entrada de stock registrada exitosamente',
