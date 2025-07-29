@@ -15,7 +15,7 @@ export default function Sidebar() {
 
   if (!usuario) return null;
 
-  // Definimos el array de ítems con sus condiciones de visibilidad
+  // Definimos el array de ítems con sus condiciones de visibilidad corregidas
   const navItems = [
     { 
       href: '/catalog', 
@@ -35,7 +35,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
       ),
-      visible: [1, 2].includes(usuario.rol_id), // Visible solo para alumnos y docentes
+      visible: [1, 2, 3].includes(usuario.rol_id), // Visible para alumnos, docentes y almacén
     },
     {
       href: '/adeudos',
@@ -45,7 +45,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
         </svg>
       ),
-      visible: [1, 2].includes(usuario.rol_id), // Visible para alumnos y docentes
+      visible: [1, 2].includes(usuario.rol_id), // Visible solo para alumnos y docentes
     },
     {
       href: '/prestamos',
@@ -55,7 +55,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" />
         </svg>
       ),
-      visible: usuario.rol_id === 3, // Visible solo para almacen
+      visible: usuario.rol_id === 3, // Visible solo para almacén
     },
     {
       href: '/chat',
@@ -65,7 +65,7 @@ export default function Sidebar() {
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
         </svg>
       ),
-      visible: [1, 3].includes(usuario.rol_id), // Visible para alumnos y almacen
+      visible: [1, 2, 3].includes(usuario.rol_id), // Visible para alumnos, docentes y almacén
     },
     {
       href: '/configuracion',
@@ -86,63 +86,83 @@ export default function Sidebar() {
     return nombre.split(' ').map(word => word[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  // Función para obtener el nombre del rol
+  const getRoleName = (rolId) => {
+    const roles = {
+      1: 'Alumno',
+      2: 'Docente',
+      3: 'Almacén',
+      4: 'Administrador'
+    };
+    return roles[rolId] || 'Usuario';
+  };
+
   return (
-    <aside className="w-64 h-screen bg-slate-900 text-white shadow-xl flex flex-col fixed z-10 animate-slide-in">
-      {/* Header con perfil de usuario */}
-      <div className="px-6 py-6 border-b border-slate-700">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center ring-2 ring-slate-600">
-              <span className="text-xl font-bold text-white">
+    <aside className="w-72 h-screen bg-gradient-to-b from-slate-900 via-slate-800 to-slate-900 text-white shadow-2xl flex flex-col fixed z-20 border-r border-slate-700/50">
+      {/* Header con perfil de usuario mejorado */}
+      <div className="px-6 py-8 border-b border-slate-700/50 bg-slate-800/50 backdrop-blur-sm">
+        <div className="flex items-center gap-4">
+          <div className="relative group">
+            <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 flex items-center justify-center ring-4 ring-slate-600/30 shadow-lg transition-all duration-300 group-hover:ring-slate-500/50 group-hover:shadow-xl">
+              <span className="text-2xl font-bold text-white drop-shadow-sm">
                 {getInitials(usuario.nombre)}
               </span>
             </div>
-            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-slate-900"></div>
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-3 border-slate-800 shadow-lg animate-pulse"></div>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-lg font-semibold text-white truncate">
+            <h3 className="text-xl font-bold text-white truncate mb-1 drop-shadow-sm">
               {usuario.nombre}
             </h3>
-            <p className="text-sm text-slate-400 truncate">
+            <p className="text-sm text-slate-300 truncate mb-1">
               {usuario.correo}
             </p>
+            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-blue-600/20 text-blue-300 border border-blue-500/30">
+              {getRoleName(usuario.rol_id)}
+            </span>
           </div>
-          <button className="p-1 hover:bg-slate-800 rounded-full transition-colors">
-            <svg className="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-          </button>
         </div>
       </div>
 
-      {/* Navegación principal */}
-      <nav className="flex-1 px-4 py-6 space-y-2">
+      {/* Navegación principal mejorada */}
+      <nav className="flex-1 px-6 py-8 space-y-3 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-transparent">
+        <h4 className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-4 px-2">
+          Navegación
+        </h4>
         {navItems
           .filter(item => item.visible === undefined || item.visible)
           .map(({ href, label, icon }) => (
             <Link
               key={href}
               href={href}
-              className="flex items-center gap-3 py-3 px-4 rounded-xl hover:bg-slate-800 transition-all duration-200 text-slate-300 hover:text-white group relative"
+              className="group flex items-center gap-4 py-4 px-4 rounded-2xl transition-all duration-300 text-slate-300 hover:text-white hover:bg-slate-700/50 hover:shadow-lg hover:shadow-slate-900/20 backdrop-blur-sm border border-transparent hover:border-slate-600/30 relative overflow-hidden"
             >
-              <div className="flex items-center justify-center w-6 h-6 text-slate-400 group-hover:text-white transition-colors">
+              {/* Efecto hover de fondo */}
+              <div className="absolute inset-0 bg-gradient-to-r from-blue-600/10 to-purple-600/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 rounded-2xl"></div>
+              
+              <div className="relative flex items-center justify-center w-8 h-8 text-slate-400 group-hover:text-white transition-all duration-300 group-hover:scale-110">
                 {icon}
               </div>
-              <span className="font-medium">{label}</span>
+              <span className="relative font-semibold text-sm tracking-wide group-hover:translate-x-1 transition-transform duration-300">
+                {label}
+              </span>
+              
+              {/* Indicador de hover */}
+              <div className="absolute right-4 w-2 h-2 bg-blue-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-x-2 group-hover:translate-x-0"></div>
             </Link>
           ))}
       </nav>
 
-      {/* Footer con botón de logout */}
-      <div className="px-4 py-4 border-t border-slate-700">
+      {/* Footer con botón de logout mejorado */}
+      <div className="px-6 py-6 border-t border-slate-700/50 bg-slate-800/30 backdrop-blur-sm">
         <button
           onClick={handleLogout}
-          className="flex items-center justify-center gap-2 w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-3 px-4 rounded-xl transition-all duration-200 hover:shadow-lg"
+          className="group flex items-center justify-center gap-3 w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 hover:shadow-xl hover:shadow-red-900/30 hover:-translate-y-1 active:translate-y-0 border border-red-500/30"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 transition-transform duration-300 group-hover:rotate-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          Cerrar Sesión
+          <span className="tracking-wide">Cerrar Sesión</span>
         </button>
       </div>
     </aside>
