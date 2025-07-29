@@ -98,57 +98,61 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 h-screen bg-white border-r border-gray-200 flex flex-col fixed z-20">
-      {/* Header minimalista */}
-      <div className="p-6 border-b border-gray-100">
+    <aside className="w-64 h-screen bg-gradient-to-b from-slate-50 to-white border-r border-slate-200/60 flex flex-col fixed z-20 shadow-sm">
+      {/* Header elegante */}
+      <div className="p-6 bg-white/80 backdrop-blur-sm border-b border-slate-100">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-gray-900 flex items-center justify-center">
-            <span className="text-sm font-semibold text-white">
-              {getInitials(usuario.nombre)}
-            </span>
+          <div className="relative">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg transform hover:scale-105 transition-transform duration-300">
+              <span className="text-lg font-bold text-white">
+                {getInitials(usuario.nombre)}
+              </span>
+            </div>
+            <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-400 rounded-full border-2 border-white shadow-sm"></div>
           </div>
           <div className="flex-1 min-w-0">
-            <h3 className="text-sm font-semibold text-gray-900 truncate">
+            <h3 className="text-base font-semibold text-slate-800 truncate">
               {usuario.nombre}
             </h3>
-            <p className="text-xs text-gray-500 truncate">
+            <p className="text-sm text-slate-500 truncate">
               {getRoleName(usuario.rol_id)}
             </p>
           </div>
         </div>
       </div>
 
-      {/* Navegación minimalista */}
-      <nav className="flex-1 p-4">
-        <ul className="space-y-1">
-          {navItems
-            .filter(item => item.visible === undefined || item.visible)
-            .map(({ href, label, icon }) => (
-              <li key={href}>
-                <Link
-                  href={href}
-                  className="flex items-center gap-3 px-3 py-2.5 text-sm font-medium text-gray-700 rounded-lg hover:bg-gray-50 hover:text-gray-900 transition-colors duration-200"
-                >
-                  <span className="text-gray-400">
-                    {icon}
-                  </span>
-                  {label}
-                </Link>
-              </li>
-            ))}
-        </ul>
+      {/* Navegación con vida */}
+      <nav className="flex-1 p-4 space-y-2">
+        {navItems
+          .filter(item => item.visible === undefined || item.visible)
+          .map(({ href, label, icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="group flex items-center gap-3 px-4 py-3 text-sm font-medium text-slate-600 rounded-xl hover:text-slate-900 hover:bg-white hover:shadow-md transition-all duration-300 transform hover:-translate-y-0.5 border border-transparent hover:border-slate-200/50"
+            >
+              <span className="text-slate-400 group-hover:text-blue-500 transition-colors duration-300 group-hover:scale-110 transform">
+                {icon}
+              </span>
+              <span className="group-hover:translate-x-1 transition-transform duration-300">
+                {label}
+              </span>
+            </Link>
+          ))}
       </nav>
 
-      {/* Footer minimalista */}
-      <div className="p-4 border-t border-gray-100">
+      {/* Footer con estilo */}
+      <div className="p-4 border-t border-slate-100">
         <button
           onClick={handleLogout}
-          className="flex items-center gap-3 w-full px-3 py-2.5 text-sm font-medium text-red-700 hover:bg-red-50 rounded-lg transition-colors duration-200"
+          className="group flex items-center gap-3 w-full px-4 py-3 text-sm font-medium text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all duration-300 transform hover:-translate-y-0.5 hover:shadow-md border border-transparent hover:border-red-100"
         >
-          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="w-5 h-5 group-hover:rotate-12 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
           </svg>
-          Cerrar Sesión
+          <span className="group-hover:translate-x-1 transition-transform duration-300">
+            Cerrar Sesión
+          </span>
         </button>
       </div>
     </aside>
