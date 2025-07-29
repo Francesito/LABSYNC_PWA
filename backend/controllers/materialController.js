@@ -1568,27 +1568,63 @@ const getReporteEficienciaEntrega = async (req, res) => {
  * ========================================
  */
 module.exports = {
-  getMaterials,
-  getDeliveredSolicitudes,
-  getAllSolicitudes,
-  getMaterialById,
+  // Catálogo de materiales por tipo
   getLiquidos,
   getSolidos,
-  getLaboratorio,
   getEquipos,
+  getLaboratorio,
+  
+  // Materiales generales
+  getMaterials,
+  getMaterialById,
+  
+  // CRUD de materiales
+  crearMaterial,
+  actualizarMaterial,
+  eliminarMaterial,
+  
+  // Gestión de stock
+  actualizarStock,
+  registrarEntradaStock,
+  registrarSalidaStock,
+  adjustInventory,
+  ajusteMasivoStock,
+  getMaterialesStockBajo,
+  
+  // Solicitudes - CRUD
   crearSolicitudes,
   crearSolicitudConAdeudo,
+  getAllSolicitudes,
   getUserSolicitudes,
   getApprovedSolicitudes,
   getPendingSolicitudes,
+  getDeliveredSolicitudes,
+  getSolicitudDetalle,
+  
+  // Acciones sobre solicitudes
   approveSolicitud,
   rejectSolicitud,
   deliverSolicitud,
-  getSolicitudDetalle,
   cancelSolicitud,
-  adjustInventory,
+  
+  // Categorías
+  crearCategoria,
+  actualizarCategoria,
+  eliminarCategoria,
+  
+  // Estadísticas y reportes
   getEstadisticas,
+  getEstadisticasCompletas,
   getHistorialMovimientos,
-  ajusteMasivoStock,
-  getMaterialesStockBajo
+  getReporteUsoPeriodo,
+  getReporteMasSolicitados,
+  getReporteEficienciaEntrega,
+  
+  // Usuarios y permisos
+  getUsuariosConPermisos,
+  
+  // Sistema y administración
+  getEstadoSistema,
+  validarIntegridadDatos,
+  resetearTodoElStock
 };
