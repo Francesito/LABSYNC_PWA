@@ -14,7 +14,6 @@ export default function Catalog() {
   const [showRequestModal, setShowRequestModal] = useState(false);
   const [showAdjustModal, setShowAdjustModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState(false);
-  const [showAddMaterialModal, setShowAddMaterialModal] = useState(false);
   const [selectedMaterial, setSelectedMaterial] = useState(null);
   const [materialToAdjust, setMaterialToAdjust] = useState(null);
   const [adjustAmount, setAdjustAmount] = useState('');
@@ -25,23 +24,8 @@ export default function Catalog() {
   const [selectedRiesgoFisico, setSelectedRiesgoFisico] = useState('');
   const [selectedRiesgoSalud, setSelectedRiesgoSalud] = useState('');
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
-  const [categories, setCategories] = useState([]);
   
-  // State for adding new material
-  const [newMaterial, setNewMaterial] = useState({
-    nombre: '',
-    descripcion: '',
-    cantidad: '',
-    tipo: 'liquido',
-    estado: 'disponible',
-    categoria_id: '',
-    riesgos_fisicos: '',
-    riesgos_salud: '',
-    riesgos_ambientales: '',
-    imagen: ''
-  });
-
-  // User permissions
+  // ✅ NUEVOS ESTADOS para gestión de permisos
   const [userPermissions, setUserPermissions] = useState({
     acceso_chat: false,
     modificar_stock: false,
@@ -52,7 +36,7 @@ export default function Catalog() {
 
   const LOW_STOCK_THRESHOLD = 50;
 
-  // Load user permissions
+  // ✅ NUEVA FUNCIÓN: Cargar permisos del usuario
   const loadUserPermissions = async () => {
     try {
       setPermissionsLoading(true);
@@ -63,11 +47,14 @@ export default function Catalog() {
         return;
       }
 
+      // Obtener permisos de stock desde el backend
       const response = await axios.get(
         `${process.env.NEXT_PUBLIC_API_URL}/api/auth/permisos-stock`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
+      console.log('Permisos de stock obtenidos:', response.data);
+      
       setUserPermissions({
         acceso_chat: response.data.acceso_chat || false,
         modificar_stock: response.data.modificar_stock || false,
@@ -90,58 +77,67 @@ export default function Catalog() {
     }
   };
 
-  // Load categories
-  const loadCategories = async () => {
-    try {
-      const response = await makeSecureApiCall(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/categorias`
-      );
-      setCategories(response.data);
-    } catch (error) {
-      console.error('Error al cargar categorías:', error);
-      setError('No se pudieron cargar las categorías');
-    }
-  };
-
-  // Check if user can modify stock
+  // ✅ FUNCIÓN MEJORADA: Verificar si el usuario puede modificar stock
   const canModifyStock = () => {
+    // Administradores siempre tienen permisos
     if (userPermissions.rol === 'administrador') return true;
+    
+    // Almacenistas necesitan permisos específicos
     if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) return true;
+    
+    // Otros roles no pueden modificar stock
     return false;
   };
 
-  // Check if user can make requests
+  // ✅ FUNCIÓN MEJORADA: Verificar si el usuario puede realizar solicitudes
   const canMakeRequests = () => {
+    // Administradores no pueden hacer solicitudes (solo gestionar)
     if (userPermissions.rol === 'administrador') return false;
+    
+    // Alumnos siempre pueden hacer solicitudes
     if (userPermissions.rol === 'alumno') return true;
+    
+    // Docentes pueden hacer solicitudes
     if (userPermissions.rol === 'docente') return true;
+    
+    // Almacenistas sin permisos de stock no pueden hacer solicitudes
+    if (userPermissions.rol === 'almacen' && !userPermissions.modificar_stock) return false;
+    
+    // Almacenistas con permisos sí pueden
     if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) return true;
+    
     return false;
   };
 
-  // Check if user can view details
+  // ✅ FUNCIÓN MEJORADA: Verificar si el usuario puede ver detalles e interactuar
   const canViewDetails = () => {
+    // Administradores solo pueden ver (sin interactuar)
     if (userPermissions.rol === 'administrador') return false;
+    
+    // Almacenistas sin permisos no pueden interactuar
     if (userPermissions.rol === 'almacen' && !userPermissions.modificar_stock) return false;
+    
+    // Todos los demás pueden ver detalles
     return true;
   };
 
-  // Handle permission errors
+  // ✅ NUEVA FUNCIÓN: Manejar errores de permisos
   const handlePermissionError = (action) => {
     const messages = {
       'modify_stock': 'No tienes permisos para modificar el stock. Contacta al administrador.',
       'make_request': 'No tienes permisos para realizar solicitudes.',
       'view_details': 'No tienes permisos para ver los detalles de este material.',
       'adjust_stock': 'Solo usuarios con permisos de stock pueden ajustar inventario.',
-      'low_stock_alerts': 'Solo usuarios con permisos de stock pueden gestionar alertas.',
-      'add_material': 'Solo administradores y almacenistas con permisos pueden agregar materiales.'
+      'low_stock_alerts': 'Solo usuarios con permisos de stock pueden gestionar alertas.'
     };
     
     setError(messages[action] || 'No tienes permisos para realizar esta acción.');
+    
+    // Limpiar error después de 5 segundos
     setTimeout(() => setError(''), 5000);
   };
 
-  // Secure API call
+  // ✅ NUEVA FUNCIÓN: Realizar llamada segura a API con manejo de permisos
   const makeSecureApiCall = async (url, options = {}) => {
     try {
       const token = localStorage.getItem('token');
@@ -174,7 +170,7 @@ export default function Catalog() {
     }
   };
 
-  // Main useEffect
+  // ✅ useEffect principal actualizado con carga de permisos
   useEffect(() => {
     if (!usuario) {
       router.push('/login');
@@ -182,17 +178,17 @@ export default function Catalog() {
     }
 
     const initializeComponent = async () => {
-      await Promise.all([
-        loadUserPermissions(),
-        loadCategories(),
-        fetchMaterials()
-      ]);
+      // Cargar permisos primero
+      await loadUserPermissions();
+      
+      // Luego cargar materiales
+      await fetchMaterials();
     };
 
     initializeComponent();
   }, [usuario, router]);
 
-  // Fetch materials
+  // ✅ FUNCIÓN SEPARADA: Cargar materiales
   const fetchMaterials = async () => {
     try {
       setLoading(true);
@@ -237,6 +233,7 @@ export default function Catalog() {
 
       let all = [...liquidos, ...solidos, ...laboratorio, ...equipos];
       
+      // Filtrar materiales según el rol del usuario
       if (userPermissions.rol === 'alumno') {
         all = all.filter(m => m.tipo === 'laboratorio' || m.tipo === 'equipo');
       } else if (userPermissions.rol === 'docente') {
@@ -245,6 +242,7 @@ export default function Catalog() {
 
       setAllMaterials(all);
 
+      // Solo mostrar alertas de stock bajo si puede modificar stock
       if (canModifyStock()) {
         const lowStock = all.filter(material =>
           material.cantidad > 0 &&
@@ -260,63 +258,6 @@ export default function Catalog() {
       }
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Handle adding new material
-  const handleAddMaterial = async () => {
-    if (!canModifyStock()) {
-      handlePermissionError('add_material');
-      return;
-    }
-
-    if (!newMaterial.nombre || !newMaterial.descripcion || !newMaterial.cantidad || !newMaterial.categoria_id) {
-      setError('Por favor completa todos los campos obligatorios');
-      return;
-    }
-
-    try {
-      const materialData = {
-        nombre: newMaterial.nombre,
-        descripcion: newMaterial.descripcion,
-        cantidad: parseInt(newMaterial.cantidad),
-        tipo: newMaterial.tipo,
-        estado: newMaterial.estado,
-        categoria_id: parseInt(newMaterial.categoria_id),
-        imagen: newMaterial.imagen || null
-      };
-
-      if (newMaterial.tipo === 'liquido' || newMaterial.tipo === 'solido') {
-        materialData.riesgos_fisicos = newMaterial.riesgos_fisicos;
-        materialData.riesgos_salud = newMaterial.riesgos_salud;
-        materialData.riesgos_ambientales = newMaterial.riesgos_ambientales;
-      }
-
-      await makeSecureApiCall(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/materials`,
-        {
-          method: 'POST',
-          data: materialData
-        }
-      );
-
-      setNewMaterial({
-        nombre: '',
-        descripcion: '',
-        cantidad: '',
-        tipo: 'liquido',
-        estado: 'disponible',
-        categoria_id: '',
-        riesgos_fisicos: '',
-        riesgos_salud: '',
-        riesgos_ambientales: '',
-        imagen: ''
-      });
-      setShowAddMaterialModal(false);
-      await fetchMaterials();
-      setError('');
-    } catch (err) {
-      console.error('Error al agregar material:', err);
     }
   };
 
@@ -427,7 +368,7 @@ export default function Catalog() {
     return 'text-green-600';
   };
 
-  // Add to cart
+  // ✅ FUNCIÓN ACTUALIZADA: Añadir al carrito con verificación de permisos
   const addToCart = (material, cantidad) => {
     if (!canMakeRequests()) {
       handlePermissionError('make_request');
@@ -461,7 +402,7 @@ export default function Catalog() {
     setDetailAmount('');
   };
 
-  // Remove from cart
+  // ✅ FUNCIÓN ACTUALIZADA: Remover del carrito con verificación de permisos
   const removeFromCart = (id, tipo) => {
     if (!canMakeRequests()) {
       handlePermissionError('make_request');
@@ -470,7 +411,7 @@ export default function Catalog() {
     setSelectedCart((prev) => prev.filter((item) => !(item.id === id && item.tipo === tipo)));
   };
 
-  // Clear selection
+  // ✅ FUNCIÓN ACTUALIZADA: Vaciar selección con verificación de permisos
   const vaciarSeleccion = () => {
     if (!canMakeRequests()) {
       handlePermissionError('make_request');
@@ -482,7 +423,7 @@ export default function Catalog() {
 
   const totalItems = selectedCart.reduce((sum, item) => sum + (item.cantidad || 0), 0);
 
-  // Submit request
+  // ✅ FUNCIÓN ACTUALIZADA: Enviar solicitud con llamada segura a API
   const handleSubmitRequest = async () => {
     if (!canMakeRequests()) {
       handlePermissionError('make_request');
@@ -495,7 +436,7 @@ export default function Catalog() {
     }
 
     try {
-      const response = await makeSecureApiCall(
+      await makeSecureApiCall(
         `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes`,
         {
           method: 'POST',
@@ -508,10 +449,6 @@ export default function Catalog() {
             motivo: 'Solicitud desde catálogo',
             fecha_solicitud: new Date().toISOString().split('T')[0],
             aprobar_automatico: userPermissions.rol === 'docente',
-            usuario_id: usuario.id,
-            nombre_alumno: usuario.rol === 'alumno' ? usuario.nombre : null,
-            profesor: usuario.rol === 'docente' ? usuario.nombre : null,
-            docente_id: usuario.rol === 'docente' ? usuario.id : null
           }
         }
       );
@@ -521,6 +458,7 @@ export default function Catalog() {
       router.push('/solicitudes');
     } catch (err) {
       console.error('Error al enviar solicitud:', err);
+      // El error ya se maneja en makeSecureApiCall
     }
   };
 
@@ -534,7 +472,7 @@ export default function Catalog() {
     return matchesSearch && matchesRiesgoFisico && matchesRiesgoSalud;
   });
 
-  // Handle adjust click
+  // ✅ FUNCIÓN ACTUALIZADA: Manejar clic en ajustar con verificación de permisos
   const handleAdjustClick = (material) => {
     if (!canModifyStock()) {
       handlePermissionError('adjust_stock');
@@ -546,10 +484,11 @@ export default function Catalog() {
     setError('');
   };
 
-  // Handle detail click
+  // ✅ FUNCIÓN ACTUALIZADA: Manejar clic en detalles con verificación de permisos
   const handleDetailClick = (material, e) => {
     e.stopPropagation();
     if (!canViewDetails()) {
+      // Para usuarios sin permisos, no mostrar error, simplemente no hacer nada
       return;
     }
     console.log(`Clic en material: ${material.nombre}, ID: ${material.id}, Tipo: ${material.tipo}, Image Path: ${getImagePath(material)}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
@@ -560,7 +499,7 @@ export default function Catalog() {
     setError('');
   };
 
-  // Submit adjust
+  // ✅ FUNCIÓN ACTUALIZADA: Enviar ajuste con llamada segura a API
   const handleAdjustSubmit = async () => {
     if (!materialToAdjust || !canModifyStock()) {
       handlePermissionError('adjust_stock');
@@ -596,10 +535,11 @@ export default function Catalog() {
       );
     } catch (err) {
       console.error('Error al ajustar inventario:', err);
+      // El error ya se maneja en makeSecureApiCall
     }
   };
 
-  // Dismiss low stock alert
+  // ✅ FUNCIÓN ACTUALIZADA: Descartar alerta de stock bajo con verificación de permisos
   const dismissLowStockAlert = (materialId, tipo) => {
     if (!canModifyStock()) {
       handlePermissionError('low_stock_alerts');
@@ -610,6 +550,7 @@ export default function Catalog() {
     );
   };
 
+  // ✅ MOSTRAR LOADING si los permisos están cargando
   if (permissionsLoading || loading) {
     return (
       <>
@@ -659,6 +600,7 @@ export default function Catalog() {
     );
   }
 
+  // ✅ MOSTRAR ERROR DE PERMISOS si hay problemas
   if (permissionsError) {
     return (
       <>
@@ -738,25 +680,26 @@ export default function Catalog() {
           padding: 2rem;
           margin-left: 16rem;
         }
+
         .main-card {
           background: white;
           border-radius: 8px;
           box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
           overflow: hidden;
         }
+
         .header-section {
           background: #1e293b;
           color: white;
           padding: 2rem;
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
         }
+
         .header-section h1 {
           font-size: 1.75rem;
           font-weight: 600;
           margin: 0;
         }
+
         .permissions-info {
           background: #eff6ff;
           border: 1px solid #bfdbfe;
@@ -766,14 +709,17 @@ export default function Catalog() {
           color: #1e40af;
           font-size: 0.875rem;
         }
+
         .permissions-info .permission-item {
           display: flex;
           align-items: center;
           margin-bottom: 0.5rem;
         }
+
         .permissions-info .permission-item:last-child {
           margin-bottom: 0;
         }
+
         .permission-badge {
           display: inline-block;
           padding: 0.25rem 0.5rem;
@@ -782,20 +728,24 @@ export default function Catalog() {
           font-weight: 500;
           margin-right: 0.5rem;
         }
+
         .permission-enabled {
           background: #dcfce7;
           color: #166534;
         }
+
         .permission-disabled {
           background: #fee2e2;
           color: #991b1b;
         }
+
         .low-stock-alerts {
           background: #fef3c7;
           border-left: 4px solid #f59e0b;
           padding: 1rem 1.5rem;
           margin-bottom: 1rem;
         }
+
         .low-stock-item {
           display: flex;
           justify-content: space-between;
@@ -806,19 +756,23 @@ export default function Catalog() {
           padding: 0.75rem 1rem;
           margin-bottom: 0.5rem;
         }
+
         .low-stock-content {
           flex-grow: 1;
         }
+
         .low-stock-material {
           font-weight: 600;
           color: #92400e;
           font-size: 0.875rem;
         }
+
         .low-stock-quantity {
           color: #b45309;
           font-size: 0.75rem;
           margin-top: 0.25rem;
         }
+
         .dismiss-btn {
           background: none;
           border: none;
@@ -828,9 +782,11 @@ export default function Catalog() {
           border-radius: 4px;
           transition: background-color 0.15s ease;
         }
+
         .dismiss-btn:hover {
           background: #fef3c7;
         }
+
         .search-filter-container {
           padding: 1.5rem;
           background: #fafbfc;
@@ -839,6 +795,7 @@ export default function Catalog() {
           grid-template-columns: 2fr 1fr 1fr;
           gap: 1rem;
         }
+
         .search-input, .filter-select {
           border: 1px solid #d1d5db;
           border-radius: 6px;
@@ -847,17 +804,20 @@ export default function Catalog() {
           background: white;
           transition: all 0.2s ease;
         }
+
         .search-input:focus, .filter-select:focus {
           outline: none;
           border-color: #1e3a8a;
           box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
         }
+
         .material-grid {
           display: grid;
           grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
           gap: 1.5rem;
           padding: 1.5rem;
         }
+
         .material-card {
           background: white;
           border-radius: 8px;
@@ -865,16 +825,20 @@ export default function Catalog() {
           overflow: hidden;
           transition: transform 0.2s ease;
         }
+
         .material-card.clickable {
           cursor: pointer;
         }
+
         .material-card.clickable:hover {
           transform: translateY(-4px);
         }
+
         .material-card.non-clickable {
           cursor: default;
           opacity: 0.8;
         }
+
         .material-image {
           width: 100%;
           height: 150px;
@@ -882,15 +846,18 @@ export default function Catalog() {
           object-position: center;
           background: #f8f9fa;
         }
+
         .material-card-content {
           padding: 1rem;
         }
+
         .material-card-name {
           font-weight: 600;
           color: #1f2937;
           font-size: 0.95rem;
           margin-bottom: 0.5rem;
         }
+
         .material-card-type {
           padding: 0.25rem 0.625rem;
           border-radius: 4px;
@@ -898,13 +865,16 @@ export default function Catalog() {
           font-weight: 500;
           text-transform: capitalize;
         }
+
         .material-card-stock {
           font-size: 0.85rem;
           margin-top: 0.5rem;
         }
+
         .table {
           margin: 0;
         }
+
         .table-header {
           background: #f8f9fa;
           font-weight: 600;
@@ -912,26 +882,32 @@ export default function Catalog() {
           font-size: 0.875rem;
           border-bottom: 1px solid #e5e7eb;
         }
+
         .table-header th {
           padding: 1rem;
           font-weight: 600;
         }
+
         .table-row {
           border-bottom: 1px solid #f3f4f6;
           transition: background-color 0.15s ease;
         }
+
         .table-row:hover {
           background: #f8f9fa;
         }
+
         .table-row td {
           padding: 1rem;
           vertical-align: middle;
         }
+
         .material-name {
           font-weight: 600;
           color: #1f2937;
           font-size: 0.95rem;
         }
+
         .material-type {
           padding: 0.25rem 0.625rem;
           border-radius: 4px;
@@ -939,22 +915,27 @@ export default function Catalog() {
           font-weight: 500;
           text-transform: capitalize;
         }
+
         .type-liquido {
           background: #dbeafe;
           color: #1e40af;
         }
+
         .type-solido {
           background: #fef3c7;
           color: #92400e;
         }
+
         .type-laboratorio {
           background: #e0e7ff;
           color: #4338ca;
         }
+
         .type-equipo {
           background: #d1fae5;
           color: #065f46;
         }
+
         .riesgo-badge {
           display: inline-block;
           padding: 0.125rem 0.375rem;
@@ -964,15 +945,18 @@ export default function Catalog() {
           margin: 0.125rem;
           white-space: nowrap;
         }
+
         .riesgos-container {
           display: flex;
           flex-wrap: wrap;
           gap: 0.25rem;
           max-width: 200px;
         }
+
         .stock-display {
           font-weight: 500;
         }
+
         .quantity-input {
           border: 1px solid #d1d5db;
           border-radius: 4px;
@@ -983,11 +967,13 @@ export default function Catalog() {
           transition: border-color 0.15s ease;
           width: 80px;
         }
+
         .quantity-input:focus {
           border-color: #1e3a8a;
           box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
           outline: none;
         }
+
         .btn-adjust {
           background: #f59e0b;
           border: none;
@@ -1001,28 +987,17 @@ export default function Catalog() {
           margin-top: 8px;
           width: 100%;
         }
+
         .btn-adjust:hover {
           background: #d97706;
         }
+
         .btn-adjust:disabled {
           background: #d1d5db;
           cursor: not-allowed;
           opacity: 0.6;
         }
-        .btn-add-material {
-          background: #16a34a;
-          border: none;
-          border-radius: 4px;
-          color: white;
-          font-weight: 500;
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-          transition: background-color 0.15s ease;
-          cursor: pointer;
-        }
-        .btn-add-material:hover {
-          background: #15803d;
-        }
+
         .btn-add-to-cart {
           background: #1e3a8a;
           border: none;
@@ -1035,13 +1010,16 @@ export default function Catalog() {
           cursor: pointer;
           width: 100%;
         }
+
         .btn-add-to-cart:hover {
           background: #1e40af;
         }
+
         .btn-add-to-cart:disabled {
           background: #d1d5db;
           cursor: not-allowed;
         }
+
         .cart-container {
           background: white;
           border-radius: 8px;
@@ -1054,25 +1032,30 @@ export default function Catalog() {
           display: flex;
           flex-direction: column;
         }
+
         .cart-header {
           background: #1e293b;
           color: white;
           padding: 1.5rem;
         }
+
         .cart-header h4 {
           font-size: 1.125rem;
           font-weight: 600;
           margin: 0 0 0.25rem 0;
         }
+
         .cart-header small {
           font-size: 0.875rem;
           opacity: 0.9;
         }
+
         .cart-body {
           padding: 1.5rem;
           flex: 1;
           overflow-y: auto;
         }
+
         .cart-item {
           background: #f8f9fa;
           border: 1px solid #e5e7eb;
@@ -1080,17 +1063,20 @@ export default function Catalog() {
           padding: 1rem;
           margin-bottom: 0.75rem;
         }
+
         .cart-item-name {
           font-weight: 600;
           color: #1f2937;
           margin-bottom: 0.25rem;
           font-size: 0.875rem;
         }
+
         .cart-item-quantity {
           color: #6b7280;
           font-size: 0.813rem;
           margin-bottom: 0.5rem;
         }
+
         .btn-remove {
           background: #ef4444;
           border: none;
@@ -1106,9 +1092,11 @@ export default function Catalog() {
           transition: background-color 0.15s ease;
           cursor: pointer;
         }
+
         .btn-remove:hover {
           background: #dc2626;
         }
+
         .btn-create-vale {
           background: #1e3a8a;
           border: none;
@@ -1121,13 +1109,16 @@ export default function Catalog() {
           width: 100%;
           cursor: pointer;
         }
+
         .btn-create-vale:hover:not(:disabled) {
           background: #1e40af;
         }
+
         .btn-create-vale:disabled {
           background: #d1d5db;
           cursor: not-allowed;
         }
+
         .btn-clear {
           background: white;
           border: 1px solid #d1d5db;
@@ -1140,14 +1131,17 @@ export default function Catalog() {
           width: 100%;
           cursor: pointer;
         }
+
         .btn-clear:hover:not(:disabled) {
           background: #f8f9fa;
           border-color: #9ca3af;
         }
+
         .btn-clear:disabled {
           opacity: 0.5;
           cursor: not-allowed;
         }
+
         .modal-overlay {
           position: fixed;
           top: 0;
@@ -1161,6 +1155,7 @@ export default function Catalog() {
           z-index: 10000;
           overflow: auto;
         }
+
         .modal-content-custom {
           background: white;
           border-radius: 8px;
@@ -1175,6 +1170,7 @@ export default function Catalog() {
           top: 50%;
           transform: translate(-50%, -50%);
         }
+
         .modal-header-custom {
           background: #1e293b;
           color: white;
@@ -1184,11 +1180,13 @@ export default function Catalog() {
           justify-content: space-between;
           align-items: center;
         }
+
         .modal-header-custom .modal-title {
           font-size: 1.25rem;
           font-weight: 600;
           margin: 0;
         }
+
         .alert-custom {
           background: #fee2e2;
           border: 1px solid #fecaca;
@@ -1198,12 +1196,14 @@ export default function Catalog() {
           color: #dc2626;
           font-size: 0.875rem;
         }
+
         .loading-spinner {
           display: flex;
           justify-content: center;
           align-items: center;
           height: 400px;
         }
+
         .spinner {
           width: 40px;
           height: 40px;
@@ -1212,29 +1212,35 @@ export default function Catalog() {
           border-radius: 50%;
           animation: spin 1s linear infinite;
         }
+
         @keyframes spin {
           0% { transform: rotate(0deg); }
           100% { transform: rotate(360deg); }
         }
+
         .empty-cart {
           text-align: center;
           padding: 2rem 0;
           color: #6b7280;
         }
+
         .empty-cart-icon {
           font-size: 3rem;
           margin-bottom: 1rem;
           opacity: 0.3;
         }
+
         .empty-cart p {
           font-weight: 500;
           color: #4b5563;
           margin-bottom: 0.25rem;
         }
+
         .empty-cart small {
           color: #9ca3af;
           font-size: 0.875rem;
         }
+
         .modal-footer-custom {
           padding: 1.5rem;
           border-top: 1px solid #e5e7eb;
@@ -1243,6 +1249,7 @@ export default function Catalog() {
           gap: 0.75rem;
           justify-content: flex-end;
         }
+
         .request-summary {
           background: #f8f9fa;
           border: 1px solid #e5e7eb;
@@ -1250,6 +1257,7 @@ export default function Catalog() {
           padding: 0;
           overflow: hidden;
         }
+
         .request-item {
           display: flex;
           justify-content: space-between;
@@ -1257,23 +1265,28 @@ export default function Catalog() {
           padding: 0.875rem 1rem;
           border-bottom: 1px solid #e5e7eb;
         }
+
         .request-item:last-child {
           border-bottom: none;
         }
+
         .request-item .fw-semibold {
           font-weight: 600;
           color: #1f2937;
           font-size: 0.875rem;
         }
+
         .request-item small {
           color: #6b7280;
           font-size: 0.75rem;
         }
+
         .request-item .fw-bold {
           font-weight: 600;
           color: #1e3a8a;
           font-size: 0.875rem;
         }
+
         .btn-secondary-custom {
           background: white;
           border: 1px solid #d1d5db;
@@ -1285,10 +1298,12 @@ export default function Catalog() {
           transition: all 0.15s ease;
           cursor: pointer;
         }
+
         .btn-secondary-custom:hover {
           background: #f8f9fa;
           border-color: #9ca3af;
         }
+
         .info-alert {
           background: #eff6ff;
           border: 1px solid #bfdbfe;
@@ -1297,6 +1312,7 @@ export default function Catalog() {
           color: #1e40af;
           font-size: 0.875rem;
         }
+
         .security-alert {
           background: #fef3c7;
           border: 1px solid #fbbf24;
@@ -1306,12 +1322,14 @@ export default function Catalog() {
           font-size: 0.875rem;
           margin-bottom: 1rem;
         }
+
         .form-label {
           color: #374151;
           font-weight: 500;
           margin-bottom: 0.5rem;
           font-size: 0.875rem;
         }
+
         .form-control {
           border: 1px solid #d1d5db;
           border-radius: 4px;
@@ -1319,11 +1337,13 @@ export default function Catalog() {
           font-size: 0.95rem;
           transition: all 0.15s ease;
         }
+
         .form-control:focus {
           outline: none;
           border-color: #1e3a8a;
           box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
         }
+
         .detail-image {
           max-width: 200px;
           max-height: 200px;
@@ -1331,92 +1351,120 @@ export default function Catalog() {
           border-radius: 8px;
           margin-bottom: 1rem;
         }
+
         .text-muted {
           color: #6b7280 !important;
           font-size: 0.875rem;
         }
+
         .text-red-600 {
           color: #dc2626;
         }
+
         .text-orange-600 {
           color: #ea580c;
         }
+
         .text-green-600 {
           color: #16a34a;
         }
+
         .modal-body h5 {
           color: #1f2937;
           font-size: 1.125rem;
           font-weight: 600;
           margin-bottom: 0.75rem;
         }
+
         .d-grid {
           display: grid;
         }
+
         .gap-2 {
           gap: 0.5rem;
         }
+
         .gap-4 {
           gap: 1.5rem;
         }
+
         .d-flex {
           display: flex;
         }
+
         .justify-content-between {
           justify-content: space-between;
         }
+
         .align-items-center {
           align-items: center;
         }
+
         .align-items-start {
           align-items: flex-start;
         }
+
         .flex-grow-1 {
           flex-grow: 1;
         }
+
         .fw-semibold {
           font-weight: 600;
         }
+
         .fw-bold {
           font-weight: 700;
         }
+
         .mt-4 {
           margin-top: 1.5rem;
         }
+
         .mb-3 {
           margin-bottom: 1rem;
         }
+
         .mb-4 {
           margin-bottom: 1.5rem;
         }
+
         .mx-4 {
           margin-left: 1.5rem;
           margin-right: 1.5rem;
         }
+
         .mt-3 {
           margin-top: 1rem;
         }
+
         .p-0 {
           padding: 0;
         }
+
         .p-4 {
           padding: 1.5rem;
         }
+
         .table-responsive {
           overflow-x: auto;
         }
+
         .min-w-full {
           min-width: 100%;
         }
+
         .mb-0 {
           margin-bottom: 0;
         }
+
         .show {
           display: block !important;
         }
+
         .d-block {
           display: block;
         }
+
         .btn-close {
           background: none;
           border: none;
@@ -1427,33 +1475,41 @@ export default function Catalog() {
           width: 24px;
           height: 24px;
         }
+
         .btn-close-white {
           color: white;
         }
+
         .btn-close:before {
           content: '×';
         }
+
         .no-risks {
           color: #6b7280;
           font-size: 0.875rem;
           font-style: italic;
         }
+
         @media (max-width: 1200px) {
           .catalog-container {
             margin-left: 0;
           }
+          
           .d-flex.gap-4 {
             flex-direction: column;
           }
+          
           .cart-container {
             width: 100%;
             position: relative;
             max-height: none;
             margin-top: 2rem;
           }
+
           .search-filter-container {
             grid-template-columns: 1fr;
           }
+
           .material-grid {
             grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
           }
@@ -1466,16 +1522,9 @@ export default function Catalog() {
             <div className="main-card">
               <div className="header-section">
                 <h1>Catálogo de Reactivos</h1>
-                {canModifyStock() && (
-                  <button
-                    className="btn-add-material"
-                    onClick={() => setShowAddMaterialModal(true)}
-                  >
-                    Agregar Material
-                  </button>
-                )}
               </div>
 
+              {/* ✅ NUEVA SECCIÓN: Mostrar información de permisos del usuario */}
               <div className="permissions-info">
                 <h4 style={{ margin: 0, color: '#1e40af', fontSize: '1rem', fontWeight: '600', marginBottom: '0.75rem' }}>
                   Estado de Permisos - {userPermissions.rol ? userPermissions.rol.charAt(0).toUpperCase() + userPermissions.rol.slice(1) : 'Cargando...'}
@@ -1741,11 +1790,6 @@ export default function Catalog() {
                     Esta solicitud será revisada por un docente antes de ser aprobada.
                   </div>
                 )}
-                {userPermissions.rol === 'docente' && (
-                  <div className="info-alert mt-4">
-                    ⚡ Como docente, tu solicitud será aprobada automáticamente y enviada al almacén.
-                  </div>
-                )}
               </div>
               <div className="modal-footer-custom">
                 <button
@@ -1817,156 +1861,6 @@ export default function Catalog() {
           </div>
         )}
 
-        {showAddMaterialModal && (
-          <div className="modal-overlay">
-            <div className="modal-content-custom">
-              <div className="modal-header-custom">
-                <h5 className="modal-title">Agregar Nuevo Material</h5>
-                <button
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowAddMaterialModal(false)}
-                ></button>
-              </div>
-              <div className="modal-body p-4">
-                {error && <div className="alert-custom mb-3">{error}</div>}
-                <div className="mb-3">
-                  <label className="form-label">Nombre *</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={newMaterial.nombre}
-                    onChange={(e) => setNewMaterial({...newMaterial, nombre: e.target.value})}
-                    placeholder="Nombre del material"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Descripción *</label>
-                  <textarea
-                    className="form-control"
-                    value={newMaterial.descripcion}
-                    onChange={(e) => setNewMaterial({...newMaterial, descripcion: e.target.value})}
-                    placeholder="Descripción del material"
-                  ></textarea>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Cantidad Inicial *</label>
-                  <input
-                    type="number"
-                    className="form-control"
-                    value={newMaterial.cantidad}
-                    onChange={(e) => setNewMaterial({...newMaterial, cantidad: e.target.value})}
-                    placeholder="Cantidad"
-                    min="0"
-                  />
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Tipo *</label>
-                  <select
-                    className="form-control"
-                    value={newMaterial.tipo}
-                    onChange={(e) => setNewMaterial({...newMaterial, tipo: e.target.value})}
-                  >
-                    <option value="liquido">Líquido</option>
-                    <option value="solido">Sólido</option>
-                    <option value="laboratorio">Laboratorio</option>
-                    <option value="equipo">Equipo</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Estado *</label>
-                  <select
-                    className="form-control"
-                    value={newMaterial.estado}
-                    onChange={(e) => setNewMaterial({...newMaterial, estado: e.target.value})}
-                  >
-                    <option value="disponible">Disponible</option>
-                    <option value="prestado">Prestado</option>
-                    <option value="danado">Dañado</option>
-                  </select>
-                </div>
-                <div className="mb-3">
-                  <label className="form-label">Categoría *</label>
-                  <select
-                    className="form-control"
-                    value={newMaterial.categoria_id}
-                    onChange={(e) => setNewMaterial({...newMaterial, categoria_id: e.target.value})}
-                  >
-                    <option value="">Selecciona una categoría</option>
-                    {categories.map(category => (
-                      <option key={category.id} value={category.id}>{category.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-                {(newMaterial.tipo === 'liquido' || newMaterial.tipo === 'solido') && (
-                  <>
-                    <div className="mb-3">
-                      <label className="form-label">Riesgos Físicos</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={newMaterial.riesgos_fisicos}
-                        onChange={(e) => setNewMaterial({...newMaterial, riesgos_fisicos: e.target.value})}
-                        placeholder="Separar por ; (ej: Inflamable;Oxidante)"
-                      />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Riesgos de Salud</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={newMaterial.riesgos_salud}
-                        onChange={(e) => setNewMaterial({...newMaterial, riesgos_salud: e.target.value})}
-                        placeholder="Separar por ; (ej: Tóxico agudo;Cancerígeno)"
-                      />
-                    </div>
-                    <div className="mb-3">
-                      <label className="form-label">Riesgos Ambientales</label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        value={newMaterial.riesgos_ambientales}
-                        onChange={(e) => setNewMaterial({...newMaterial, riesgos_ambientales: e.target.value})}
-                        placeholder="Separar por ; (ej: Peligroso para el medio ambiente)"
-                      />
-                    </div>
-                  </>
-                )}
-                <div className="mb-3">
-                  <label className="form-label">Imagen (URL)</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    value={newMaterial.imagen}
-                    onChange={(e) => setNewMaterial({...newMaterial, imagen: e.target.value})}
-                    placeholder="URL de la imagen (opcional)"
-                  />
-                </div>
-              </div>
-              <div className="modal-footer-custom">
-                <button
-                  className="btn-secondary-custom"
-                  onClick={() => setShowAddMaterialModal(false)}
-                >
-                  Cancelar
-                </button>
-                <button
-                  className="btn-adjust"
-                  onClick={handleAddMaterial}
-                  disabled={
-                    !newMaterial.nombre ||
-                    !newMaterial.descripcion ||
-                    !newMaterial.cantidad ||
-                    !newMaterial.categoria_id ||
-                    !canModifyStock()
-                  }
-                >
-                  Agregar
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
         {showDetailModal && selectedMaterial && (
           <div className="modal-overlay">
             <div className="modal-content-custom">
@@ -1979,11 +1873,14 @@ export default function Catalog() {
               </div>
               <div className="modal-body p-4 align-items-start">
                 {error && <div className="alert-custom mb-3">{error}</div>}
+                
+                {/* ✅ NUEVA SECCIÓN: Mostrar restricciones de permisos en el modal */}
                 {!canViewDetails() && (
                   <div className="security-alert mb-3">
                     ⚠️ Vista limitada: Como {userPermissions.rol}, solo puedes consultar la información básica del material.
                   </div>
                 )}
+                
                 <img
                   src={getImagePath(selectedMaterial)}
                   alt={formatName(selectedMaterial.nombre)}
@@ -1998,16 +1895,20 @@ export default function Catalog() {
                   <br />
                   Stock: {displayStock(selectedMaterial)}
                 </p>
+                
+                {/* ✅ Mostrar información de permisos específicos */}
                 {userPermissions.rol === 'administrador' && (
                   <div className="info-alert mt-3">
                     Como administrador, puedes ver toda la información pero no puedes realizar solicitudes ni modificar directamente el stock desde este módulo.
                   </div>
                 )}
+                
                 {userPermissions.rol === 'almacen' && !userPermissions.modificar_stock && (
                   <div className="security-alert mt-3">
                     Tienes permisos limitados de almacén. Para modificar stock o realizar solicitudes, contacta al administrador.
                   </div>
                 )}
+                
                 {selectedMaterial.riesgos_fisicos || selectedMaterial.riesgos_salud || selectedMaterial.riesgos_ambientales ? (
                   <div>
                     <h5 className="mt-4">Riesgos</h5>
@@ -2032,6 +1933,7 @@ export default function Catalog() {
                 ) : (
                   <p className="no-risks mt-4">No se han registrado riesgos para este material.</p>
                 )}
+                
                 {canMakeRequests() && canViewDetails() && (
                   <div className="mt-4">
                     <label className="form-label">Cantidad a solicitar</label>
@@ -2058,16 +1960,20 @@ export default function Catalog() {
                     >
                       {selectedMaterial.cantidad === 0 ? 'Material Agotado' : 'Añadir al carrito'}
                     </button>
+                    
+                    {/* ✅ NUEVA SECCIÓN: Información adicional sobre el proceso de solicitud */}
                     {userPermissions.rol === 'alumno' && (
                       <div className="info-alert mt-3">
                         💡 Como alumno, tu solicitud necesitará aprobación docente antes de procesarse.
                       </div>
                     )}
+                    
                     {userPermissions.rol === 'docente' && (
                       <div className="info-alert mt-3">
                         ⚡ Como docente, tu solicitud será aprobada automáticamente.
                       </div>
                     )}
+                    
                     {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
                       <div className="info-alert mt-3">
                         🔧 Como personal de almacén con permisos, puedes tanto solicitar materiales como ajustar el inventario.
@@ -2075,6 +1981,8 @@ export default function Catalog() {
                     )}
                   </div>
                 )}
+                
+                {/* ✅ NUEVA SECCIÓN: Mostrar por qué no puede hacer solicitudes */}
                 {!canMakeRequests() && canViewDetails() && (
                   <div className="security-alert mt-4">
                     {userPermissions.rol === 'administrador' 
