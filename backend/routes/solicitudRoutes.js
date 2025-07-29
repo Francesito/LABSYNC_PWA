@@ -1,7 +1,7 @@
 //backend/routes/solicitudRoutes.js
 const express = require('express');
 const router = express.Router();
-const solicitudController = require('../controllers/materialController');
+const solicitudController = require('../controllers/solicitudController.js');
 const { 
   verificarToken, 
   verificarRol, 
