@@ -4,7 +4,10 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { verificarToken } = require('../middleware/authMiddleware');
 
-// Rutas públicas (sin cambios)
+// Ruta para obtener grupos (pública)
+router.get('/grupos', authController.obtenerGrupos);
+
+// Rutas públicas
 router.post('/register', authController.registrarUsuario);
 router.get('/verify/:token', authController.verificarCorreo);
 router.post('/login', authController.iniciarSesion);
