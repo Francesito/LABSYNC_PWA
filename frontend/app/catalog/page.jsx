@@ -80,7 +80,7 @@ export default function Catalog() {
     try {
       const token = localStorage.getItem('token');
       const response = await axios.get(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/usuarios?rol=docente`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/docentes`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setDocentes(response.data);
@@ -434,7 +434,6 @@ export default function Catalog() {
             motivo: 'Solicitud desde catálogo',
             fecha_solicitud: new Date().toISOString().split('T')[0],
             aprobar_automatico: userPermissions.rol === 'docente',
-            profesor: formatName(selectedDocente.nombre),
             docente_id: parseInt(selectedDocenteId),
             nombre_alumno: userPermissions.rol === 'alumno' ? formatName(usuario.nombre) : null
           }
@@ -1697,11 +1696,12 @@ export default function Catalog() {
                   ))}
                 </div>
                 <div className="mb-3 mt-4">
-                  <label className="form-label">Selecciona el docente encargado</label>
+                  <label className="form-label">Selecciona el docente encargado *</label>
                   <select
                     className="form-control"
                     value={selectedDocenteId}
                     onChange={(e) => setSelectedDocenteId(e.target.value)}
+                    required
                   >
                     <option value="">Selecciona un docente</option>
                     {docentes.map((docente) => (
