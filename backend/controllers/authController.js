@@ -4,11 +4,22 @@ const jwt = require('jsonwebtoken');
 const pool = require('../config/db');
 const { sendEmail } = require('../utils/email');
 
+// Nueva función para obtener grupos
+const obtenerGrupos = async (req, res) => {
+  try {
+    const [rows] = await pool.query('SELECT id, nombre FROM Grupo ORDER BY nombre');
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener grupos:', error);
+    res.status(500).json({ error: 'Error al obtener grupos' });
+  }
+};
+
 const registrarUsuario = async (req, res) => {
-  const { nombre, correo_institucional, contrasena } = req.body;
+  const { nombre, correo_institucional, contrasena, grupo_id } = req.body;
 
   // Input validation
-  if (!nombre || !correo_institucional || !contrasena) {
+  if (!nombre || !correo_institucional || !contrasena || !grupo_id) {
     return res.status(400).json({ error: 'Todos los campos son obligatorios' });
   }
 
@@ -17,18 +28,25 @@ const registrarUsuario = async (req, res) => {
   }
 
   try {
+    // Verificar que el usuario no existe
     const [existingUser] = await pool.query('SELECT * FROM Usuario WHERE correo_institucional = ?', [correo_institucional]);
     if (existingUser.length > 0) {
       return res.status(400).json({ error: 'Correo ya registrado' });
     }
 
+    // Verificar que el grupo existe
+    const [grupoExists] = await pool.query('SELECT id FROM Grupo WHERE id = ?', [grupo_id]);
+    if (grupoExists.length === 0) {
+      return res.status(400).json({ error: 'Grupo seleccionado no válido' });
+    }
+
     const hash = await bcrypt.hash(contrasena, 10);
     const token = jwt.sign({ correo_institucional }, process.env.JWT_SECRET, { expiresIn: '1h' });
 
-    // Set default role to alumno (rol_id: 1)
+    // Set default role to alumno (rol_id: 1) y agregar grupo_id
     await pool.query(
-      'INSERT INTO Usuario (nombre, correo_institucional, contrasena, rol_id, activo) VALUES (?, ?, ?, ?, FALSE)',
-      [nombre, correo_institucional, hash, 1]
+      'INSERT INTO Usuario (nombre, correo_institucional, contrasena, rol_id, grupo_id, activo) VALUES (?, ?, ?, ?, ?, FALSE)',
+      [nombre, correo_institucional, hash, 1, grupo_id]
     );
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
@@ -69,7 +87,13 @@ const iniciarSesion = async (req, res) => {
   }
 
   try {
-    const [rows] = await pool.query('SELECT * FROM Usuario WHERE correo_institucional = ?', [correo_institucional]);
+    // Incluir información del grupo en la consulta
+    const [rows] = await pool.query(`
+      SELECT u.*, g.nombre as grupo_nombre 
+      FROM Usuario u 
+      LEFT JOIN Grupo g ON u.grupo_id = g.id 
+      WHERE u.correo_institucional = ?
+    `, [correo_institucional]);
     
     if (rows.length === 0) {
       return res.status(400).json({ error: 'Usuario no encontrado' });
@@ -94,7 +118,8 @@ const iniciarSesion = async (req, res) => {
         id: usuario.id,
         nombre: usuario.nombre,
         correo_institucional: usuario.correo_institucional,
-        rol_id: usuario.rol_id
+        rol_id: usuario.rol_id,
+        grupo_id: usuario.grupo_id
       },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
@@ -106,7 +131,9 @@ const iniciarSesion = async (req, res) => {
         id: usuario.id,
         nombre: usuario.nombre,
         correo: usuario.correo_institucional,
-        rol_id: usuario.rol_id
+        rol_id: usuario.rol_id,
+        grupo_id: usuario.grupo_id,
+        grupo_nombre: usuario.grupo_nombre
       }
     });
   } catch (error) {
@@ -338,6 +365,7 @@ const resetPassword = async (req, res) => {
 };
 
 module.exports = {
+  obtenerGrupos,
   registrarUsuario,
   verificarCorreo,
   iniciarSesion,
