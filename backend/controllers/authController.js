@@ -15,6 +15,22 @@ const obtenerGrupos = async (req, res) => {
   }
 };
 
+// ✅ NUEVA FUNCIÓN para obtener docentes
+const obtenerDocentes = async (req, res) => {
+  try {
+    const [rows] = await pool.query(`
+      SELECT id, nombre, correo_institucional 
+      FROM Usuario 
+      WHERE rol_id = 2 AND activo = TRUE 
+      ORDER BY nombre
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener docentes:', error);
+    res.status(500).json({ error: 'Error al obtener docentes' });
+  }
+};
+
 const registrarUsuario = async (req, res) => {
   const { nombre, correo_institucional, contrasena, grupo_id } = req.body;
 
@@ -366,6 +382,7 @@ const resetPassword = async (req, res) => {
 
 module.exports = {
   obtenerGrupos,
+  obtenerDocentes, // ✅ Nueva función exportada
   registrarUsuario,
   verificarCorreo,
   iniciarSesion,
