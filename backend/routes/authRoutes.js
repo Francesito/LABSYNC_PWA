@@ -4,10 +4,11 @@ const router = express.Router();
 const authController = require('../controllers/authController');
 const { verificarToken } = require('../middleware/authMiddleware');
 
-// Ruta para obtener grupos (pública)
+// Rutas públicas para obtener datos de formularios
 router.get('/grupos', authController.obtenerGrupos);
+router.get('/docentes', authController.obtenerDocentes); // ✅ Nueva ruta para obtener docentes
 
-// Rutas públicas
+// Rutas públicas de autenticación
 router.post('/register', authController.registrarUsuario);
 router.get('/verify/:token', authController.verificarCorreo);
 router.post('/login', authController.iniciarSesion);
