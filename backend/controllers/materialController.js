@@ -127,6 +127,23 @@ const getEquipos = async (req, res) => {
   }
 };
 
+// ✅ NUEVA FUNCIÓN: Obtener docentes disponibles para solicitudes
+const obtenerDocentesParaSolicitud = async (req, res) => {
+  logRequest('obtenerDocentesParaSolicitud');
+  try {
+    const [rows] = await pool.query(`
+      SELECT id, nombre, correo_institucional 
+      FROM Usuario 
+      WHERE rol_id = 2 AND activo = TRUE 
+      ORDER BY nombre
+    `);
+    res.json(rows);
+  } catch (error) {
+    console.error('Error al obtener docentes:', error);
+    res.status(500).json({ error: 'Error al obtener docentes' });
+  }
+};
+
 /** Obtener materiales de laboratorio */
 const getLaboratorio = async (req, res) => {
   logRequest('getLaboratorio');
@@ -169,10 +186,11 @@ const getAllSolicitudes = async (req, res) => {
 };
 
 /** Crear solicitud (alumno/docente) con folio */
+/** Crear solicitud (alumno/docente) con folio y selección de docente */
 const crearSolicitudes = async (req, res) => {
   logRequest('crearSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
-  const { materiales, motivo, fecha_solicitud, aprobar_automatico } = req.body;
+  const { materiales, motivo, fecha_solicitud, aprobar_automatico, docente_id } = req.body;
 
   if (!token) return res.status(401).json({ error: 'Token requerido' });
   if (!Array.isArray(materiales) || materiales.length === 0) {
@@ -190,19 +208,35 @@ const crearSolicitudes = async (req, res) => {
 
     const folio = generarFolio();
     const estadoInicial = (rol_id === 2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
-    let docente_id = null, profesor = 'Sin asignar';
+    
+    let docente_seleccionado_id = null;
+    let profesor = 'Sin asignar';
+
     if (estadoInicial === 'aprobada') {
-      docente_id = usuario_id; profesor = user[0].nombre;
+      // Si es docente o aprobación automática, el docente es el mismo usuario
+      docente_seleccionado_id = usuario_id;
+      profesor = user[0].nombre;
+    } else if (docente_id) {
+      // Si es alumno y seleccionó un docente específico
+      const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE id = ? AND rol_id = 2 AND activo = TRUE', [docente_id]);
+      if (docente.length > 0) {
+        docente_seleccionado_id = docente[0].id;
+        profesor = docente[0].nombre;
+      } else {
+        return res.status(400).json({ error: 'Docente seleccionado no válido' });
+      }
     } else {
-      const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 LIMIT 1');
-      docente_id = docente[0]?.id; profesor = docente[0]?.nombre || profesor;
+      // Si no se seleccionó docente, asignar el primero disponible
+      const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 AND activo = TRUE LIMIT 1');
+      docente_seleccionado_id = docente[0]?.id;
+      profesor = docente[0]?.nombre || profesor;
     }
 
     const [result] = await pool.query(
       `INSERT INTO Solicitud
          (usuario_id, fecha_solicitud, motivo, estado, docente_id, nombre_alumno, profesor, folio)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_id, user[0].nombre, profesor, folio]
+      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_seleccionado_id, user[0].nombre, profesor, folio]
     );
     const solicitudId = result.insertId;
 
@@ -223,7 +257,12 @@ const crearSolicitudes = async (req, res) => {
       }
     }
 
-    res.status(201).json({ message: 'Solicitud creada', solicitudId, folio });
+    res.status(201).json({ 
+      message: 'Solicitud creada', 
+      solicitudId, 
+      folio,
+      docente_asignado: profesor
+    });
   } catch (err) {
     console.error('[Error] crearSolicitudes:', err);
     res.status(500).json({ error: 'Error al registrar solicitud: ' + err.message });
@@ -239,7 +278,7 @@ const crearSolicitudes = async (req, res) => {
 
 const crearSolicitudConAdeudo = async (req, res) => {
   logRequest('crearSolicitudConAdeudo');
-  const { usuario_id, material_id, tipo, fecha_solicitud, motivo, monto_adeudo } = req.body;
+  const { usuario_id, material_id, tipo, fecha_solicitud, motivo, monto_adeudo, docente_id } = req.body;
 
   if (!usuario_id || !material_id || !tipo || !fecha_solicitud || !motivo || !monto_adeudo) {
     return res.status(400).json({ error: 'Faltan datos obligatorios para la solicitud con adeudo' });
@@ -259,18 +298,36 @@ const crearSolicitudConAdeudo = async (req, res) => {
       return res.status(400).json({ error: 'No hay suficiente stock para el material' });
     }
 
-    const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 LIMIT 1');
-    const docente_id = docente[0]?.id || null;
-    const profesor = docente[0]?.nombre || 'Sin asignar';
+    let docente_seleccionado_id = null;
+    let profesor = 'Sin asignar';
+
+    if (docente_id) {
+      // Verificar que el docente seleccionado sea válido
+      const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE id = ? AND rol_id = 2 AND activo = TRUE', [docente_id]);
+      if (docente.length > 0) {
+        docente_seleccionado_id = docente[0].id;
+        profesor = docente[0].nombre;
+      } else {
+        return res.status(400).json({ error: 'Docente seleccionado no válido' });
+      }
+    } else {
+      // Si no se seleccionó docente, asignar el primero disponible
+      const [docente] = await pool.query('SELECT id, nombre FROM Usuario WHERE rol_id = 2 AND activo = TRUE LIMIT 1');
+      docente_seleccionado_id = docente[0]?.id || null;
+      profesor = docente[0]?.nombre || 'Sin asignar';
+    }
 
     await pool.query(
       `INSERT INTO Solicitud 
         (usuario_id, material_id, tipo, cantidad, fecha_solicitud, motivo, monto_adeudo, estado, docente_id, nombre_alumno, profesor)
        VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?)`,
-      [usuario_id, material_id, tipo, 1, fecha_solicitud, motivo, monto_adeudo, docente_id, user[0].nombre, profesor]
+      [usuario_id, material_id, tipo, 1, fecha_solicitud, motivo, monto_adeudo, docente_seleccionado_id, user[0].nombre, profesor]
     );
 
-    res.status(201).json({ message: 'Solicitud con adeudo registrada correctamente' });
+    res.status(201).json({ 
+      message: 'Solicitud con adeudo registrada correctamente',
+      docente_asignado: profesor
+    });
   } catch (error) {
     console.error('[Error] crearSolicitudConAdeudo:', error);
     res.status(500).json({ error: 'Error al crear solicitud con adeudo: ' + error.message });
@@ -1430,6 +1487,7 @@ const validarIntegridadDatos = async (req, res) => {
 };
 
 // ESTADO DEL SISTEMA
+// ESTADO DEL SISTEMA (sin estado de permisos)
 const getEstadoSistema = async (req, res) => {
   logRequest('getEstadoSistema');
   try {
@@ -1443,15 +1501,6 @@ const getEstadoSistema = async (req, res) => {
         (SELECT COUNT(*) FROM Solicitud WHERE fecha_solicitud = CURDATE()) as solicitudes_hoy,
         (SELECT COUNT(*) FROM Mensaje WHERE DATE(fecha_envio) = CURDATE()) as mensajes_hoy,
         (SELECT COUNT(*) FROM MovimientosInventario WHERE DATE(fecha_movimiento) = CURDATE()) as movimientos_hoy
-    `);
-
-    // Estado de permisos
-    const [permisos] = await pool.query(`
-      SELECT 
-        COUNT(*) as total_permisos,
-        SUM(acceso_chat) as con_chat,
-        SUM(modificar_stock) as con_stock
-      FROM PermisosAlmacen
     `);
 
     // Últimas actividades
@@ -1474,11 +1523,6 @@ const getEstadoSistema = async (req, res) => {
         solicitudes: contadores[0].solicitudes_hoy,
         mensajes: contadores[0].mensajes_hoy,
         movimientos: contadores[0].movimientos_hoy
-      },
-      permisos: {
-        total_configurados: permisos[0].total_permisos,
-        con_acceso_chat: permisos[0].con_chat,
-        con_acceso_stock: permisos[0].con_stock
       },
       ultimas_actividades: ultimasActividades,
       estado: 'OPERATIVO'
@@ -1628,6 +1672,7 @@ module.exports = {
   getHistorialMovimientos,
   getReporteUsoPeriodo,
   getReporteMasSolicitados,
+  obtenerDocentesParaSolicitud,
   getReporteEficienciaEntrega,
   
   // Usuarios y permisos
