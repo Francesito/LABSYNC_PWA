@@ -45,6 +45,8 @@ router.get('/', verificarToken, materialController.getMaterials);
 // Obtener un material específico por ID y TIPO - LECTURA
 // Ejemplo: GET /api/materials/123?tipo=liquido
 router.get('/:id', verificarToken, materialController.getMaterialById);
+// ✅ NUEVA RUTA: Obtener docentes para selección en solicitudes
+router.get('/docentes', verificarToken, materialController.obtenerDocentesParaSolicitud);
 
 // Rutas específicas para listar por tipo - LECTURA
 router.get('/tipo/liquidos', verificarToken, materialController.getLiquidos);
