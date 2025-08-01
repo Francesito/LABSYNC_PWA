@@ -142,7 +142,7 @@ router.get(
 router.post(
   '/solicitud/:id/entregar',
   verificarToken,
-  verificarAccesoStock, // Verificar permisos de stock
+  requireAlmacen,
   materialController.deliverSolicitud
 );
 
