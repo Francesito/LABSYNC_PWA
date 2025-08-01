@@ -335,9 +335,10 @@ const obtenerDetalleSolicitud = async (req, res) => {
 const entregarMateriales = async (req, res) => {
   const { id } = req.params;
   const { items_entregados } = req.body; // Array con {item_id, cantidad_entregada}
+  const { rol_id, id: usuarioId } = req.usuario;
 
   const connection = await pool.getConnection();
-  
+
   try {
     await connection.beginTransaction();
 
@@ -357,47 +358,100 @@ const entregarMateriales = async (req, res) => {
       return res.status(400).json({ error: 'La solicitud debe estar aprobada para entregar materiales' });
     }
 
-    // Procesar cada item entregado
-    for (const item of items_entregados) {
-      const { item_id, cantidad_entregada } = item;
-      
-      // Obtener información del item
-      const [itemInfo] = await connection.query(
-        'SELECT material_id, tipo, cantidad FROM SolicitudItem WHERE id = ?',
-        [item_id]
+    // Verificar permisos de modificar stock solo para usuarios de almacén
+    let tienePermisoStock = rol_id === 4; // Los administradores siempre tienen permiso
+    if (rol_id === 3) {
+      const [permisos] = await connection.query(
+        'SELECT modificar_stock FROM PermisosAlmacen WHERE usuario_id = ?',
+        [usuarioId]
       );
+      tienePermisoStock = permisos.length > 0 && permisos[0].modificar_stock;
+    }
 
-      if (itemInfo.length === 0) continue;
+    // Procesar cada item entregado solo si tiene permiso para modificar stock
+    if (items_entregados && items_entregados.length > 0) {
+      if (!tienePermisoStock) {
+        await connection.rollback();
+        return res.status(403).json({ error: 'No tienes permisos para modificar el stock.' });
+      }
 
-      const { material_id, tipo, cantidad } = itemInfo[0];
+      for (const item of items_entregados) {
+        const { item_id, cantidad_entregada } = item;
 
-      // Actualizar stock según el tipo de material
-      if (tipo === 'liquido') {
-        await connection.query(
-          'UPDATE MaterialLiquido SET cantidad_disponible_ml = cantidad_disponible_ml - ? WHERE id = ?',
-          [cantidad_entregada, material_id]
+        // Obtener información del item
+        const [itemInfo] = await connection.query(
+          'SELECT material_id, tipo, cantidad FROM SolicitudItem WHERE id = ? AND solicitud_id = ?',
+          [item_id, id]
         );
-      } else if (tipo === 'solido') {
-        await connection.query(
-          'UPDATE MaterialSolido SET cantidad_disponible_g = cantidad_disponible_g - ? WHERE id = ?',
-          [cantidad_entregada, material_id]
-        );
-      } else if (tipo === 'equipo') {
-        await connection.query(
-          'UPDATE MaterialEquipo SET cantidad_disponible_u = cantidad_disponible_u - ? WHERE id = ?',
-          [cantidad_entregada, material_id]
-        );
+
+        if (itemInfo.length === 0) {
+          await connection.rollback();
+          return res.status(404).json({ error: `Item ${item_id} no encontrado en la solicitud` });
+        }
+
+        const { material_id, tipo, cantidad } = itemInfo[0];
+
+        // Validar que la cantidad entregada no exceda la solicitada
+        if (cantidad_entregada > cantidad) {
+          await connection.rollback();
+          return res.status(400).json({ error: `La cantidad entregada para el item ${item_id} excede la cantidad solicitada` });
+        }
+
+        // Verificar stock disponible antes de actualizar
+        let stockDisponible;
+        if (tipo === 'liquido') {
+          const [stock] = await connection.query(
+            'SELECT cantidad_disponible_ml FROM MaterialLiquido WHERE id = ?',
+            [material_id]
+          );
+          stockDisponible = stock[0]?.cantidad_disponible_ml || 0;
+        } else if (tipo === 'solido') {
+          const [stock] = await connection.query(
+            'SELECT cantidad_disponible_g FROM MaterialSolido WHERE id = ?',
+            [material_id]
+          );
+          stockDisponible = stock[0]?.cantidad_disponible_g || 0;
+        } else if (tipo === 'equipo') {
+          const [stock] = await connection.query(
+            'SELECT cantidad_disponible_u FROM MaterialEquipo WHERE id = ?',
+            [material_id]
+          );
+          stockDisponible = stock[0]?.cantidad_disponible_u || 0;
+        }
+
+        if (stockDisponible < cantidad_entregada) {
+          await connection.rollback();
+          return res.status(400).json({ error: `Stock insuficiente para el material ${material_id} (${tipo})` });
+        }
+
+        // Actualizar stock según el tipo de material
+        if (tipo === 'liquido') {
+          await connection.query(
+            'UPDATE MaterialLiquido SET cantidad_disponible_ml = cantidad_disponible_ml - ? WHERE id = ?',
+            [cantidad_entregada, material_id]
+          );
+        } else if (tipo === 'solido') {
+          await connection.query(
+            'UPDATE MaterialSolido SET cantidad_disponible_g = cantidad_disponible_g - ? WHERE id = ?',
+            [cantidad_entregada, material_id]
+          );
+        } else if (tipo === 'equipo') {
+          await connection.query(
+            'UPDATE MaterialEquipo SET cantidad_disponible_u = cantidad_disponible_u - ? WHERE id = ?',
+            [cantidad_entregada, material_id]
+          );
+        }
       }
     }
 
-    // Actualizar estado de la solicitud
+    // Actualizar estado de la solicitud a entregado (independiente del permiso de stock)
     await connection.query(
       'UPDATE Solicitud SET estado = ? WHERE id = ?',
       ['entregado', id]
     );
 
     await connection.commit();
-    res.json({ mensaje: 'Materiales entregados correctamente' });
+    res.json({ mensaje: 'Solicitud marcada como entregada correctamente' });
 
   } catch (error) {
     await connection.rollback();
