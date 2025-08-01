@@ -84,6 +84,12 @@ export default function Catalog() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setDocentes(response.data);
+      // Set default docente_id: for docentes, use their own ID; for others, use the first docente
+      if (userPermissions.rol === 'docente') {
+        setSelectedDocenteId(usuario.id.toString());
+      } else if (response.data.length > 0) {
+        setSelectedDocenteId(response.data[0].id.toString());
+      }
     } catch (error) {
       console.error('Error al cargar docentes:', error);
       setError('No se pudieron cargar los docentes. Intenta de nuevo.');
@@ -409,13 +415,15 @@ export default function Catalog() {
       return;
     }
 
-    if (!selectedDocenteId) {
+    // For docentes, use usuario.id; for others, validate selectedDocenteId
+    let docenteIdToUse = userPermissions.rol === 'docente' ? usuario.id : parseInt(selectedDocenteId);
+    if (userPermissions.rol !== 'docente' && !docenteIdToUse) {
       setError('Debes seleccionar un docente encargado.');
       return;
     }
 
     try {
-      const selectedDocente = docentes.find(doc => doc.id === parseInt(selectedDocenteId));
+      const selectedDocente = docentes.find(doc => doc.id === docenteIdToUse);
       if (!selectedDocente) {
         setError('Docente seleccionado no válido.');
         return;
@@ -434,7 +442,7 @@ export default function Catalog() {
             motivo: 'Solicitud desde catálogo',
             fecha_solicitud: new Date().toISOString().split('T')[0],
             aprobar_automatico: userPermissions.rol === 'docente',
-            docente_id: parseInt(selectedDocenteId),
+            docente_id: docenteIdToUse,
             nombre_alumno: userPermissions.rol === 'alumno' ? formatName(usuario.nombre) : null
           }
         }
@@ -442,7 +450,7 @@ export default function Catalog() {
 
       setSelectedCart([]);
       setShowRequestModal(false);
-      setSelectedDocenteId('');
+      setSelectedDocenteId(userPermissions.rol === 'docente' ? usuario.id.toString() : docentes[0]?.id?.toString() || '');
       router.push('/solicitudes');
     } catch (err) {
       console.error('Error al enviar solicitud:', err);
@@ -1695,22 +1703,28 @@ export default function Catalog() {
                     </div>
                   ))}
                 </div>
-                <div className="mb-3 mt-4">
-                  <label className="form-label">Selecciona el docente encargado *</label>
-                  <select
-                    className="form-control"
-                    value={selectedDocenteId}
-                    onChange={(e) => setSelectedDocenteId(e.target.value)}
-                    required
-                  >
-                    <option value="">Selecciona un docente</option>
-                    {docentes.map((docente) => (
-                      <option key={docente.id} value={docente.id}>
-                        {formatName(docente.nombre)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {userPermissions.rol !== 'docente' && (
+                  <div className="mb-3 mt-4">
+                    <label className="form-label">Selecciona el docente encargado *</label>
+                    <select
+                      className="form-control"
+                      value={selectedDocenteId}
+                      onChange={(e) => setSelectedDocenteId(e.target.value)}
+                      required
+                    >
+                      {docentes.map((docente) => (
+                        <option key={docente.id} value={docente.id}>
+                          {formatName(docente.nombre)}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+                {userPermissions.rol === 'docente' && (
+                  <div className="info-alert mt-4">
+                    Como docente, tú serás el encargado de esta solicitud.
+                  </div>
+                )}
                 {userPermissions.rol !== 'docente' && (
                   <div className="security-alert mt-4">
                     Esta solicitud será revisada por el docente seleccionado antes de ser aprobada.
@@ -1727,7 +1741,7 @@ export default function Catalog() {
                 <button
                   className="btn-create-vale"
                   onClick={handleSubmitRequest}
-                  disabled={!canMakeRequests() || !selectedDocenteId}
+                  disabled={!canMakeRequests() || (userPermissions.rol !== 'docente' && !selectedDocenteId)}
                 >
                   Confirmar
                 </button>
