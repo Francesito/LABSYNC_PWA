@@ -31,7 +31,8 @@ const {
   verificarToken, 
   verificarRol, 
   verificarAccesoStock,
-  requireAdmin 
+  requireAdmin,
+  requireAlmacen
 } = require('../middleware/authMiddleware');
 
 /**
