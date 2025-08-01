@@ -169,15 +169,22 @@ export default function Catalog() {
 
     const initializeComponent = async () => {
       await loadUserPermissions();
-      await Promise.all([fetchMaterials(), loadDocentes()]);
     };
 
     initializeComponent();
   }, [usuario, router]);
 
+  // Separar fetchMaterials en un useEffect dependiente de userPermissions
+  useEffect(() => {
+    if (userPermissions.rol) {
+      Promise.all([fetchMaterials(), loadDocentes()]);
+    }
+  }, [userPermissions.rol]);
+
   const fetchMaterials = async () => {
     try {
       setLoading(true);
+      console.log('fetchMaterials: Rol del usuario:', userPermissions.rol); // Depuración
 
       if (userPermissions.rol === 'administrador') {
         setError('Como administrador, solo puedes ver los reactivos (sin interacción)');
@@ -219,12 +226,14 @@ export default function Catalog() {
 
       let all = [...liquidos, ...solidos, ...laboratorio, ...equipos];
       
+      // Aplicar filtrado según el rol
       if (userPermissions.rol === 'alumno') {
         all = all.filter(m => m.tipo === 'laboratorio' || m.tipo === 'equipo');
       } else if (userPermissions.rol === 'docente') {
         all = all.filter(m => m.tipo === 'liquido' || m.tipo === 'solido');
       }
 
+      console.log('Materiales filtrados:', all.map(m => ({ id: m.id, nombre: m.nombre, tipo: m.tipo }))); // Depuración
       setAllMaterials(all);
 
       if (canModifyStock()) {
