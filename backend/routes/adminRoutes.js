@@ -345,6 +345,7 @@ router.put('/desbloquear-usuario', async (req, res) => {
 });
 
 // Eliminar usuario
+// Eliminar usuario
 router.delete('/eliminar-usuario', async (req, res) => {
   const { correo_institucional } = req.body;
 
@@ -352,37 +353,65 @@ router.delete('/eliminar-usuario', async (req, res) => {
     return res.status(400).json({ error: 'Correo institucional requerido' });
   }
 
+  let connection; // For transaction management
+
   try {
-    // Obtener el usuario
-    const [usuario] = await pool.query(
+    // Start a transaction
+    connection = await pool.getConnection();
+    await connection.beginTransaction();
+
+    // Get the user
+    const [usuario] = await connection.query(
       'SELECT id, rol_id FROM Usuario WHERE correo_institucional = ?',
       [correo_institucional]
     );
 
     if (usuario.length === 0) {
+      await connection.rollback();
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
     const usuarioId = usuario[0].id;
 
-    // No permitir eliminar administradores (medida de seguridad)
+    // Prevent deleting administrators (security measure)
     if (usuario[0].rol_id === 4) {
+      await connection.rollback();
       return res.status(400).json({ error: 'No se puede eliminar un usuario administrador' });
     }
 
-    // Eliminar permisos de almacén si existen
-    await pool.query('DELETE FROM PermisosAlmacen WHERE usuario_id = ?', [usuarioId]);
+    // Step 1: Delete related records from SolicitudItem
+    const [solicitudes] = await connection.query(
+      'SELECT id FROM Solicitud WHERE usuario_id = ? OR docente_id = ?',
+      [usuarioId, usuarioId]
+    );
 
-    // Eliminar usuario
-    await pool.query('DELETE FROM Usuario WHERE id = ?', [usuarioId]);
+    if (solicitudes.length > 0) {
+      const solicitudIds = solicitudes.map(s => s.id);
+      await connection.query(
+        'DELETE FROM SolicitudItem WHERE solicitud_id IN (?)',
+        [solicitudIds]
+      );
+    }
 
+    // Step 2: Delete related records from PermisosAlmacen
+    await connection.query('DELETE FROM PermisosAlmacen WHERE usuario_id = ?', [usuarioId]);
+
+    // Step 3: Delete the user (this will cascade to Solicitud due to ON DELETE CASCADE)
+    await connection.query('DELETE FROM Usuario WHERE id = ?', [usuarioId]);
+
+    // Commit the transaction
+    await connection.commit();
     res.json({ mensaje: 'Usuario eliminado exitosamente' });
 
   } catch (error) {
+    if (connection) await connection.rollback();
     console.error('Error al eliminar usuario:', error);
-    res.status(500).json({ error: 'Error interno del servidor' });
+    res.status(500).json({ error: 'Error interno del servidor: ' + error.message });
+  } finally {
+    if (connection) connection.release();
   }
 });
+
 
 // ==================== CONSULTAS Y REPORTES ====================
 
