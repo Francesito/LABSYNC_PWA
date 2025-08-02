@@ -40,6 +40,28 @@ const obtenerMisSolicitudes = async (req, res) => {
   }
 };
 
+const obtenerGrupoPorUsuario = async (req, res) => {
+  const { id: usuarioId } = req.usuario;
+
+  try {
+    const [rows] = await pool.query(`
+      SELECT g.nombre
+      FROM Grupo g
+      JOIN Usuario u ON g.id = u.grupo_id
+      WHERE u.id = ?
+    `, [usuarioId]);
+
+    if (rows.length === 0) {
+      return res.status(404).json({ error: 'Grupo no encontrado para el usuario' });
+    }
+
+    res.json({ nombre: rows[0].nombre });
+  } catch (error) {
+    console.error('Error al obtener el grupo:', error);
+    res.status(500).json({ error: 'Error al obtener el grupo' });
+  }
+};
+
 const cancelarMiSolicitud = async (req, res) => {
   const { id } = req.params;
   const { id: usuarioId } = req.usuario;
@@ -1798,6 +1820,7 @@ crearSolicitud,
   // Funciones generales
   obtenerSolicitudPorId,
   obtenerHistorialSolicitud,
+  obtenerGrupoPorUsuario,
 
   // Funciones administrativas
   obtenerEstadisticasCompletas,
