@@ -42,25 +42,32 @@ const obtenerMisSolicitudes = async (req, res) => {
 
 const obtenerGrupoPorUsuario = async (req, res) => {
   const { id: usuarioId } = req.usuario;
+  
+  console.log('🔍 obtenerGrupoPorUsuario - Usuario ID:', usuarioId);
 
   try {
     const [rows] = await pool.query(`
-      SELECT g.nombre
+      SELECT u.id, u.nombre, u.grupo_id, g.nombre as grupo_nombre
       FROM Usuario u
       LEFT JOIN Grupo g ON u.grupo_id = g.id
       WHERE u.id = ?
     `, [usuarioId]);
 
+    console.log('🔍 Query result:', rows);
+
     if (rows.length === 0) {
+      console.log('❌ Usuario no encontrado');
       return res.status(404).json({ error: 'Usuario no encontrado' });
     }
 
-    // Si no tiene grupo asignado, devolver un valor por defecto
-    const nombreGrupo = rows[0].nombre || 'No asignado';
+    const usuario = rows[0];
+    const nombreGrupo = usuario.grupo_nombre || 'No asignado';
+    
+    console.log('✅ Grupo encontrado:', nombreGrupo);
 
     res.json({ nombre: nombreGrupo });
   } catch (error) {
-    console.error('Error al obtener el grupo:', error);
+    console.error('❌ Error al obtener el grupo:', error);
     res.status(500).json({ error: 'Error al obtener el grupo' });
   }
 };
