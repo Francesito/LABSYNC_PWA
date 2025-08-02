@@ -405,4 +405,10 @@ router.get(
   solicitudController.obtenerSolicitudesPorRangoFechas
 );
 
+router.get(
+  '/grupo',
+  verificarToken,
+  solicitudController.obtenerGrupoPorUsuario
+);
+
 module.exports = router;
