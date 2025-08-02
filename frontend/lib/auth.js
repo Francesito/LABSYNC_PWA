@@ -112,6 +112,7 @@ export function AuthProvider({ children }) {
               grupo = response.data.nombre || 'No especificado';
             } catch (err) {
               console.error('Error al obtener el grupo:', err);
+              console.error('Detalles del error:', err.response?.data);
             }
           }
 
@@ -207,6 +208,7 @@ export function AuthProvider({ children }) {
           grupo = grupoResponse.data.nombre || 'No especificado';
         } catch (err) {
           console.error('Error al obtener el grupo:', err);
+          console.error('Detalles del error:', err.response?.data);
         }
       }
 
