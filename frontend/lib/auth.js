@@ -1,7 +1,8 @@
-//frontend/lib/auth.js
+// frontend/lib/auth.js
 'use client';
 import { createContext, useContext, useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
+import axios from 'axios';
 
 // Función para decodificar JWT manualmente (sin librerías externas)
 const decodeJWT = (token) => {
@@ -45,106 +46,186 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    
-    // Rutas públicas que no requieren autenticación
-    const rutasPublicas = ['/login', '/register', '/forgot-password'];
-    const esRutaPublica = rutasPublicas.includes(pathname) || 
-                         pathname.startsWith('/reset-password') || 
-                         pathname.startsWith('/verificar');
+    const cargarUsuario = async () => {
+      const token = localStorage.getItem('token');
+      
+      // Rutas públicas que no requieren autenticación
+      const rutasPublicas = ['/login', '/register', '/forgot-password'];
+      const esRutaPublica = rutasPublicas.includes(pathname) || 
+                           pathname.startsWith('/reset-password') || 
+                           pathname.startsWith('/verificar');
 
-    if (token) {
-      try {
-        const decoded = decodeJWT(token);
-        
-        if (!decoded) {
-          console.error('Token inválido');
+      if (token) {
+        try {
+          const decoded = decodeJWT(token);
+          
+          if (!decoded) {
+            console.error('Token inválido');
+            limpiarSesion();
+            if (!esRutaPublica) {
+              router.push('/login');
+            }
+            setLoading(false);
+            return;
+          }
+
+          // Verificar si el token ha expirado
+          if (tokenExpirado(decoded)) {
+            console.error('Token expirado');
+            limpiarSesion();
+            if (!esRutaPublica) {
+              router.push('/login');
+            }
+            setLoading(false);
+            return;
+          }
+
+          // Convertir rol_id a texto si es necesario
+          let rolNombre = decoded.rol || decoded.rol_id;
+          if (typeof rolNombre === 'number') {
+            switch (rolNombre) {
+              case 1:
+                rolNombre = 'alumno';
+                break;
+              case 2:
+                rolNombre = 'docente';
+                break;
+              case 3:
+                rolNombre = 'almacen';
+                break;
+              case 4:
+                rolNombre = 'administrador';
+                break;
+              default:
+                rolNombre = 'desconocido';
+            }
+          }
+
+          // Obtener el nombre del grupo desde el backend si es alumno
+          let grupo = 'No especificado';
+          if (decoded.rol_id === 1) {
+            try {
+              const response = await axios.get(
+                `${process.env.NEXT_PUBLIC_API_URL}/api/solicitudes/grupo`,
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              grupo = response.data.nombre || 'No especificado';
+            } catch (err) {
+              console.error('Error al obtener el grupo:', err);
+            }
+          }
+
+          const usuarioData = {
+            id: decoded.id,
+            nombre: decoded.nombre,
+            correo: decoded.correo_institucional || decoded.correo,
+            rol: rolNombre,
+            rol_id: decoded.rol_id,
+            grupo: grupo,
+          };
+
+          setUsuario(usuarioData);
+
+          // Redirecciones basadas en el estado de autenticación y rol
+          if (esRutaPublica && pathname !== '/reset-password' && !pathname.startsWith('/reset-password')) {
+            router.push('/catalog');
+          } else if (rolNombre === 'docente' && pathname === '/chat') {
+            router.push('/catalog');
+          } else if (
+            (rolNombre === 'alumno' || rolNombre === 'almacen') &&
+            pathname === '/solicitudes/pendientes'
+          ) {
+            router.push('/solicitudes');
+          } else if (rolNombre !== 'administrador' && pathname === '/configuracion') {
+            router.push('/catalog');
+          }
+
+        } catch (error) {
+          console.error('Error procesando token:', error);
           limpiarSesion();
           if (!esRutaPublica) {
             router.push('/login');
           }
-          setLoading(false);
-          return;
         }
-
-        // Verificar si el token ha expirado
-        if (tokenExpirado(decoded)) {
-          console.error('Token expirado');
-          limpiarSesion();
-          if (!esRutaPublica) {
-            router.push('/login');
-          }
-          setLoading(false);
-          return;
-        }
-
-        // Convertir rol_id a texto si es necesario
-        let rolNombre = decoded.rol || decoded.rol_id;
-        if (typeof rolNombre === 'number') {
-          switch (rolNombre) {
-            case 1:
-              rolNombre = 'alumno';
-              break;
-            case 2:
-              rolNombre = 'docente';
-              break;
-            case 3:
-              rolNombre = 'almacen';
-              break;
-            case 4:
-              rolNombre = 'administrador';
-              break;
-            default:
-              rolNombre = 'desconocido';
-          }
-        }
-
-        const usuarioData = {
-          id: decoded.id,
-          nombre: decoded.nombre,
-          correo: decoded.correo_institucional || decoded.correo,
-          rol: rolNombre,
-          rol_id: decoded.rol_id,
-        };
-
-        setUsuario(usuarioData);
-
-        // Redirecciones basadas en el estado de autenticación y rol
-        if (esRutaPublica && pathname !== '/reset-password' && !pathname.startsWith('/reset-password')) {
-          router.push('/catalog');
-        } else if (rolNombre === 'docente' && pathname === '/chat') {
-          router.push('/catalog');
-        } else if (
-          (rolNombre === 'alumno' || rolNombre === 'almacen') &&
-          pathname === '/solicitudes/pendientes'
-        ) {
-          router.push('/solicitudes');
-        } else if (rolNombre !== 'administrador' && pathname === '/configuracion') {
-          router.push('/catalog');
-        }
-
-      } catch (error) {
-        console.error('Error procesando token:', error);
-        limpiarSesion();
+      } else {
+        // No hay token
         if (!esRutaPublica) {
           router.push('/login');
         }
       }
-    } else {
-      // No hay token
-      if (!esRutaPublica) {
-        router.push('/login');
-      }
-    }
-    
-    setLoading(false);
+      
+      setLoading(false);
+    };
+
+    cargarUsuario();
   }, [pathname, router]);
 
   // Función para login
-  const login = (token, userData) => {
-    localStorage.setItem('token', token);
-    setUsuario(userData);
-    router.push('/catalog');
+  const login = async (correo, contrasena) => {
+    try {
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/login`, {
+        correo,
+        contrasena,
+      });
+      const { token } = response.data;
+      localStorage.setItem('token', token);
+      const decoded = decodeJWT(token);
+
+      if (!decoded) {
+        throw new Error('Token inválido');
+      }
+
+      // Convertir rol_id a texto
+      let rolNombre = decoded.rol || decoded.rol_id;
+      if (typeof rolNombre === 'number') {
+        switch (rolNombre) {
+          case 1:
+            rolNombre = 'alumno';
+            break;
+          case 2:
+            rolNombre = 'docente';
+            break;
+          case 3:
+            rolNombre = 'almacen';
+            break;
+          case 4:
+            rolNombre = 'administrador';
+            break;
+          default:
+            rolNombre = 'desconocido';
+        }
+      }
+
+      // Obtener el nombre del grupo desde el backend si es alumno
+      let grupo = 'No especificado';
+      if (decoded.rol_id === 1) {
+        try {
+          const grupoResponse = await axios.get(
+            `${process.env.NEXT_PUBLIC_API_URL}/api/solicitudes/grupo`,
+            { headers: { Authorization: `Bearer ${token}` } }
+          );
+          grupo = grupoResponse.data.nombre || 'No especificado';
+        } catch (err) {
+          console.error('Error al obtener el grupo:', err);
+        }
+      }
+
+      const usuarioData = {
+        id: decoded.id,
+        nombre: decoded.nombre,
+        correo: decoded.correo_institucional || decoded.correo,
+        rol: rolNombre,
+        rol_id: decoded.rol_id,
+        grupo: grupo,
+      };
+
+      setUsuario(usuarioData);
+      router.push('/catalog');
+      return true;
+    } catch (err) {
+      console.error('Error en login:', err);
+      throw err;
+    }
   };
 
   // Función para logout
