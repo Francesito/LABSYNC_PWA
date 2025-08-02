@@ -111,6 +111,7 @@ const obtenerTodasSolicitudes = async (req, res) => {
         s.folio,
         u.nombre AS nombre_usuario,
         u.correo_institucional,
+        g.nombre AS grupo_nombre,
         si.id AS item_id,
         si.material_id,
         si.cantidad,
@@ -123,6 +124,7 @@ const obtenerTodasSolicitudes = async (req, res) => {
         END AS nombre_material
       FROM Solicitud s
       JOIN Usuario u ON s.usuario_id = u.id
+      LEFT JOIN Grupo g ON u.grupo_id = g.id
       JOIN SolicitudItem si ON s.id = si.solicitud_id
       LEFT JOIN MaterialLiquido ml ON si.material_id = ml.id AND si.tipo = 'liquido'
       LEFT JOIN MaterialSolido ms ON si.material_id = ms.id AND si.tipo = 'solido'
@@ -193,6 +195,7 @@ const obtenerSolicitudesAprobadasPendientes = async (req, res) => {
         s.folio,
         u.nombre AS nombre_usuario,
         u.correo_institucional,
+        g.nombre AS grupo_nombre,
         si.id AS item_id,
         si.material_id,
         si.cantidad,
@@ -209,6 +212,7 @@ const obtenerSolicitudesAprobadasPendientes = async (req, res) => {
         END AS cantidad_disponible
       FROM Solicitud s
       JOIN Usuario u ON s.usuario_id = u.id
+      LEFT JOIN Grupo g ON u.grupo_id = g.id
       JOIN SolicitudItem si ON s.id = si.solicitud_id
       LEFT JOIN MaterialLiquido ml ON si.material_id = ml.id AND si.tipo = 'liquido'
       LEFT JOIN MaterialSolido ms ON si.material_id = ms.id AND si.tipo = 'solido'
@@ -224,22 +228,22 @@ const obtenerSolicitudesAprobadasPendientes = async (req, res) => {
   }
 };
 
-const obtenerSolicitudesEntregadas = async (req, res) => {
+const obtenerSolicitudes = async (req, res) => {
   try {
-    const [rows] = await pool.query(`
+    const { id: usuarioId, rol_id } = req.usuario;
+
+    let baseQuery = `
       SELECT 
         s.id AS solicitud_id,
         s.usuario_id,
         s.nombre_alumno,
         s.profesor,
         s.fecha_solicitud,
-        s.motivo,
-        s.folio,
-        u.nombre AS nombre_usuario,
+        s.estado,
+        g.nombre AS grupo_nombre,
         si.id AS item_id,
         si.material_id,
         si.cantidad,
-        si.cantidad_devuelta,
         si.tipo,
         CASE 
           WHEN si.tipo = 'liquido' THEN ml.nombre
@@ -248,18 +252,36 @@ const obtenerSolicitudesEntregadas = async (req, res) => {
         END AS nombre_material
       FROM Solicitud s
       JOIN Usuario u ON s.usuario_id = u.id
+      LEFT JOIN Grupo g ON u.grupo_id = g.id
       JOIN SolicitudItem si ON s.id = si.solicitud_id
       LEFT JOIN MaterialLiquido ml ON si.material_id = ml.id AND si.tipo = 'liquido'
       LEFT JOIN MaterialSolido ms ON si.material_id = ms.id AND si.tipo = 'solido'
       LEFT JOIN MaterialEquipo me ON si.material_id = me.id AND si.tipo = 'equipo'
-      WHERE s.estado = 'entregado'
-      ORDER BY s.fecha_solicitud DESC
-    `);
+    `;
+
+    let whereClause = '';
+    let params = [];
+
+    if (rol_id === 1) {
+      // Alumno: solo sus solicitudes
+      whereClause = ' WHERE s.usuario_id = ?';
+      params.push(usuarioId);
+    } else if (rol_id === 3) {
+      // Almacenista: solo aprobadas
+      whereClause = " WHERE s.estado IN ('aprobada', 'entregado')";
+    }
+    // Docente: ve TODO (sin WHERE extra)
+
+    const finalQuery = baseQuery + whereClause + ' ORDER BY s.fecha_solicitud DESC';
+
+    console.log('Consulta SQL:', finalQuery, params);
+
+    const [rows] = await pool.query(finalQuery, params);
 
     res.json(rows);
   } catch (error) {
-    console.error('Error al obtener solicitudes entregadas:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes entregadas' });
+    console.error('Error al obtener solicitudes:', error);
+    res.status(500).json({ error: 'Error al obtener solicitudes' });
   }
 };
 
