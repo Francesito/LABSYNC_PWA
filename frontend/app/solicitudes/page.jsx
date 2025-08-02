@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -145,6 +144,10 @@ export default function Solicitudes() {
         const agrupadas = Object.values(
           response.data.reduce((acc, item) => {
             const key = item.solicitud_id;
+            // Filtrar solicitudes de docentes si el usuario es docente
+            if (usuario?.rol === 'docente' && item.usuario_id === usuario.id) {
+              return acc; // Omitir solicitudes del propio docente
+            }
             if (!acc[key]) {
               acc[key] = {
                 id: key,
@@ -153,7 +156,6 @@ export default function Solicitudes() {
                 profesor: item.profesor,
                 fecha_solicitud: item.fecha_solicitud,
                 estado: item.estado,
-                // Corregir la lógica del grupo
                 grupo: item.grupo_nombre || 
                        (item.grupo_id ? grupos[item.grupo_id] : null) || 
                        (usuario.rol === 'alumno' ? usuario.grupo : 'No especificado'),
@@ -162,7 +164,7 @@ export default function Solicitudes() {
             }
             acc[key].items.push({
               item_id: item.item_id,
-              nombre_material: item.nombre_material.replace(/_/g, ' '), // Reemplazar guiones bajos por espacios
+              nombre_material: item.nombre_material.replace(/_/g, ' '),
               cantidad: item.cantidad,
               tipo: item.tipo,
             });
@@ -208,35 +210,83 @@ export default function Solicitudes() {
       const logoImg = await toBase64(logoUT);
       const encabezadoImg = await toBase64(encabezadoUT);
 
-      // Encabezado con logo y título
-      doc.addImage(logoImg, 'PNG', 15, 10, 30, 30);
-      doc.addImage(encabezadoImg, 'PNG', 50, 10, 140, 25);
-      doc.setFontSize(18);
-      doc.setTextColor(0, 102, 51);
-      doc.setFont('helvetica', 'bold');
-      doc.text('VALE DE ALMACÉN', 105, 50, { align: 'center' });
+      // Configuración de márgenes y colores
+      const marginLeft = 15;
+      const marginRight = 15;
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      const primaryColor = [0, 102, 51]; // Verde institucional
+      const secondaryColor = [100, 100, 100]; // Gris para texto secundario
 
-      // Información del vale en una tabla
-      autoTable(doc, {
-        startY: 60,
-        theme: 'grid',
-        styles: { fontSize: 10, cellPadding: 4, textColor: [0, 0, 0], font: 'helvetica' },
-        headStyles: { fillColor: [0, 102, 51], textColor: [255, 255, 255], fontStyle: 'bold' },
-        bodyStyles: { fillColor: [255, 255, 255] },
-        margin: { left: 15, right: 15 },
-        head: [['Campo', 'Valor']],
-        body: [
-          ['Folio', vale.folio],
-          ['Solicitante', vale.nombre_alumno],
-          ['Encargado', vale.profesor],
-          ['Grupo', vale.grupo || 'No especificado'],
-          ['Fecha', new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
-            year: 'numeric',
-            month: 'long',
-            day: 'numeric'
-          })],
-        ],
-      });
+      // Fondo y borde
+      doc.setFillColor(245, 245, 245); // Fondo gris claro
+      doc.rect(10, 10, pageWidth - 20, pageHeight - 20, 'F');
+      doc.setLineWidth(0.5);
+      doc.setDrawColor(...primaryColor);
+      doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
+
+      // Encabezado con logo y título
+      doc.addImage(logoImg, 'PNG', marginLeft, 10, 30, 30);
+      doc.addImage(encabezadoImg, 'PNG', marginLeft + 35, 10, 140, 25);
+      doc.setFontSize(18);
+      doc.setTextColor(...primaryColor);
+      doc.setFont('helvetica', 'bold');
+      doc.text('VALE DE ALMACÉN', pageWidth / 2, 50, { align: 'center' });
+
+      // Línea divisoria debajo del título
+      doc.setLineWidth(0.3);
+      doc.line(marginLeft, 55, pageWidth - marginRight, 55);
+
+      // Información del vale (sin tabla, diseño limpio)
+      let yPos = 65;
+      doc.setFontSize(12);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('Folio:', marginLeft, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...secondaryColor);
+      doc.text(vale.folio, marginLeft + 50, yPos);
+
+      yPos += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('Solicitante:', marginLeft, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...secondaryColor);
+      doc.text(vale.nombre_alumno, marginLeft + 50, yPos);
+
+      yPos += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('Encargado:', marginLeft, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...secondaryColor);
+      doc.text(vale.profesor, marginLeft + 50, yPos);
+
+      yPos += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('Grupo:', marginLeft, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...secondaryColor);
+      doc.text(vale.grupo || 'No especificado', marginLeft + 50, yPos);
+
+      yPos += 10;
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...primaryColor);
+      doc.text('Fecha:', marginLeft, yPos);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...secondaryColor);
+      doc.text(new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      }), marginLeft + 50, yPos);
+
+      // Línea divisoria antes de la tabla de materiales
+      yPos += 10;
+      doc.setLineWidth(0.3);
+      doc.line(marginLeft, yPos, pageWidth - marginRight, yPos);
 
       // Tabla de materiales
       const rows = vale.items.map(m => [
@@ -245,12 +295,12 @@ export default function Solicitudes() {
       ]);
 
       autoTable(doc, {
-        startY: doc.lastAutoTable.finalY + 10,
+        startY: yPos + 10,
         theme: 'grid',
         head: [['Cantidad', 'Descripción']],
         body: rows,
         headStyles: {
-          fillColor: [0, 102, 51],
+          fillColor: primaryColor,
           textColor: [255, 255, 255],
           fontStyle: 'bold',
           fontSize: 10,
@@ -260,19 +310,27 @@ export default function Solicitudes() {
           cellPadding: 4,
           textColor: [0, 0, 0],
         },
-        margin: { left: 15, right: 15 },
+        margin: { left: marginLeft, right: marginRight },
       });
 
       // Pie de página
-      const pageHeight = doc.internal.pageSize.getHeight();
       doc.setFontSize(8);
-      doc.setTextColor(100);
+      doc.setTextColor(...secondaryColor);
       doc.setFont('helvetica', 'normal');
       doc.text(
         'Este documento es válido para el retiro de materiales del almacén.',
-        105,
+        pageWidth / 2,
         pageHeight - 15,
         { align: 'center' }
+      );
+
+      // Número de página
+      doc.setFontSize(8);
+      doc.text(
+        `Página 1 de 1`,
+        pageWidth - marginRight,
+        pageHeight - 10,
+        { align: 'right' }
       );
 
       doc.save(`Vale_${vale.folio}_${new Date().toISOString().split('T')[0]}.pdf`);
