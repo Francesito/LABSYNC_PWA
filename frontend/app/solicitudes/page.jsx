@@ -1,4 +1,4 @@
-// frontend/app/solicitudes/page.jsx
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -59,7 +59,6 @@ const SkeletonRow = () => (
         <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
         <div className="space-y-2">
           <div className="h-4 bg-gray-200 rounded w-20"></div>
-          <div className="h-3 bg-gray-100 rounded w-16"></div>
         </div>
       </div>
     </td>
@@ -72,6 +71,7 @@ const SkeletonRow = () => (
       </div>
     </td>
     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-24"></div></td>
+    <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-16"></div></td>
     <td className="px-6 py-4"><div className="h-6 bg-gray-200 rounded-full w-20"></div></td>
     <td className="px-6 py-4">
       <div className="flex gap-2">
@@ -120,10 +120,10 @@ export default function Solicitudes() {
         else if (usuario?.rol === 'almacen') endpoint = '/materials/solicitudes/aprobadas';
         else endpoint = '/materials/solicitudes';
 
-     const response = await axios.get(
-  `${process.env.NEXT_PUBLIC_API_URL}/api${endpoint}`,  
-  { headers: { Authorization: `Bearer ${token}` } }
-);
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api${endpoint}`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
 
         const generarFolio = () => Math.random().toString(36).substr(2, 4).toUpperCase();
 
@@ -138,6 +138,7 @@ export default function Solicitudes() {
                 profesor: item.profesor,
                 fecha_solicitud: item.fecha_solicitud,
                 estado: item.estado,
+                grupo: item.grupo || (usuario.rol === 'alumno' ? usuario.grupo || 'No especificado' : 'No especificado'),
                 items: [],
               };
             }
@@ -209,6 +210,7 @@ export default function Solicitudes() {
           ['Folio:', vale.folio],
           ['Solicitante:', vale.nombre_alumno],
           ['Encargado:', vale.profesor],
+          ['Grupo:', vale.grupo || 'No especificado'],
           ['Fecha:', new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
             year: 'numeric',
             month: 'long',
@@ -242,9 +244,9 @@ export default function Solicitudes() {
       const pageHeight = doc.internal.pageSize.getHeight();
       doc.setFontSize(10);
       doc.setTextColor(128);
-      doc.text('Este documento es válido para el retiro de materiales del almacén.', 
-        doc.internal.pageSize.getWidth() / 2, 
-        pageHeight - 20, 
+      doc.text('Este documento es válido para el retiro de materiales del almacén.',
+        doc.internal.pageSize.getWidth() / 2,
+        pageHeight - 20,
         { align: 'center' }
       );
 
@@ -257,17 +259,17 @@ export default function Solicitudes() {
 
   const actualizarEstadoGrupo = async (id, accion, nuevoEstado) => {
     if (!usuario || procesando) return;
-    
+
     setProcesando(id);
     const token = localStorage.getItem('token');
-    
+
     try {
-await axios.post(
-  `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitud/${id}/${accion}`,
-  {},
-  { headers: { Authorization: `Bearer ${token}` } }
-);
-      
+      await axios.post(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitud/${id}/${accion}`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
       if (accion === 'cancelar') {
         setSolicitudes(prev => prev.filter(sol => sol.id !== id));
       } else {
@@ -277,10 +279,10 @@ await axios.post(
           )
         );
       }
-      
+
       const mensaje = `Solicitud ${nuevoEstado} exitosamente`;
       console.log(mensaje);
-      
+
     } catch (err) {
       console.error(err);
       setError(err.response?.data?.error || `Error al ${accion} la solicitud`);
@@ -289,7 +291,7 @@ await axios.post(
     }
   };
 
-  const filteredData = useMemo(() => 
+  const filteredData = useMemo(() =>
     solicitudes.filter(s => {
       if (usuario?.rol === 'docente' && s.estado === 'cancelado') {
         return false;
@@ -306,6 +308,21 @@ await axios.post(
     }, {});
     return stats;
   }, [solicitudes]);
+
+  // Definir filtros según el rol
+  const filtrosDisponibles = usuario?.rol === 'almacen'
+    ? {
+        todos: { color: 'slate', icon: '📊', label: 'Todas' },
+        aprobada: { color: 'green', icon: '✓', label: 'Aprobada' },
+        entregado: { color: 'blue', icon: '📦', label: 'Entregado' },
+      }
+    : {
+        todos: { color: 'slate', icon: '📊', label: 'Todas' },
+        pendiente: { color: 'amber', icon: '⏳', label: 'Pendiente' },
+        aprobada: { color: 'green', icon: '✓', label: 'Aprobada' },
+        rechazada: { color: 'red', icon: '✗', label: 'Rechazada' },
+        entregado: { color: 'blue', icon: '📦', label: 'Entregado' },
+      };
 
   return (
     <div className="ml-64 p-8 bg-gray-50 min-h-screen">
@@ -339,7 +356,7 @@ await axios.post(
                 <p className="text-red-700 text-sm">{error}</p>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setError('')}
               className="text-red-500 hover:text-red-700"
             >
@@ -353,30 +370,8 @@ await axios.post(
 
       {/* Estadísticas simplificadas */}
       {!loading && (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-          <div
-            className={`bg-white rounded-lg p-4 shadow-sm border-2 cursor-pointer transition-colors ${
-              filtroEstado === 'todos' ? 'border-slate-900' : 'border-gray-200 hover:border-gray-300'
-            }`}
-            onClick={() => setFiltroEstado('todos')}
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Total</p>
-                <p className="text-2xl font-bold text-gray-900">{solicitudes.length}</p>
-              </div>
-              <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
-                <span className="text-white text-lg">📊</span>
-              </div>
-            </div>
-          </div>
-
-          {Object.entries({
-            pendiente: { color: 'amber', icon: '⏳', label: 'Pendiente' },
-            aprobada: { color: 'green', icon: '✓', label: 'Aprobada' },
-            rechazada: { color: 'red', icon: '✗', label: 'Rechazada' },
-            entregado: { color: 'blue', icon: '📦', label: 'Entregado' },
-          }).map(([estado, config]) => (
+        <div className="grid grid-cols-1 md:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
+          {Object.entries(filtrosDisponibles).map(([estado, config]) => (
             <div
               key={estado}
               className={`bg-white rounded-lg p-4 shadow-sm border-2 cursor-pointer transition-colors ${
@@ -443,6 +438,9 @@ await axios.post(
                     Fecha
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    Grupo
+                  </th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Estado
                   </th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -460,7 +458,6 @@ await axios.post(
                         </div>
                         <div>
                           <div className="text-sm font-medium text-gray-900">{item.folio}</div>
-                          <div className="text-xs text-gray-500">ID: {item.id}</div>
                         </div>
                       </div>
                     </td>
@@ -486,6 +483,9 @@ await axios.post(
                       <div className="text-sm text-gray-900">
                         {new Date(item.fecha_solicitud).toLocaleDateString('es-MX')}
                       </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-900">{item.grupo || 'No especificado'}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <EstadoBadge estado={item.estado} />
