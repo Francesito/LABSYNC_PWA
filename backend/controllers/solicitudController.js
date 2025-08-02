@@ -1732,54 +1732,6 @@ const rechazarSolicitud = async (req, res) => {
   }
 };
 
-// Obtener todas las solicitudes
-const obtenerSolicitudes = async (req, res) => {
-  try {
-    const { id: usuarioId, rol_id } = req.usuario;
-
-    let baseQuery = `
-      SELECT 
-        s.id AS solicitud_id,
-        s.usuario_id,
-        s.nombre_alumno,
-        s.profesor,
-        s.fecha_solicitud,
-        s.estado,
-        si.id AS item_id,
-        si.material_id,
-        si.cantidad,
-        si.tipo,
-        m.nombre AS nombre_material
-      FROM Solicitud s
-      JOIN SolicitudItem si ON s.id = si.solicitud_id
-      JOIN Material m ON si.material_id = m.id
-    `;
-
-    let whereClause = '';
-    let params = [];
-
-    if (rol_id === 1) {
-      // Alumno: solo sus solicitudes
-      whereClause = ' WHERE s.usuario_id = ?';
-      params.push(usuarioId);
-    } else if (rol_id === 3) {
-      // Almacenista: solo aprobadas
-      whereClause = " WHERE s.estado = 'aprobada'";
-    }
-    // Docente: ve TODO (sin WHERE extra)
-
-    const finalQuery = baseQuery + whereClause + ' ORDER BY s.fecha_solicitud DESC';
-
-    console.log('Consulta SQL:', finalQuery, params);
-
-    const [rows] = await pool.query(finalQuery, params);
-
-    res.json(rows);
-  } catch (error) {
-    console.error('Error al obtener solicitudes:', error);
-    res.status(500).json({ error: 'Error al obtener solicitudes' });
-  }
-};
 
 
 
