@@ -1781,7 +1781,6 @@ crearSolicitud,
 
   // Funciones para almacenistas
   obtenerSolicitudesAprobadasPendientes,
-  obtenerSolicitudesEntregadas,
   obtenerSolicitudesPendientesDevolucion,
   obtenerDetalleSolicitud,
   entregarMateriales,
