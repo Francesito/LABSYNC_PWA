@@ -153,7 +153,10 @@ export default function Solicitudes() {
                 profesor: item.profesor,
                 fecha_solicitud: item.fecha_solicitud,
                 estado: item.estado,
-                grupo: item.grupo_nombre || (item.grupo_id ? grupos[item.grupo_id] || 'No especificado' : (usuario.rol === 'alumno' ? usuario.grupo || 'No especificado' : 'No especificado')),
+                // Corregir la lógica del grupo
+                grupo: item.grupo_nombre || 
+                       (item.grupo_id ? grupos[item.grupo_id] : null) || 
+                       (usuario.rol === 'alumno' ? usuario.grupo : 'No especificado'),
                 items: [],
               };
             }
