@@ -56,10 +56,7 @@ const SkeletonRow = () => (
   <tr className="animate-pulse">
     <td className="px-6 py-4">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 bg-gray-200 rounded-lg"></div>
-        <div className="space-y-2">
-          <div className="h-4 bg-gray-200 rounded w-20"></div>
-        </div>
+        <div className="h-4 bg-gray-200 rounded w-20"></div>
       </div>
     </td>
     <td className="px-6 py-4"><div className="h-4 bg-gray-200 rounded w-32"></div></td>
@@ -90,6 +87,7 @@ export default function Solicitudes() {
   const [loading, setLoading] = useState(true);
   const [procesando, setProcesando] = useState(null);
   const [lastUpdate, setLastUpdate] = useState('');
+  const [grupos, setGrupos] = useState({});
   const router = useRouter();
 
   useEffect(() => {
@@ -103,6 +101,23 @@ export default function Solicitudes() {
       router.push('/login');
       return;
     }
+
+    const cargarGrupos = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get(
+          `${process.env.NEXT_PUBLIC_API_URL}/api/grupos`,
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        const gruposMap = response.data.reduce((acc, grupo) => {
+          acc[grupo.id] = grupo.nombre;
+          return acc;
+        }, {});
+        setGrupos(gruposMap);
+      } catch (err) {
+        console.error('Error al cargar grupos:', err);
+      }
+    };
 
     const cargarDatos = async () => {
       setLoading(true);
@@ -138,13 +153,13 @@ export default function Solicitudes() {
                 profesor: item.profesor,
                 fecha_solicitud: item.fecha_solicitud,
                 estado: item.estado,
-                grupo: item.grupo || (usuario.rol === 'alumno' ? usuario.grupo || 'No especificado' : 'No especificado'),
+                grupo: item.grupo_nombre || (item.grupo_id ? grupos[item.grupo_id] || 'No especificado' : (usuario.rol === 'alumno' ? usuario.grupo || 'No especificado' : 'No especificado')),
                 items: [],
               };
             }
             acc[key].items.push({
               item_id: item.item_id,
-              nombre_material: item.nombre_material,
+              nombre_material: item.nombre_material.replace(/_/g, ' '), // Reemplazar guiones bajos por espacios
               cantidad: item.cantidad,
               tipo: item.tipo,
             });
@@ -162,6 +177,7 @@ export default function Solicitudes() {
       }
     };
 
+    cargarGrupos();
     cargarDatos();
   }, [usuario, router]);
 
@@ -189,29 +205,29 @@ export default function Solicitudes() {
       const logoImg = await toBase64(logoUT);
       const encabezadoImg = await toBase64(encabezadoUT);
 
-      doc.addImage(logoImg, 'PNG', 10, 10, 25, 25);
-      doc.addImage(encabezadoImg, 'PNG', 40, 10, 150, 25);
-
-      doc.setFontSize(24);
+      // Encabezado con logo y título
+      doc.addImage(logoImg, 'PNG', 15, 10, 30, 30);
+      doc.addImage(encabezadoImg, 'PNG', 50, 10, 140, 25);
+      doc.setFontSize(18);
       doc.setTextColor(0, 102, 51);
-      doc.text(
-        'VALE DE ALMACÉN',
-        doc.internal.pageSize.getWidth() / 2,
-        50,
-        { align: 'center' }
-      );
+      doc.setFont('helvetica', 'bold');
+      doc.text('VALE DE ALMACÉN', 105, 50, { align: 'center' });
 
+      // Información del vale en una tabla
       autoTable(doc, {
         startY: 60,
-        theme: 'plain',
-        styles: { fontSize: 12, cellPadding: 5 },
-        margin: { left: 25, right: 25 },
+        theme: 'grid',
+        styles: { fontSize: 10, cellPadding: 4, textColor: [0, 0, 0], font: 'helvetica' },
+        headStyles: { fillColor: [0, 102, 51], textColor: [255, 255, 255], fontStyle: 'bold' },
+        bodyStyles: { fillColor: [255, 255, 255] },
+        margin: { left: 15, right: 15 },
+        head: [['Campo', 'Valor']],
         body: [
-          ['Folio:', vale.folio],
-          ['Solicitante:', vale.nombre_alumno],
-          ['Encargado:', vale.profesor],
-          ['Grupo:', vale.grupo || 'No especificado'],
-          ['Fecha:', new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
+          ['Folio', vale.folio],
+          ['Solicitante', vale.nombre_alumno],
+          ['Encargado', vale.profesor],
+          ['Grupo', vale.grupo || 'No especificado'],
+          ['Fecha', new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
             year: 'numeric',
             month: 'long',
             day: 'numeric'
@@ -219,6 +235,7 @@ export default function Solicitudes() {
         ],
       });
 
+      // Tabla de materiales
       const rows = vale.items.map(m => [
         `${m.cantidad} ${getUnidad(m.tipo)}`,
         m.nombre_material,
@@ -226,27 +243,32 @@ export default function Solicitudes() {
 
       autoTable(doc, {
         startY: doc.lastAutoTable.finalY + 10,
+        theme: 'grid',
         head: [['Cantidad', 'Descripción']],
         body: rows,
-        theme: 'grid',
         headStyles: {
           fillColor: [0, 102, 51],
           textColor: [255, 255, 255],
-          fontStyle: 'bold'
+          fontStyle: 'bold',
+          fontSize: 10,
         },
-        styles: {
-          fontSize: 11,
-          cellPadding: 4
+        bodyStyles: {
+          fontSize: 10,
+          cellPadding: 4,
+          textColor: [0, 0, 0],
         },
-        margin: { left: 25, right: 25 },
+        margin: { left: 15, right: 15 },
       });
 
+      // Pie de página
       const pageHeight = doc.internal.pageSize.getHeight();
-      doc.setFontSize(10);
-      doc.setTextColor(128);
-      doc.text('Este documento es válido para el retiro de materiales del almacén.',
-        doc.internal.pageSize.getWidth() / 2,
-        pageHeight - 20,
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.setFont('helvetica', 'normal');
+      doc.text(
+        'Este documento es válido para el retiro de materiales del almacén.',
+        105,
+        pageHeight - 15,
         { align: 'center' }
       );
 
@@ -368,28 +390,30 @@ export default function Solicitudes() {
         </div>
       )}
 
-      {/* Estadísticas simplificadas */}
+      {/* Estadísticas simplificadas, centradas */}
       {!loading && (
-        <div className="grid grid-cols-1 md:grid-cols-3 md:grid-cols-5 gap-4 mb-8">
-          {Object.entries(filtrosDisponibles).map(([estado, config]) => (
-            <div
-              key={estado}
-              className={`bg-white rounded-lg p-4 shadow-sm border-2 cursor-pointer transition-colors ${
-                filtroEstado === estado ? `border-${config.color}-500` : 'border-gray-200 hover:border-gray-300'
-              }`}
-              onClick={() => setFiltroEstado(estado)}
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-gray-600">{config.label}</p>
-                  <p className="text-2xl font-bold text-gray-900">{estadisticas[estado] || 0}</p>
-                </div>
-                <div className={`w-10 h-10 bg-${config.color}-500 rounded-lg flex items-center justify-center`}>
-                  <span className="text-white text-lg">{config.icon}</span>
+        <div className="flex justify-center mb-8">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 max-w-6xl w-full">
+            {Object.entries(filtrosDisponibles).map(([estado, config]) => (
+              <div
+                key={estado}
+                className={`bg-white rounded-lg p-4 shadow-sm border-2 cursor-pointer transition-colors ${
+                  filtroEstado === estado ? `border-${config.color}-500` : 'border-gray-200 hover:border-gray-300'
+                }`}
+                onClick={() => setFiltroEstado(estado)}
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm font-medium text-gray-600">{config.label}</p>
+                    <p className="text-2xl font-bold text-gray-900">{estadisticas[estado] || 0}</p>
+                  </div>
+                  <div className={`w-10 h-10 bg-${config.color}-500 rounded-lg flex items-center justify-center`}>
+                    <span className="text-white text-lg">{config.icon}</span>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       )}
 
@@ -449,17 +473,10 @@ export default function Solicitudes() {
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
-                {filteredData.map((item, index) => (
+                {filteredData.map((item) => (
                   <tr key={item.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-slate-900 rounded-lg flex items-center justify-center">
-                          <span className="text-white font-bold text-sm">{index + 1}</span>
-                        </div>
-                        <div>
-                          <div className="text-sm font-medium text-gray-900">{item.folio}</div>
-                        </div>
-                      </div>
+                      <div className="text-sm font-medium text-gray-900">{item.folio}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="text-sm font-medium text-gray-900">{item.nombre_alumno}</div>
@@ -485,7 +502,7 @@ export default function Solicitudes() {
                       </div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm text-gray-900">{item.grupo || 'No especificado'}</div>
+                      <div className="text-sm text-gray-900">{item.grupo}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <EstadoBadge estado={item.estado} />
