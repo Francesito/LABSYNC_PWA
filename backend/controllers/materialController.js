@@ -74,13 +74,15 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
     si.material_id,
     si.tipo,
     si.cantidad,
-    COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material
+    COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+    g.nombre        AS grupo_nombre
   FROM Solicitud s
   JOIN SolicitudItem si ON s.id = si.solicitud_id
   LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
   LEFT JOIN MaterialSolido  ms ON si.tipo = 'solido'  AND si.material_id = ms.id
   LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo'  AND si.material_id = me.id
   LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
+  LEFT JOIN Grupo g ON s.grupo_id = g.id
   WHERE 1=1
   /*AND_CONDITION*/
 `;
@@ -187,6 +189,7 @@ const getAllSolicitudes = async (req, res) => {
 
 /** Crear solicitud (alumno/docente) con folio */
 /** Crear solicitud (alumno/docente) con folio y selección de docente */
+/** Crear solicitud (alumno/docente) con folio, grupo y selección de docente */
 const crearSolicitudes = async (req, res) => {
   logRequest('crearSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
@@ -203,8 +206,16 @@ const crearSolicitudes = async (req, res) => {
       return res.status(403).json({ error: 'Solo alumnos o docentes pueden crear solicitudes' });
     }
 
-    const [user] = await pool.query('SELECT nombre FROM Usuario WHERE id = ?', [usuario_id]);
+    const [user] = await pool.query('SELECT nombre, grupo_id FROM Usuario WHERE id = ?', [usuario_id]);
     if (!user.length) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    let grupo_nombre = null;
+    let grupo_id = null;
+    if (rol_id === 1 && user[0].grupo_id) {
+      const [grupo] = await pool.query('SELECT nombre FROM Grupo WHERE id = ?', [user[0].grupo_id]);
+      grupo_nombre = grupo[0]?.nombre || 'No especificado';
+      grupo_id = user[0].grupo_id;
+    }
 
     const folio = generarFolio();
     const estadoInicial = (rol_id === 2 || aprobar_automatico) ? 'aprobada' : 'pendiente';
@@ -234,9 +245,9 @@ const crearSolicitudes = async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO Solicitud
-         (usuario_id, fecha_solicitud, motivo, estado, docente_id, nombre_alumno, profesor, folio)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_seleccionado_id, user[0].nombre, profesor, folio]
+         (usuario_id, fecha_solicitud, motivo, estado, docente_id, nombre_alumno, profesor, folio, grupo_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_seleccionado_id, user[0].nombre, profesor, folio, grupo_id]
     );
     const solicitudId = result.insertId;
 
@@ -261,7 +272,8 @@ const crearSolicitudes = async (req, res) => {
       message: 'Solicitud creada', 
       solicitudId, 
       folio,
-      docente_asignado: profesor
+      docente_asignado: profesor,
+      grupo: grupo_nombre
     });
   } catch (err) {
     console.error('[Error] crearSolicitudes:', err);
@@ -285,9 +297,17 @@ const crearSolicitudConAdeudo = async (req, res) => {
   }
 
   try {
-    const [user] = await pool.query('SELECT nombre, rol_id FROM Usuario WHERE id = ?', [usuario_id]);
+    const [user] = await pool.query('SELECT nombre, rol_id, grupo_id FROM Usuario WHERE id = ?', [usuario_id]);
     if (!user.length) return res.status(404).json({ error: 'Usuario no encontrado' });
     if (user[0].rol_id !== 1) return res.status(403).json({ error: 'Solo alumnos pueden crear solicitudes con adeudo' });
+
+    let grupo_nombre = 'No especificado';
+    let grupo_id = null;
+    if (user[0].grupo_id) {
+      const [grupo] = await pool.query('SELECT nombre FROM Grupo WHERE id = ?', [user[0].grupo_id]);
+      grupo_nombre = grupo[0]?.nombre || 'No especificado';
+      grupo_id = user[0].grupo_id;
+    }
 
     const meta = detectTableAndField(tipo);
     if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
@@ -317,16 +337,18 @@ const crearSolicitudConAdeudo = async (req, res) => {
       profesor = docente[0]?.nombre || 'Sin asignar';
     }
 
-    await pool.query(
+    const [result] = await pool.query(
       `INSERT INTO Solicitud 
-        (usuario_id, material_id, tipo, cantidad, fecha_solicitud, motivo, monto_adeudo, estado, docente_id, nombre_alumno, profesor)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?)`,
-      [usuario_id, material_id, tipo, 1, fecha_solicitud, motivo, monto_adeudo, docente_seleccionado_id, user[0].nombre, profesor]
+        (usuario_id, material_id, tipo, cantidad, fecha_solicitud, motivo, monto_adeudo, estado, docente_id, nombre_alumno, profesor, grupo_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'pendiente', ?, ?, ?, ?)`,
+      [usuario_id, material_id, tipo, 1, fecha_solicitud, motivo, monto_adeudo, docente_seleccionado_id, user[0].nombre, profesor, grupo_id]
     );
 
     res.status(201).json({ 
       message: 'Solicitud con adeudo registrada correctamente',
-      docente_asignado: profesor
+      solicitudId: result.insertId,
+      docente_asignado: profesor,
+      grupo: grupo_nombre
     });
   } catch (error) {
     console.error('[Error] crearSolicitudConAdeudo:', error);
@@ -834,11 +856,13 @@ const getDeliveredSolicitudes = async (req, res) => {
         s.folio,
         s.nombre_alumno,
         s.profesor,
-        MIN(a.fecha_entrega) AS fecha_entrega 
+        MIN(a.fecha_entrega) AS fecha_entrega,
+        g.nombre AS grupo_nombre
       FROM Solicitud s
       JOIN Adeudo a ON a.solicitud_id = s.id
+      LEFT JOIN Grupo g ON s.grupo_id = g.id
       WHERE s.estado = 'entregado'
-      GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor
+      GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre
       ORDER BY fecha_entrega DESC
     `);
     res.json(rows);
@@ -854,18 +878,20 @@ const getSolicitudDetalle = async (req, res) => {
   try {
     const { id } = req.params;
 
-    // 1) Cabecera: folio, alumno, profesor y fecha_entrega (tomada del primer adeudo)
+    // 1) Cabecera: folio, alumno, profesor, grupo y fecha_entrega (tomada del primer adeudo)
     const [solRows] = await pool.query(
       `SELECT 
          s.id AS solicitud_id,
          s.folio,
          s.nombre_alumno,
          s.profesor,
-         MIN(a.fecha_entrega) AS fecha_entrega
+         MIN(a.fecha_entrega) AS fecha_entrega,
+         g.nombre AS grupo_nombre
        FROM Solicitud s
        LEFT JOIN Adeudo a ON a.solicitud_id = s.id
+       LEFT JOIN Grupo g ON s.grupo_id = g.id
        WHERE s.id = ?
-       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor`,
+       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre`,
       [id]
     );
     if (!solRows.length) {
@@ -896,6 +922,7 @@ const getSolicitudDetalle = async (req, res) => {
       nombre_alumno: sol.nombre_alumno,
       profesor: sol.profesor,
       fecha_entrega: sol.fecha_entrega,
+      grupo: sol.grupo_nombre || 'No especificado',
       items: items.map(i => ({
         item_id: i.item_id,
         nombre_material: i.nombre_material,
