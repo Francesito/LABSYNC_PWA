@@ -102,17 +102,17 @@ export function AuthProvider({ children }) {
           }
 
           // Obtener el nombre del grupo desde el backend si es alumno
-          let grupo = 'No especificado';
+         let grupo = 'No asignado';
           if (decoded.rol_id === 1) {
             try {
               const response = await axios.get(
                 `${process.env.NEXT_PUBLIC_API_URL}/api/solicitudes/grupo`,
                 { headers: { Authorization: `Bearer ${token}` } }
               );
-              grupo = response.data.nombre || 'No especificado';
+              grupo = response.data.nombre || 'No asignado';
             } catch (err) {
               console.error('Error al obtener el grupo:', err);
-              console.error('Detalles del error:', err.response?.data);
+              grupo = 'No asignado';
             }
           }
 
@@ -196,22 +196,7 @@ export function AuthProvider({ children }) {
             rolNombre = 'desconocido';
         }
       }
-
-      // Obtener el nombre del grupo desde el backend si es alumno
-      let grupo = 'No especificado';
-      if (decoded.rol_id === 1) {
-        try {
-          const grupoResponse = await axios.get(
-            `${process.env.NEXT_PUBLIC_API_URL}/api/solicitudes/grupo`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          grupo = grupoResponse.data.nombre || 'No especificado';
-        } catch (err) {
-          console.error('Error al obtener el grupo:', err);
-          console.error('Detalles del error:', err.response?.data);
-        }
-      }
-
+      
       const usuarioData = {
         id: decoded.id,
         nombre: decoded.nombre,
