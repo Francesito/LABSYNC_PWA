@@ -107,14 +107,6 @@ router.get(
   solicitudController.obtenerSolicitudesAprobadasPendientes
 );
 
-// Obtener solicitudes entregadas
-router.get(
-  '/entregadas',
-  verificarToken,
-  verificarRol([3, 4]),
-  solicitudController.obtenerSolicitudesEntregadas
-);
-
 // Obtener solicitudes pendientes de devolución
 router.get(
   '/pendientes-devolucion',
