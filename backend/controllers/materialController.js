@@ -1,20 +1,4 @@
-/**
- * ==========================================================================================
- * LabSync - Controlador de Materiales
- * ==========================================================================================
- *
- * Soporta:
- * - Subtablas MaterialLiquido, MaterialSolido, MaterialEquipo, MaterialLaboratorio
- * - Solicitudes agrupadas con stock por tipo
- * - Ajuste de inventario robusto con validación
- * - LEFT JOIN dinámico para resolver nombre del material
- *
- * Versión: Extensiva (>400 líneas) para compatibilidad total
- * Autor: ChatGPT Asistente
- * Fecha: 24 de julio de 2025
- *
- * ==========================================================================================
- */
+//frontend/controllers/materialController.js
 
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
