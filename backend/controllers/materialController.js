@@ -926,73 +926,290 @@ const getSolicitudDetalle = async (req, res) => {
 // ========================================
 
 // CREAR NUEVO MATERIAL
+// REEMPLAZAR la función crearMaterial existente en materialController.js
+
 const crearMaterial = async (req, res) => {
   logRequest('crearMaterial');
-  const { nombre, descripcion, tipo, cantidad_inicial, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales } = req.body;
+  
+  const { 
+    nombre, 
+    descripcion, 
+    tipo, 
+    cantidad_inicial, 
+    categoria_id, 
+    riesgos_fisicos, 
+    riesgos_salud, 
+    riesgos_ambientales,
+    estado = 'disponible'
+  } = req.body;
 
+  // Validaciones básicas
   if (!nombre || !tipo || cantidad_inicial === undefined) {
-    return res.status(400).json({ error: 'Faltan datos obligatorios: nombre, tipo, cantidad_inicial' });
+    return res.status(400).json({ 
+      error: 'Faltan datos obligatorios: nombre, tipo, cantidad_inicial' 
+    });
+  }
+
+  if (cantidad_inicial < 0) {
+    return res.status(400).json({ 
+      error: 'La cantidad inicial no puede ser negativa' 
+    });
   }
 
   try {
     const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    if (!meta) {
+      return res.status(400).json({ error: 'Tipo de material inválido' });
+    }
+
+    // Procesar imagen subida (si existe)
+    let imagenUrl = null;
+    if (req.file) {
+      imagenUrl = req.file.path; // Cloudinary devuelve la URL en req.file.path
+      console.log(`[INFO] Imagen subida a Cloudinary: ${imagenUrl}`);
+    }
 
     let query, params;
-    if (tipo === 'liquido' || tipo === 'solido') {
-      query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales) VALUES (?, ?, ?, ?, ?, ?, ?)`;
-      params = [nombre, descripcion, cantidad_inicial, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales];
-    } else if (tipo === 'equipo') {
-      query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id) VALUES (?, ?, ?, ?)`;
-      params = [nombre, descripcion, cantidad_inicial, categoria_id];
-    } else if (tipo === 'laboratorio') {
-      query = `INSERT INTO ${meta.table} (nombre, descripcion, ${meta.field}, categoria_id) VALUES (?, ?, ?, ?)`;
-      params = [nombre, descripcion, cantidad_inicial, categoria_id];
+    
+    // Construir query según el tipo de material
+    switch (tipo) {
+      case 'liquido':
+        query = `
+          INSERT INTO ${meta.table} 
+          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado, imagen) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        params = [
+          nombre, 
+          descripcion, 
+          cantidad_inicial, 
+          categoria_id, 
+          riesgos_fisicos, 
+          riesgos_salud, 
+          riesgos_ambientales, 
+          estado, 
+          imagenUrl
+        ];
+        break;
+
+      case 'solido':
+        query = `
+          INSERT INTO ${meta.table} 
+          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado, imagen) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `;
+        params = [
+          nombre, 
+          descripcion, 
+          cantidad_inicial, 
+          categoria_id, 
+          riesgos_fisicos, 
+          riesgos_salud, 
+          riesgos_ambientales, 
+          estado, 
+          imagenUrl
+        ];
+        break;
+
+      case 'equipo':
+        query = `
+          INSERT INTO ${meta.table} 
+          (nombre, descripcion, ${meta.field}, categoria_id, estado, imagen) 
+          VALUES (?, ?, ?, ?, ?, ?)
+        `;
+        params = [
+          nombre, 
+          descripcion, 
+          cantidad_inicial, 
+          categoria_id, 
+          estado, 
+          imagenUrl
+        ];
+        break;
+
+      case 'laboratorio':
+        query = `
+          INSERT INTO ${meta.table} 
+          (nombre, descripcion, ${meta.field}, categoria_id, estado, imagen) 
+          VALUES (?, ?, ?, ?, ?, ?)
+        `;
+        params = [
+          nombre, 
+          descripcion, 
+          cantidad_inicial, 
+          categoria_id, 
+          estado, 
+          imagenUrl
+        ];
+        break;
+
+      default:
+        return res.status(400).json({ error: 'Tipo de material no soportado' });
     }
 
+    // Ejecutar inserción
     const [result] = await pool.query(query, params);
 
-    // Solo registrar movimiento si existe la tabla MovimientosInventario
+    // Registrar movimiento de inventario (entrada inicial)
     try {
       await pool.query(
-        'INSERT INTO MovimientosInventario (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo) VALUES (?, ?, ?, ?, ?, ?)',
-        [req.usuario?.id || 1, result.insertId, tipo, cantidad_inicial, 'entrada', 'Material creado']
+        `INSERT INTO MovimientosInventario 
+         (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo, fecha_movimiento) 
+         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        [
+          req.usuario?.id || 1, 
+          result.insertId, 
+          tipo, 
+          cantidad_inicial, 
+          'entrada', 
+          'Material creado - Stock inicial'
+        ]
       );
     } catch (movError) {
-      console.warn('[Warn] No se pudo registrar movimiento:', movError.message);
+      console.warn('[Warn] No se pudo registrar movimiento de inventario:', movError.message);
     }
 
+    // Respuesta exitosa
     res.status(201).json({ 
-      message: 'Material creado exitosamente', 
-      materialId: result.insertId,
-      tipo: tipo
+      message: 'Material creado exitosamente',
+      material: {
+        id: result.insertId,
+        nombre,
+        tipo,
+        cantidad_inicial,
+        imagen_url: imagenUrl,
+        estado
+      }
     });
+
   } catch (error) {
     console.error('[Error] crearMaterial:', error);
-    res.status(500).json({ error: 'Error al crear material: ' + error.message });
+    
+    // Si hubo error y se subió imagen, intentar eliminarla de Cloudinary
+    if (req.file && req.file.public_id) {
+      try {
+        const cloudinary = require('../config/cloudinary');
+        await cloudinary.uploader.destroy(req.file.public_id);
+        console.log(`[INFO] Imagen eliminada de Cloudinary: ${req.file.public_id}`);
+      } catch (deleteError) {
+        console.error('[Error] No se pudo eliminar imagen de Cloudinary:', deleteError);
+      }
+    }
+
+    res.status(500).json({ 
+      error: 'Error al crear material: ' + error.message 
+    });
   }
 };
 
 // ACTUALIZAR MATERIAL EXISTENTE
+
 const actualizarMaterial = async (req, res) => {
   logRequest('actualizarMaterial');
   const { id } = req.params;
-  const { nombre, descripcion, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales } = req.body;
+  const { 
+    nombre, 
+    descripcion, 
+    categoria_id, 
+    riesgos_fisicos, 
+    riesgos_salud, 
+    riesgos_ambientales,
+    estado,
+    mantener_imagen = true // Flag para mantener imagen existente
+  } = req.body;
   const { tipo } = req.query;
 
-  if (!tipo) return res.status(400).json({ error: 'Parámetro tipo requerido' });
+  if (!tipo) {
+    return res.status(400).json({ error: 'Parámetro tipo requerido' });
+  }
 
   try {
     const meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    if (!meta) {
+      return res.status(400).json({ error: 'Tipo de material inválido' });
+    }
 
+    // Obtener imagen actual si existe
+    let imagenActual = null;
+    if (req.file || mantener_imagen === 'false') {
+      const [materialActual] = await pool.query(
+        `SELECT imagen FROM ${meta.table} WHERE id = ?`, 
+        [id]
+      );
+      if (materialActual.length > 0) {
+        imagenActual = materialActual[0].imagen;
+      }
+    }
+
+    // Procesar nueva imagen si se subió
+    let nuevaImagenUrl = imagenActual; // Por defecto mantener la actual
+    
+    if (req.file) {
+      nuevaImagenUrl = req.file.path; // Nueva imagen desde Cloudinary
+      
+      // Eliminar imagen anterior de Cloudinary si existía
+      if (imagenActual && imagenActual.includes('cloudinary')) {
+        try {
+          const cloudinary = require('../config/cloudinary');
+          // Extraer public_id de la URL de Cloudinary
+          const publicId = imagenActual.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(`materiales-laboratorio/${publicId}`);
+          console.log(`[INFO] Imagen anterior eliminada: ${publicId}`);
+        } catch (deleteError) {
+          console.warn('[Warn] No se pudo eliminar imagen anterior:', deleteError.message);
+        }
+      }
+    } else if (mantener_imagen === 'false') {
+      // Usuario quiere eliminar la imagen
+      if (imagenActual && imagenActual.includes('cloudinary')) {
+        try {
+          const cloudinary = require('../config/cloudinary');
+          const publicId = imagenActual.split('/').pop().split('.')[0];
+          await cloudinary.uploader.destroy(`materiales-laboratorio/${publicId}`);
+          console.log(`[INFO] Imagen eliminada por solicitud del usuario: ${publicId}`);
+        } catch (deleteError) {
+          console.warn('[Warn] No se pudo eliminar imagen:', deleteError.message);
+        }
+      }
+      nuevaImagenUrl = null;
+    }
+
+    // Construir query de actualización
     let query, params;
+    
     if (tipo === 'liquido' || tipo === 'solido') {
-      query = `UPDATE ${meta.table} SET nombre = ?, descripcion = ?, categoria_id = ?, riesgos_fisicos = ?, riesgos_salud = ?, riesgos_ambientales = ? WHERE id = ?`;
-      params = [nombre, descripcion, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, id];
+      query = `
+        UPDATE ${meta.table} 
+        SET nombre = ?, descripcion = ?, categoria_id = ?, 
+            riesgos_fisicos = ?, riesgos_salud = ?, riesgos_ambientales = ?, 
+            estado = ?, imagen = ?
+        WHERE id = ?
+      `;
+      params = [
+        nombre, 
+        descripcion, 
+        categoria_id, 
+        riesgos_fisicos, 
+        riesgos_salud, 
+        riesgos_ambientales, 
+        estado || 'disponible',
+        nuevaImagenUrl,
+        id
+      ];
     } else if (tipo === 'equipo' || tipo === 'laboratorio') {
-      query = `UPDATE ${meta.table} SET nombre = ?, descripcion = ?, categoria_id = ? WHERE id = ?`;
-      params = [nombre, descripcion, categoria_id, id];
+      query = `
+        UPDATE ${meta.table} 
+        SET nombre = ?, descripcion = ?, categoria_id = ?, estado = ?, imagen = ?
+        WHERE id = ?
+      `;
+      params = [
+        nombre, 
+        descripcion, 
+        categoria_id, 
+        estado || 'disponible',
+        nuevaImagenUrl,
+        id
+      ];
     }
 
     const [result] = await pool.query(query, params);
@@ -1001,10 +1218,41 @@ const actualizarMaterial = async (req, res) => {
       return res.status(404).json({ error: 'Material no encontrado' });
     }
 
-    res.json({ message: 'Material actualizado exitosamente' });
+    res.json({ 
+      message: 'Material actualizado exitosamente',
+      imagen_actualizada: req.file ? true : false,
+      nueva_imagen_url: nuevaImagenUrl
+    });
+
   } catch (error) {
     console.error('[Error] actualizarMaterial:', error);
-    res.status(500).json({ error: 'Error al actualizar material: ' + error.message });
+    
+    // Si hubo error y se subió nueva imagen, eliminarla
+    if (req.file && req.file.public_id) {
+      try {
+        const cloudinary = require('../config/cloudinary');
+        await cloudinary.uploader.destroy(req.file.public_id);
+        console.log(`[INFO] Nueva imagen eliminada por error: ${req.file.public_id}`);
+      } catch (deleteError) {
+        console.error('[Error] No se pudo eliminar nueva imagen:', deleteError);
+      }
+    }
+
+    res.status(500).json({ 
+      error: 'Error al actualizar material: ' + error.message 
+    });
+  }
+};
+
+/** Obtener todas las categorías disponibles */
+const getCategorias = async (req, res) => {
+  logRequest('getCategorias');
+  try {
+    const [rows] = await pool.query('SELECT id, nombre FROM Categoria ORDER BY nombre');
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getCategorias:', error);
+    res.status(500).json({ error: 'Error al obtener categorías: ' + error.message });
   }
 };
 
@@ -1676,6 +1924,7 @@ module.exports = {
   crearCategoria,
   actualizarCategoria,
   eliminarCategoria,
+  getCategorias,
   
   // Estadísticas y reportes
   getEstadisticas,
