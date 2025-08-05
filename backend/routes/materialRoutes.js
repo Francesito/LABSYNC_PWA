@@ -3,6 +3,8 @@
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
+const { upload, handleUploadError } = require('../middleware/uploadMiddleware');
+
 console.log('materialController.crearSolicitudes:', materialController.crearSolicitudes);
 console.log('materialController.crearSolicitudConAdeudo:', materialController.crearSolicitudConAdeudo);
 console.log('materialController.approveSolicitud:', materialController.approveSolicitud);
@@ -45,6 +47,7 @@ router.get('/tipo/liquidos', verificarToken, materialController.getLiquidos);
 router.get('/tipo/solidos', verificarToken, materialController.getSolidos);
 router.get('/tipo/equipos', verificarToken, materialController.getEquipos);
 router.get('/tipo/laboratorio', verificarToken, materialController.getLaboratorio);
+router.get('/categorias', verificarToken, materialController.getCategorias);
 
 /**
  * ========================
@@ -167,6 +170,8 @@ router.post(
   '/crear',
   verificarToken,
   verificarAccesoStock,
+  upload.single('imagen'), // Campo de archivo en el formulario
+  handleUploadError,
   materialController.crearMaterial
 );
 
@@ -175,6 +180,8 @@ router.put(
   '/:id/actualizar',
   verificarToken,
   verificarAccesoStock,
+  upload.single('imagen'), // Imagen opcional para actualización
+  handleUploadError,
   materialController.actualizarMaterial
 );
 
