@@ -2,6 +2,8 @@ require('dotenv').config();
 const mysql = require('mysql2/promise');
 const cloudinary = require('../config/cloudinary');
 const axios = require('axios');
+const fs = require('fs').promises;
+const path = require('path');
 
 // Configuración de base de datos
 const dbConfig = {
@@ -23,6 +25,9 @@ const TABLAS_MATERIALES = [
   { tabla: 'MaterialEquipo', campo_nombre: 'nombre', carpeta: 'materialEquipo' },
   { tabla: 'MaterialLaboratorio', campo_nombre: 'nombre', carpeta: 'materialLaboratorio' },
 ];
+
+// Archivo para guardar el progreso
+const PROGRESS_FILE = path.join(__dirname, 'migration_progress.json');
 
 // Función para normalizar nombres para URLs
 function normalizarNombre(nombre) {
@@ -47,24 +52,24 @@ async function verificarImagenEnGitHub(nombreImagen, carpeta) {
   for (const ext of extensiones) {
     const url = `${GITHUB_BASE_URL}${carpeta}/${nombreImagen}.${ext}`;
     try {
-      console.log(`   🔗 Intentando URL: ${url}`);
+      console.log(`🔗 Intentando: ${url}`);
       const response = await axios.head(url, { timeout: 5000 });
       if (response.status === 200) {
-        console.log(`   ✅ Imagen encontrada: ${url}`);
+        console.log(`✅ Encontrada: ${url}`);
         return url;
       }
     } catch (error) {
-      console.log(`   ⚠️ Error con .${ext}: ${error.message}`);
+      console.log(`⚠️ Error .${ext}: ${error.message}`);
     }
   }
-  console.log(`   ❌ No se encontró imagen para ${nombreImagen} en ${carpeta}`);
+  console.log(`❌ Imagen no encontrada: ${nombreImagen} en ${carpeta}`);
   return null;
 }
 
 // Función para subir imagen a Cloudinary desde URL
 async function subirImagenACloudinary(imageUrl, publicId) {
   try {
-    console.log(`   ⬆️ Subiendo a Cloudinary: ${publicId}`);
+    console.log(`⬆️ Subiendo: ${publicId}`);
     const result = await cloudinary.uploader.upload(imageUrl, {
       folder: 'laboratory_materials',
       public_id: publicId,
@@ -75,12 +80,27 @@ async function subirImagenACloudinary(imageUrl, publicId) {
         { quality: 'auto', fetch_format: 'auto' },
       ],
     });
-    console.log(`   ✅ Subida exitosa: ${result.secure_url}`);
+    console.log(`✅ Subida: ${result.secure_url}`);
     return result.secure_url;
   } catch (error) {
-    console.error(`   ❌ Error subiendo imagen ${publicId}: ${error.message}`);
+    console.error(`❌ Error subiendo ${publicId}: ${error.message}`);
     return null;
   }
+}
+
+// Función para leer el progreso
+async function leerProgreso() {
+  try {
+    const data = await fs.readFile(PROGRESS_FILE, 'utf8');
+    return JSON.parse(data);
+  } catch (error) {
+    return {};
+  }
+}
+
+// Función para guardar el progreso
+async function guardarProgreso(progreso) {
+  await fs.writeFile(PROGRESS_FILE, JSON.stringify(progreso, null, 2));
 }
 
 // Función principal de migración
@@ -91,158 +111,174 @@ async function migrarImagenes() {
   let errores = [];
 
   try {
-    console.log('🚀 Iniciando migración de imágenes de GitHub a Cloudinary...\n');
+    console.log('🚀 Iniciando migración...\n');
 
     // Validar variables de entorno
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      throw new Error('Faltan credenciales de Cloudinary en las variables de entorno');
+      throw new Error('Faltan credenciales de Cloudinary');
     }
     if (!process.env.DB_HOST || !process.env.DB_USER || !process.env.DB_PASSWORD || !process.env.DB_NAME) {
-      throw new Error('Faltan credenciales de la base de datos en las variables de entorno');
+      throw new Error('Faltan credenciales de la base de datos');
     }
 
     // Conectar a la base de datos
-    console.log('🔌 Intentando conectar a la base de datos...');
+    console.log('🔌 Conectando a la base de datos...');
     connection = await mysql.createConnection(dbConfig);
-    console.log('✅ Conectado a la base de datos\n');
+    console.log('✅ Conectado\n');
+
+    // Leer progreso
+    const progreso = await leerProgreso();
 
     // Procesar cada tabla
     for (const { tabla, campo_nombre, carpeta } of TABLAS_MATERIALES) {
-      console.log(`📋 Procesando tabla: ${tabla}`);
-      
-      // Obtener todos los materiales de la tabla
+      if (progreso[tabla]?.completed) {
+        console.log(`⏭️ Tabla ${tabla} ya procesada`);
+        continue;
+      }
+
+      console.log(`📋 Procesando: ${tabla}`);
       const [materiales] = await connection.execute(
         `SELECT id, ${campo_nombre} as nombre, imagen FROM ${tabla}`
       );
 
-      console.log(`   - Encontrados ${materiales.length} materiales`);
+      console.log(`📦 ${materiales.length} materiales encontrados`);
 
       if (materiales.length === 0) {
-        console.log(`   ⚠️ No se encontraron registros en la tabla ${tabla}`);
-        errores.push(`Tabla ${tabla}: No se encontraron registros`);
+        console.log(`⚠️ Tabla ${tabla} vacía`);
+        errores.push(`Tabla ${tabla}: No hay registros`);
+        progreso[tabla] = { completed: true };
+        await guardarProgreso(progreso);
         continue;
       }
 
       for (const material of materiales) {
-        totalProcesados++;
         const { id, nombre, imagen } = material;
+        const progresoKey = `${tabla}_${id}`;
 
-        console.log(`   🔎 Procesando material: ${nombre} (ID: ${id})`);
+        if (progreso[progresoKey]) {
+          console.log(`⏭️ ${nombre} (ID: ${id}) ya procesado`);
+          totalProcesados++;
+          if (progreso[progresoKey].success) totalMigrados++;
+          continue;
+        }
 
-        // Validar nombre
+        totalProcesados++;
+        console.log(`🔎 Procesando: ${nombre} (ID: ${id})`);
+
         if (!nombre || nombre.trim() === '') {
-          console.log(`   ❌ Nombre inválido o vacío para ID: ${id}`);
-          errores.push(`${tabla}[${id}] - Nombre inválido o vacío`);
+          console.log(`❌ Nombre inválido (ID: ${id})`);
+          errores.push(`${tabla}[${id}] - Nombre inválido`);
+          progreso[progresoKey] = { success: false };
+          await guardarProgreso(progreso);
           continue;
         }
 
-        // Si ya tiene imagen de Cloudinary, saltar
         if (imagen && imagen.includes('cloudinary')) {
-          console.log(`   ⏭️ ${nombre} ya tiene imagen de Cloudinary: ${imagen}`);
+          console.log(`⏭️ ${nombre} ya tiene imagen: ${imagen}`);
+          progreso[progresoKey] = { success: true };
+          await guardarProgreso(progreso);
+          totalMigrados++;
           continue;
         }
 
-        // Normalizar nombre para buscar imagen
         const nombreNormalizado = normalizarNombre(nombre);
-        console.log(`   🔍 Nombre normalizado: ${nombreNormalizado}`);
+        console.log(`🔍 Normalizado: ${nombreNormalizado}`);
 
         if (!nombreNormalizado) {
-          console.log(`   ❌ Nombre normalizado inválido para: ${nombre}`);
+          console.log(`❌ Nombre normalizado inválido: ${nombre}`);
           errores.push(`${tabla}[${id}] - ${nombre}: Nombre normalizado inválido`);
+          progreso[progresoKey] = { success: false };
+          await guardarProgreso(progreso);
           continue;
         }
 
-        // Verificar si existe imagen en GitHub
         const urlGitHub = await verificarImagenEnGitHub(nombreNormalizado, carpeta);
-        
+
         if (!urlGitHub) {
-          console.log(`   ❌ No se encontró imagen en GitHub para: ${nombre}`);
+          console.log(`❌ Imagen no encontrada: ${nombre}`);
           errores.push(`${tabla}[${id}] - ${nombre}: Imagen no encontrada en GitHub`);
+          progreso[progresoKey] = { success: false };
+          await guardarProgreso(progreso);
           continue;
         }
 
-        // Subir a Cloudinary
         const publicId = `${carpeta}_${id}_${nombreNormalizado}`;
         const urlCloudinary = await subirImagenACloudinary(urlGitHub, publicId);
 
         if (!urlCloudinary) {
-          console.log(`   ❌ Error subiendo a Cloudinary: ${nombre}`);
+          console.log(`❌ Error subiendo: ${nombre}`);
           errores.push(`${tabla}[${id}] - ${nombre}: Error subiendo a Cloudinary`);
+          progreso[progresoKey] = { success: false };
+          await guardarProgreso(progreso);
           continue;
         }
 
-        // Actualizar base de datos
-        console.log(`   🔄 Actualizando base de datos para: ${nombre}`);
+        console.log(`🔄 Actualizando base de datos: ${nombre}`);
         await connection.execute(
           `UPDATE ${tabla} SET imagen = ? WHERE id = ?`,
           [urlCloudinary, id]
         );
 
         totalMigrados++;
-        console.log(`   ✅ Migrado exitosamente: ${nombre}`);
-        console.log(`      📎 URL: ${urlCloudinary}\n`);
+        console.log(`✅ Migrado: ${nombre} - ${urlCloudinary}`);
+        progreso[progresoKey] = { success: true, url: urlCloudinary };
+        await guardarProgreso(progreso);
 
-        // Pausa para evitar límites de la API
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       console.log(`📋 Tabla ${tabla} completada\n`);
+      progreso[tabla] = { completed: true };
+      await guardarProgreso(progreso);
     }
 
   } catch (error) {
-    console.error('💥 Error general durante la migración:', error.message);
+    console.error('💥 Error general:', error.message);
     errores.push(`Error general: ${error.message}`);
   } finally {
     if (connection) {
       await connection.end();
-      console.log('🔌 Conexión a la base de datos cerrada');
+      console.log('🔌 Conexión cerrada');
     }
 
-    // Resumen final
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 RESUMEN DE MIGRACIÓN');
-    console.log('='.repeat(60));
-    console.log(`📦 Total materiales procesados: ${totalProcesados}`);
-    console.log(`✅ Total imágenes migradas: ${totalMigrados}`);
-    console.log(`❌ Total errores: ${errores.length}`);
+    console.log('\n' + '='.repeat(50));
+    console.log('📊 RESUMEN');
+    console.log('='.repeat(50));
+    console.log(`📦 Procesados: ${totalProcesados}`);
+    console.log(`✅ Migrados: ${totalMigrados}`);
+    console.log(`❌ Errores: ${errores.length}`);
     
     if (errores.length > 0) {
-      console.log('\n🚨 ERRORES ENCONTRADOS:');
-      errores.forEach((error, index) => {
-        console.log(`${index + 1}. ${error}`);
-      });
+      console.log('\n🚨 ERRORES:');
+      errores.forEach((error, index) => console.log(`${index + 1}. ${error}`));
     }
 
     console.log('\n🎉 Migración completada!');
   }
 }
 
-// Función para rollback (restaurar estado anterior)
+// Función para rollback
 async function rollbackMigracion() {
   let connection;
-  
+
   try {
-    console.log('🔄 Iniciando rollback de migración...\n');
-    
-    // Validar variables de entorno
+    console.log('🔄 Iniciando rollback...\n');
+
     if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-      throw new Error('Faltan credenciales de Cloudinary en las variables de entorno');
+      throw new Error('Faltan credenciales de Cloudinary');
     }
 
     connection = await mysql.createConnection(dbConfig);
-    console.log('✅ Conectado a la base de datos\n');
+    console.log('✅ Conectado\n');
 
     for (const { tabla } of TABLAS_MATERIALES) {
-      console.log(`📋 Limpiando tabla: ${tabla}`);
-      
+      console.log(`📋 Limpiando: ${tabla}`);
       const [result] = await connection.execute(
         `UPDATE ${tabla} SET imagen = NULL WHERE imagen LIKE '%cloudinary%'`
       );
-      
-      console.log(`   ✅ ${result.affectedRows} registros limpiados\n`);
+      console.log(`✅ ${result.affectedRows} registros limpiados\n`);
     }
 
-    // Eliminar imágenes de Cloudinary
     console.log('🗑️ Eliminando imágenes de Cloudinary...');
     const resources = await cloudinary.api.resources({
       resource_type: 'image',
@@ -251,28 +287,31 @@ async function rollbackMigracion() {
     });
 
     if (resources.resources.length === 0) {
-      console.log('   ⚠️ No se encontraron imágenes en la carpeta laboratory_materials');
+      console.log('⚠️ No hay imágenes en laboratory_materials');
     }
 
     for (const resource of resources.resources) {
       await cloudinary.uploader.destroy(resource.public_id);
-      console.log(`   ✅ Imagen eliminada de Cloudinary: ${resource.public_id}`);
-      await new Promise(resolve => setTimeout(resolve, 200));
+      console.log(`✅ Eliminada: ${resource.public_id}`);
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     console.log('🎉 Rollback completado!');
+
+    // Eliminar archivo de progreso
+    await fs.unlink(PROGRESS_FILE).catch(() => {});
     
   } catch (error) {
-    console.error('💥 Error durante rollback:', error.message);
+    console.error('💥 Error en rollback:', error.message);
   } finally {
     if (connection) {
       await connection.end();
-      console.log('🔌 Conexión a la base de datos cerrada');
+      console.log('🔌 Conexión cerrada');
     }
   }
 }
 
-// Ejecutar script según argumentos de línea de comandos
+// Ejecutar script según argumentos
 const comando = process.argv[2];
 
 switch (comando) {
@@ -284,7 +323,7 @@ switch (comando) {
     break;
   default:
     console.log('📖 USO:');
-    console.log('  node scripts/migrateImagesFromGitHub.js migrar   - Migrar imágenes a Cloudinary');
+    console.log('  node scripts/migrateImagesFromGitHub.js migrar   - Migrar imágenes');
     console.log('  node scripts/migrateImagesFromGitHub.js rollback - Deshacer migración');
     break;
 }
