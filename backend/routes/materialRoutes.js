@@ -1,16 +1,5 @@
-/**
- * ========================================
- * LabSync - Rutas de Material
- *
- * Versión actualizada con control de permisos de stock
- * Incluye rutas separadas por rol
- * y soporte para tipos (liquido, solido, equipo, laboratorio)
- * con soporte de query param en get/:id
- *
- * Autor: Sistema LabSync
- * Fecha: 2025
- * ========================================
- */
+//backend/routes/materialRoutes.js
+
 const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
