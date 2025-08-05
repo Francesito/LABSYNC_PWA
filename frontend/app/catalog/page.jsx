@@ -1,3 +1,5 @@
+
+//frontend/app/catalog/page.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
