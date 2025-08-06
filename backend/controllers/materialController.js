@@ -90,7 +90,13 @@ const getLiquidos = async (req, res) => {
         imagen AS imagen_url
       FROM MaterialLiquido
     `);
-    res.json(rows);
+    const materialsWithValidImages = await Promise.all(rows.map(async (material) => {
+      const imagen_url = material.imagen_url
+        ? await generateCloudinaryURLWithFallback(material.nombre, 'liquido')
+        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+      return { ...material, imagen_url };
+    }));
+    res.json(materialsWithValidImages);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
     res.status(500).json({ error: 'Error al obtener materiales líquidos: ' + error.message });
@@ -826,27 +832,49 @@ const getMaterials = async (req, res) => {
              imagen AS imagen_url
       FROM MaterialLiquido
     `);
-
     const [solidos] = await pool.query(`
       SELECT id, nombre, 'solido' AS tipo, cantidad_disponible_g, 
              riesgos_fisicos, riesgos_salud, riesgos_ambientales,
              imagen AS imagen_url
       FROM MaterialSolido
     `);
-
     const [laboratorio] = await pool.query(`
       SELECT id, nombre, 'laboratorio' AS tipo, cantidad_disponible, 
              imagen AS imagen_url
       FROM MaterialLaboratorio
     `);
-
     const [equipos] = await pool.query(`
       SELECT id, nombre, 'equipo' AS tipo, cantidad_disponible_u, 
              imagen AS imagen_url
       FROM MaterialEquipo
     `);
 
-    const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
+    const liquidosConImagen = await Promise.all(liquidos.map(async (material) => {
+      const imagen_url = material.imagen_url
+        ? await generateCloudinaryURLWithFallback(material.nombre, 'liquido')
+        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+      return { ...material, imagen_url };
+    }));
+    const solidosConImagen = await Promise.all(solidos.map(async (material) => {
+      const imagen_url = material.imagen_url
+        ? await generateCloudinaryURLWithFallback(material.nombre, 'solido')
+        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+      return { ...material, imagen_url };
+    }));
+    const laboratorioConImagen = await Promise.all(laboratorio.map(async (material) => {
+      const imagen_url = material.imagen_url
+        ? await generateCloudinaryURLWithFallback(material.nombre, 'laboratorio')
+        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+      return { ...material, imagen_url };
+    }));
+    const equiposConImagen = await Promise.all(equipos.map(async (material) => {
+      const imagen_url = material.imagen_url
+        ? await generateCloudinaryURLWithFallback(material.nombre, 'equipo')
+        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+      return { ...material, imagen_url };
+    }));
+
+    const materials = [...liquidosConImagen, ...solidosConImagen, ...laboratorioConImagen, ...equiposConImagen];
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
@@ -1944,15 +1972,16 @@ async function verificarImagenExiste(publicId) {
 }
 
 const generateCloudinaryURLWithFallback = async (nombre, tipo) => {
-  const folder = getFolderByType(tipo);
+  const folder = tipo === 'laboratorio' ? 'materialLaboratorio' :
+                tipo === 'liquido' ? 'materialLiquido' :
+                tipo === 'solido' ? 'materialSolido' :
+                'materialEquipo';
   const nombreLimpio = nombre.toLowerCase().trim();
   
   try {
-    // Intentar verificar si la imagen existe
-    await cloudinary.api.resource(`${folder}/${nombreLimpio}`);
+    await cloudinary.api.resource(`materiales-laboratorio/${folder}/${nombreLimpio}`);
     
-    // Si existe, generar URL normal
-    return cloudinary.url(`${folder}/${nombreLimpio}`, {
+    return cloudinary.url(`materiales-laboratorio/${folder}/${nombreLimpio}`, {
       transformation: [
         { width: 800, height: 600, crop: 'limit' },
         { quality: 'auto' }
@@ -1961,9 +1990,8 @@ const generateCloudinaryURLWithFallback = async (nombre, tipo) => {
       format: 'auto'
     });
   } catch (error) {
-    // Si no existe, generar URL de placeholder
-    console.log(`[INFO] Imagen no encontrada para ${nombre}, usando placeholder`);
-    return cloudinary.url('placeholder/material_placeholder', {
+    console.log(`[INFO] Imagen no encontrada para ${nombre} en ${folder}, usando placeholder`);
+    return cloudinary.url('materiales-laboratorio/placeholder/material_placeholder', {
       transformation: [
         { width: 800, height: 600, crop: 'limit' },
         { quality: 'auto' }
@@ -1971,6 +1999,27 @@ const generateCloudinaryURLWithFallback = async (nombre, tipo) => {
       secure: true,
       format: 'auto'
     });
+  }
+};
+
+const verifyImage = async (req, res) => {
+  logRequest('verifyImage');
+  const { public_id } = req.query;
+
+  if (!public_id) {
+    return res.status(400).json({ error: 'public_id es requerido' });
+  }
+
+  try {
+    await cloudinary.api.resource(public_id);
+    res.json({ exists: true });
+  } catch (error) {
+    if (error.error && error.error.http_code === 404) {
+      res.json({ exists: false });
+    } else {
+      console.error('[Error] verifyImage:', error);
+      res.status(500).json({ error: 'Error al verificar imagen: ' + error.message });
+    }
   }
 };
 
@@ -2043,5 +2092,6 @@ module.exports = {
   resetearTodoElStock,
 
   generateCloudinaryURL,
-  generateCloudinaryURLWithFallback
+  generateCloudinaryURLWithFallback,
+  verifyImage
 };
