@@ -83,56 +83,57 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
 const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
-    
-    // Agregar URLs de Cloudinary a cada material
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'liquido')
-    }));
-    
-    res.json(materialesConImagenes);
+    const [rows] = await pool.query(`
+      SELECT 
+        id, nombre, cantidad_disponible_ml, 
+        riesgos_fisicos, riesgos_salud, riesgos_ambientales,
+        imagen AS imagen_url
+      FROM MaterialLiquido
+    `);
+    res.json(rows);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
     res.status(500).json({ error: 'Error al obtener materiales líquidos: ' + error.message });
   }
 };
 
+
 /** Obtener sólidos */
 const getSolidos = async (req, res) => {
   logRequest('getSolidos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
-    
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'solido')
-    }));
-    
-    res.json(materialesConImagenes);
+    const [rows] = await pool.query(`
+      SELECT 
+        id, nombre, cantidad_disponible_g, 
+        riesgos_fisicos, riesgos_salud, riesgos_ambientales,
+        imagen AS imagen_url
+      FROM MaterialSolido
+    `);
+    res.json(rows);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
     res.status(500).json({ error: 'Error al obtener materiales sólidos: ' + error.message });
   }
 };
 
+
 /** Obtener equipos */
 const getEquipos = async (req, res) => {
   logRequest('getEquipos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u FROM MaterialEquipo');
-    
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'equipo')
-    }));
-    
-    res.json(materialesConImagenes);
+    const [rows] = await pool.query(`
+      SELECT 
+        id, nombre, cantidad_disponible_u,
+        imagen AS imagen_url
+      FROM MaterialEquipo
+    `);
+    res.json(rows);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
     res.status(500).json({ error: 'Error al obtener equipos: ' + error.message });
   }
 };
+
 
 // ✅ NUEVA FUNCIÓN: Obtener docentes disponibles para solicitudes
 const obtenerDocentesParaSolicitud = async (req, res) => {
@@ -155,19 +156,19 @@ const obtenerDocentesParaSolicitud = async (req, res) => {
 const getLaboratorio = async (req, res) => {
   logRequest('getLaboratorio');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible FROM MaterialLaboratorio');
-    
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'laboratorio')
-    }));
-    
-    res.json(materialesConImagenes);
+    const [rows] = await pool.query(`
+      SELECT 
+        id, nombre, cantidad_disponible,
+        imagen AS imagen_url
+      FROM MaterialLaboratorio
+    `);
+    res.json(rows);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
     res.status(500).json({ error: 'Error al obtener materiales de laboratorio: ' + error.message });
   }
 };
+
 
 /**
  * ========================================
@@ -819,24 +820,40 @@ const getMaterialesStockBajo = async (req, res) => {
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
-    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
-    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
-    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible FROM MaterialLaboratorio');
-    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u FROM MaterialEquipo');
+    const [liquidos] = await pool.query(`
+      SELECT id, nombre, 'liquido' AS tipo, cantidad_disponible_ml, 
+             riesgos_fisicos, riesgos_salud, riesgos_ambientales,
+             imagen AS imagen_url
+      FROM MaterialLiquido
+    `);
 
-    // Agregar URLs de Cloudinary a todos los materiales
-    const liquidosConImagenes = liquidos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'liquido') }));
-    const solidosConImagenes = solidos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'solido') }));
-    const laboratorioConImagenes = laboratorio.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'laboratorio') }));
-    const equiposConImagenes = equipos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'equipo') }));
+    const [solidos] = await pool.query(`
+      SELECT id, nombre, 'solido' AS tipo, cantidad_disponible_g, 
+             riesgos_fisicos, riesgos_salud, riesgos_ambientales,
+             imagen AS imagen_url
+      FROM MaterialSolido
+    `);
 
-    const materials = [...liquidosConImagenes, ...solidosConImagenes, ...laboratorioConImagenes, ...equiposConImagenes];
+    const [laboratorio] = await pool.query(`
+      SELECT id, nombre, 'laboratorio' AS tipo, cantidad_disponible, 
+             imagen AS imagen_url
+      FROM MaterialLaboratorio
+    `);
+
+    const [equipos] = await pool.query(`
+      SELECT id, nombre, 'equipo' AS tipo, cantidad_disponible_u, 
+             imagen AS imagen_url
+      FROM MaterialEquipo
+    `);
+
+    const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
     res.status(500).json({ error: 'Error al obtener materiales: ' + error.message });
   }
 };
+
 
 /** Obtener un material específico por ID y TIPO */
 const getMaterialById = async (req, res) => {
@@ -846,19 +863,17 @@ const getMaterialById = async (req, res) => {
   logRequest(`getMaterialById - ID=${id}, tipo=${tipo}`);
 
   try {
-    let meta = detectTableAndField(tipo);
+    const meta = detectTableAndField(tipo);
     if (!meta) {
       return res.status(400).json({ error: 'Tipo de material inválido' });
     }
 
-    const [result] = await pool.query(`SELECT * FROM ${meta.table} WHERE id = ?`, [id]);
+    const [result] = await pool.query(`SELECT *, imagen AS imagen_url FROM ${meta.table} WHERE id = ?`, [id]);
     if (!result.length) {
       return res.status(404).json({ error: 'Material no encontrado' });
     }
 
     const material = result[0];
-    // Agregar URL de Cloudinary
-    material.imagen_url = generateCloudinaryURL(material.nombre, tipo);
     material.tipo = tipo;
 
     res.json(material);
@@ -867,6 +882,7 @@ const getMaterialById = async (req, res) => {
     res.status(500).json({ error: 'Error al obtener material: ' + error.message });
   }
 };
+
 
 /** Listar solicitudes entregadas CON adeudos pendientes */
 const getDeliveredSolicitudes = async (req, res) => {
