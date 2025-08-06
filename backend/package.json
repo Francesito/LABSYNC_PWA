@@ -2,9 +2,7 @@
   "name": "labsync-backend",
   "version": "1.0.0",
   "scripts": {
-    "start": "node server.js",
-    "migrate-images": "node scripts/migrateImagesFromGitHub.js migrar",
-    "rollback-images": "node scripts/migrateImagesFromGitHub.js rollback"
+    "start": "node server.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
