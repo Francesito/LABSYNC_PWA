@@ -1,4 +1,4 @@
-// middleware/uploadMiddleware.js
+//middleware/uploadMiddleware.js
 const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
@@ -29,7 +29,7 @@ const storage = new CloudinaryStorage({
       .replace(/^_|_$/g, '');
     
     return {
-      folder: getFolderByType(tipo),
+      folder: getFolderByType(tipo), // Usa la carpeta correcta según el tipo
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
       public_id: nombreLimpio, // Usar el nombre del material como public_id
       transformation: [
