@@ -90,12 +90,13 @@ const getLiquidos = async (req, res) => {
         imagen AS imagen_url
       FROM MaterialLiquido
     `);
-    const materialsWithValidImages = await Promise.all(rows.map(async (material) => {
-      const imagen_url = material.imagen_url
-        ? await generateCloudinaryURLWithFallback(material.nombre, 'liquido')
-        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
-      return { ...material, imagen_url };
+    
+    // Usar la URL que ya está en la base de datos o un placeholder
+    const materialsWithValidImages = rows.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
     }));
+    
     res.json(materialsWithValidImages);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
@@ -115,7 +116,14 @@ const getSolidos = async (req, res) => {
         imagen AS imagen_url
       FROM MaterialSolido
     `);
-    res.json(rows);
+    
+    // Usar la URL que ya está en la base de datos o un placeholder
+    const materialsWithValidImages = rows.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+    }));
+    
+    res.json(materialsWithValidImages);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
     res.status(500).json({ error: 'Error al obtener materiales sólidos: ' + error.message });
@@ -133,13 +141,19 @@ const getEquipos = async (req, res) => {
         imagen AS imagen_url
       FROM MaterialEquipo
     `);
-    res.json(rows);
+    
+    // Usar la URL que ya está en la base de datos o un placeholder
+    const materialsWithValidImages = rows.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+    }));
+    
+    res.json(materialsWithValidImages);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
     res.status(500).json({ error: 'Error al obtener equipos: ' + error.message });
   }
 };
-
 
 // ✅ NUEVA FUNCIÓN: Obtener docentes disponibles para solicitudes
 const obtenerDocentesParaSolicitud = async (req, res) => {
@@ -168,7 +182,14 @@ const getLaboratorio = async (req, res) => {
         imagen AS imagen_url
       FROM MaterialLaboratorio
     `);
-    res.json(rows);
+    
+    // Usar la URL que ya está en la base de datos o un placeholder
+    const materialsWithValidImages = rows.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+    }));
+    
+    res.json(materialsWithValidImages);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
     res.status(500).json({ error: 'Error al obtener materiales de laboratorio: ' + error.message });
@@ -822,7 +843,6 @@ const getMaterialesStockBajo = async (req, res) => {
  * RUTAS GENERALES
  * ========================================
  */
-
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
@@ -849,29 +869,25 @@ const getMaterials = async (req, res) => {
       FROM MaterialEquipo
     `);
 
-    const liquidosConImagen = await Promise.all(liquidos.map(async (material) => {
-      const imagen_url = material.imagen_url
-        ? await generateCloudinaryURLWithFallback(material.nombre, 'liquido')
-        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
-      return { ...material, imagen_url };
+    // Usar URLs directamente de la base de datos
+    const liquidosConImagen = liquidos.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
     }));
-    const solidosConImagen = await Promise.all(solidos.map(async (material) => {
-      const imagen_url = material.imagen_url
-        ? await generateCloudinaryURLWithFallback(material.nombre, 'solido')
-        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
-      return { ...material, imagen_url };
+    
+    const solidosConImagen = solidos.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
     }));
-    const laboratorioConImagen = await Promise.all(laboratorio.map(async (material) => {
-      const imagen_url = material.imagen_url
-        ? await generateCloudinaryURLWithFallback(material.nombre, 'laboratorio')
-        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
-      return { ...material, imagen_url };
+    
+    const laboratorioConImagen = laboratorio.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
     }));
-    const equiposConImagen = await Promise.all(equipos.map(async (material) => {
-      const imagen_url = material.imagen_url
-        ? await generateCloudinaryURLWithFallback(material.nombre, 'equipo')
-        : 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
-      return { ...material, imagen_url };
+    
+    const equiposConImagen = equipos.map(material => ({
+      ...material,
+      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
     }));
 
     const materials = [...liquidosConImagen, ...solidosConImagen, ...laboratorioConImagen, ...equiposConImagen];
@@ -903,6 +919,9 @@ const getMaterialById = async (req, res) => {
 
     const material = result[0];
     material.tipo = tipo;
+    
+    // Usar la URL de la base de datos directamente
+    material.imagen_url = material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
 
     res.json(material);
   } catch (error) {
