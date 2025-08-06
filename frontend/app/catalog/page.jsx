@@ -1838,15 +1838,13 @@ const getImagePath = async (material) => {
                   </div>
                 )}
                 
-                <img
-                  src={getImagePath(selectedMaterial)}
-                  alt={formatName(selectedMaterial.nombre)}
-                  className="detail-image"
-                  loading="lazy"
-                  onError={(e) => {
-                    e.target.src = '/placeholder.jpg';
-                  }}
-                />
+            + <img
+  src={selectedMaterial.imagen_url}
+ alt={formatName(selectedMaterial.nombre)}
+ className="detail-image"
+ loading="lazy"
+  onError={(e) => { e.target.src = '/placeholder.jpg'; }}
+ />
                 <h5 className="mt-4">Información</h5>
                 <p className="text-muted">
                   Tipo: {selectedMaterial.tipo}
