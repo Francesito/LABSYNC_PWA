@@ -1,5 +1,4 @@
-
-//frontend/app/catalog/page.jsx
+// frontend/app/catalog/page.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -38,6 +37,7 @@ export default function Catalog() {
   const [permissionsError, setPermissionsError] = useState('');
 
   const LOW_STOCK_THRESHOLD = 50;
+  const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tu-cloud-name'; // Reemplaza con tu cloud name
 
   // Cargar permisos del usuario
   const loadUserPermissions = async () => {
@@ -235,7 +235,7 @@ export default function Catalog() {
         all = all.filter(m => m.tipo === 'liquido' || m.tipo === 'solido');
       }
 
-      console.log('Materiales filtrados:', all.map(m => ({ id: m.id, nombre: m.nombre, tipo: m.tipo }))); // Depuración
+      console.log('Materiales filtrados:', all.map(m => ({ id: m.id, nombre: m.nombre, tipo: m.tipo, imagen: m.imagen }))); // Depuración
       setAllMaterials(all);
 
       if (canModifyStock()) {
@@ -281,6 +281,11 @@ export default function Catalog() {
   };
 
   const getImagePath = (material) => {
+    // Si el material tiene el campo imagen, usarlo
+    if (material.imagen) {
+      return material.imagen;
+    }
+    // Generar URL de Cloudinary dinámicamente si imagen es NULL
     const typeMap = {
       'solido': 'materialSolido',
       'liquido': 'materialLiquido',
@@ -289,7 +294,7 @@ export default function Catalog() {
     };
     const folder = typeMap[material.tipo] || 'materialSolido';
     const normalizedName = normalizeImageName(material.nombre);
-    return `/${folder}/${normalizedName}.jpg`;
+    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/w_300,h_300,c_fill/v1/${folder}/${normalizedName}.jpg`;
   };
 
   const parseRiesgos = (riesgosString) => {
@@ -1597,6 +1602,7 @@ export default function Catalog() {
                             src={getImagePath(material)}
                             alt={formatName(material.nombre)}
                             className="material-image"
+                            loading="lazy"
                             onError={(e) => {
                               e.target.src = '/placeholder.jpg';
                             }}
@@ -1835,6 +1841,7 @@ export default function Catalog() {
                   src={getImagePath(selectedMaterial)}
                   alt={formatName(selectedMaterial.nombre)}
                   className="detail-image"
+                  loading="lazy"
                   onError={(e) => {
                     e.target.src = '/placeholder.jpg';
                   }}
