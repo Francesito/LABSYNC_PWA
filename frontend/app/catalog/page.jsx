@@ -599,14 +599,13 @@ const getImagePath = async (material) => {
       }
       formData.append('imagen', imagenFile);
 
-      await makeSecureApiCall(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/crear`,
-        {
-          method: 'POST',
-          data: formData,
-          headers: { 'Content-Type': 'multipart/form-data' }
-        }
-      );
+await makeSecureApiCall(
+  `${process.env.NEXT_PUBLIC_API_URL}/api/materials/crear`,
+  {
+    method: 'POST',
+    data: formData
+  }
+);
 
       setShowAddModal(false);
       // Reset formulario
@@ -1571,14 +1570,16 @@ const getImagePath = async (material) => {
         <div className="d-flex gap-4">
           <div className="flex-grow-1">
             <div className="main-card">
-              <div className="header-section">
-  <button
-    onClick={() => setShowAddModal(true)}
-    className="mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
+            <div className="header-section">
+  {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
+    <button
+   onClick={() => setShowAddModal(true)}
+      className="mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
   >
-    Agregar Material/Reactivo
-  </button>
-  <h1>Catálogo de Reactivos</h1>
+     Agregar Material/Reactivo
+   </button>
+ )}
+   <h1>Catálogo de Reactivos</h1>
 </div>
 
 
@@ -1693,10 +1694,10 @@ const getImagePath = async (material) => {
                           onClick={(e) => handleDetailClick(material, e)}
                         >
     <img
- src={material.imagen_url}
-  alt={material.nombre}
- className="material-image"
-  onError={(e) => (e.target.src = 'https://res.cloudinary.com/dgte7l2cg/.../placeholder.jpg')}
+    src={material.imagen_url}
+    alt={material.nombre}
+    className="material-image"
+    onError={e => (e.target.src = 'https://res.cloudinary.com/.../placeholder.jpg')}
 />
                           <div className="material-card-content">
                             <div className="material-card-name">{formatName(material.nombre)}</div>
@@ -2073,13 +2074,14 @@ const getImagePath = async (material) => {
                   </div>
                 )}
                 
-            + <img
+            
+         <img
   src={selectedMaterial.imagen_url}
- alt={formatName(selectedMaterial.nombre)}
- className="detail-image"
- loading="lazy"
-  onError={(e) => { e.target.src = '/placeholder.jpg'; }}
- />
+  alt={formatName(selectedMaterial.nombre)}
+  className="detail-image"
+  loading="lazy"
+  onError={e => (e.target.src = '/placeholder.jpg')}
+/>
                 <h5 className="mt-4">Información</h5>
                 <p className="text-muted">
                   Tipo: {selectedMaterial.tipo}
