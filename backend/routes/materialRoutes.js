@@ -175,6 +175,23 @@ router.post(
   materialController.crearMaterial
 );
 
+router.post(
+  '/crear-con-imagen',
+  verificarToken,
+  verificarAccesoStock,
+  (req, res, next) => {
+    // Middleware personalizado para validar que nombre y tipo estén presentes antes del upload
+    const { nombre, tipo } = req.body;
+    if (!nombre || !tipo) {
+      return res.status(400).json({ error: 'Nombre y tipo son requeridos antes de subir imagen' });
+    }
+    next();
+  },
+  upload.single('imagen'),
+  handleUploadError,
+  materialController.crearMaterial
+);
+
 // Actualizar material existente (requiere permisos de stock)
 router.put(
   '/:id/actualizar',
