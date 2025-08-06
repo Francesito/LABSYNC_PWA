@@ -6,11 +6,11 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 // Función para determinar la carpeta según el tipo de material  
 const getFolderByType = (tipo) => {
   switch (tipo) {
-    case 'liquido': return 'materialLiquido';      // Cambiado
-    case 'solido': return 'materialSolido';        // Cambiado  
-    case 'equipo': return 'materialEquipo';        // Cambiado
-    case 'laboratorio': return 'materialLaboratorio'; // Cambiado
-    default: return 'materialLaboratorio'; // Fallback cambiado
+    case 'liquido': return 'materiales-laboratorio/liquido';
+    case 'solido': return 'materiales-laboratorio/materialSolido';
+    case 'equipo': return 'materiales-laboratorio/equipo';
+    case 'laboratorio': return 'materiales-laboratorio/laboratorio';
+    default: return 'materiales-laboratorio';
   }
 };
 
