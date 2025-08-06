@@ -1605,7 +1605,7 @@ const getImagePath = async (material) => {
                          <img
   src={getImagePath(material)}
   alt={material.nombre}
-  className={styles.materialImage}
+  className="material-image"
   onError={(e) => (e.target.src = 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg')}
 />
                           <div className="material-card-content">
