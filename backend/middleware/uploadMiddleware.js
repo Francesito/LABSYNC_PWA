@@ -3,22 +3,40 @@ const multer = require('multer');
 const cloudinary = require('../config/cloudinary');
 const { CloudinaryStorage } = require('multer-storage-cloudinary');
 
+// Función para determinar la carpeta según el tipo de material
+const getFolderByType = (tipo) => {
+  switch (tipo) {
+    case 'liquido': return 'materialLiquido';
+    case 'solido': return 'materialSolido';
+    case 'equipo': return 'materialEquipo';
+    case 'laboratorio': return 'materialLaboratorio';
+    default: return 'materiales-laboratorio'; // Fallback
+  }
+};
+
 // Configuración de almacenamiento en Cloudinary
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'materiales-laboratorio', // Carpeta en Cloudinary
-    allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-    public_id: (req, file) => {
-      // Generar nombre único basado en timestamp y nombre original
-      const timestamp = Date.now();
-      const originalName = file.originalname.replace(/\.[^/.]+$/, ""); // Sin extensión
-      return `material_${timestamp}_${originalName}`;
-    },
-    transformation: [
-      { width: 800, height: 600, crop: 'limit' }, // Redimensionar si es muy grande
-      { quality: 'auto' } // Optimización automática
-    ]
+  params: async (req, file) => {
+    const tipo = req.body.tipo || req.query.tipo;
+    const nombre = req.body.nombre || `material_${Date.now()}`;
+    
+    // Limpiar nombre para usar como public_id (sin espacios ni caracteres especiales)
+    const nombreLimpio = nombre
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+      .replace(/^_|_$/g, '');
+    
+    return {
+      folder: getFolderByType(tipo),
+      allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
+      public_id: nombreLimpio, // Usar el nombre del material como public_id
+      transformation: [
+        { width: 800, height: 600, crop: 'limit' },
+        { quality: 'auto' }
+      ]
+    };
   },
 });
 
@@ -29,7 +47,6 @@ const upload = multer({
     fileSize: 5 * 1024 * 1024, // 5MB máximo
   },
   fileFilter: (req, file, cb) => {
-    // Validar tipo de archivo
     if (file.mimetype.startsWith('image/')) {
       cb(null, true);
     } else {
@@ -53,5 +70,6 @@ const handleUploadError = (err, req, res, next) => {
 
 module.exports = {
   upload,
-  handleUploadError
+  handleUploadError,
+  getFolderByType
 };
