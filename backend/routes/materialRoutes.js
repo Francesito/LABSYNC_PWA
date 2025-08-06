@@ -48,6 +48,7 @@ router.get('/tipo/solidos', verificarToken, materialController.getSolidos);
 router.get('/tipo/equipos', verificarToken, materialController.getEquipos);
 router.get('/tipo/laboratorio', verificarToken, materialController.getLaboratorio);
 router.get('/categorias', verificarToken, materialController.getCategorias);
+router.get('/verify-image', verificarToken, materialController.verifyImage);
 
 /**
  * ========================
