@@ -27,6 +27,20 @@ export default function Catalog() {
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
   const [docentes, setDocentes] = useState([]);
   const [selectedDocenteId, setSelectedDocenteId] = useState('');
+  const [showAddModal, setShowAddModal] = useState(false);
+const [newMaterial, setNewMaterial] = useState({
+  tipoGeneral: 'Reactivo',  // o 'Material'
+  subTipo: '',              // 'liquido'|'solido' o 'equipo'|'laboratorio'
+  nombre: '',
+  descripcion: '',
+  cantidad_inicial: '',
+  estado: 'disponible',
+  riesgos_fisicos: '',
+  riesgos_salud: '',
+  riesgos_ambientales: '',
+  imagenFile: null
+});
+const [addError, setAddError] = useState('');
 
   const [userPermissions, setUserPermissions] = useState({
     acceso_chat: false,
@@ -549,6 +563,75 @@ const getImagePath = async (material) => {
     }
   };
 
+  // === PARTE 4: Manejo de envío del formulario de "Agregar" ===
+  const handleAddSubmit = async e => {
+    e.preventDefault();
+    setAddError('');
+    const {
+      tipoGeneral,
+      subTipo,
+      nombre,
+      descripcion,
+      cantidad_inicial,
+      estado,
+      riesgos_fisicos,
+      riesgos_salud,
+      riesgos_ambientales,
+      imagenFile
+    } = newMaterial;
+
+    if (!subTipo || !nombre || !cantidad_inicial || !imagenFile) {
+      setAddError('Completa todos los campos obligatorios');
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('tipo', subTipo);
+      formData.append('nombre', nombre);
+      formData.append('descripcion', descripcion);
+      formData.append('cantidad_inicial', cantidad_inicial);
+      formData.append('estado', estado);
+      if (tipoGeneral === 'Reactivo') {
+        formData.append('riesgos_fisicos', riesgos_fisicos);
+        formData.append('riesgos_salud', riesgos_salud);
+        formData.append('riesgos_ambientales', riesgos_ambientales);
+      }
+      formData.append('imagen', imagenFile);
+
+      await makeSecureApiCall(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/crear`,
+        {
+          method: 'POST',
+          data: formData,
+          headers: { 'Content-Type': 'multipart/form-data' }
+        }
+      );
+
+      setShowAddModal(false);
+      // Reset formulario
+      setNewMaterial({
+        tipoGeneral: 'Reactivo',
+        subTipo: '',
+        nombre: '',
+        descripcion: '',
+        cantidad_inicial: '',
+        estado: 'disponible',
+        riesgos_fisicos: '',
+        riesgos_salud: '',
+        riesgos_ambientales: '',
+        imagenFile: null
+      });
+      // Refrescar lista
+      await fetchMaterials();
+    } catch (err) {
+      console.error('Error al crear material:', err);
+      setAddError(err.response?.data?.error || err.message);
+    }
+  };
+  // ================================================
+
+  
   const dismissLowStockAlert = (materialId, tipo) => {
     if (!canModifyStock()) {
       handlePermissionError('low_stock_alerts');
@@ -1489,8 +1572,15 @@ const getImagePath = async (material) => {
           <div className="flex-grow-1">
             <div className="main-card">
               <div className="header-section">
-                <h1>Catálogo de Reactivos</h1>
-              </div>
+  <button
+    onClick={() => setShowAddModal(true)}
+    className="mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
+  >
+    Agregar Material/Reactivo
+  </button>
+  <h1>Catálogo de Reactivos</h1>
+</div>
+
 
               {canModifyStock() && lowStockMaterials.length > 0 && (
                 <div className="low-stock-alerts">
@@ -1695,6 +1785,151 @@ const getImagePath = async (material) => {
           )}
         </div>
 
+        {/* === PARTE 3: Modal Agregar Material/Reactivo === */}
+{showAddModal && (
+  <div className="modal-overlay">
+    <div className="modal-content-custom">
+      <div className="modal-header-custom">
+        <h5 className="modal-title">Agregar Material / Reactivo</h5>
+        <button
+          className="btn-close btn-close-white"
+          onClick={() => setShowAddModal(false)}
+        />
+      </div>
+      <form className="modal-body p-4" onSubmit={handleAddSubmit}>
+        {addError && <div className="alert-custom">{addError}</div>}
+
+        {/* Tipo general */}
+        <label className="form-label">¿Es Reactivo o Material?</label>
+        <select
+          className="form-control mb-3"
+          value={newMaterial.tipoGeneral}
+          onChange={e => setNewMaterial({ ...newMaterial, tipoGeneral: e.target.value, subTipo: '' })}
+        >
+          <option>Reactivo</option>
+          <option>Material</option>
+        </select>
+
+        {/* Subtipo */}
+        <label className="form-label">Categoría específica</label>
+        <select
+          className="form-control mb-3"
+          value={newMaterial.subTipo}
+          onChange={e => setNewMaterial({ ...newMaterial, subTipo: e.target.value })}
+          required
+        >
+          <option value="">-- Selecciona --</option>
+          {newMaterial.tipoGeneral === 'Reactivo' ? (
+            <>
+              <option value="liquido">Líquido</option>
+              <option value="solido">Sólido</option>
+            </>
+          ) : (
+            <>
+              <option value="equipo">Equipo</option>
+              <option value="laboratorio">Laboratorio</option>
+            </>
+          )}
+        </select>
+
+        {/* Nombre */}
+        <label className="form-label">Nombre *</label>
+        <input
+          type="text"
+          className="form-control mb-3"
+          value={newMaterial.nombre}
+          onChange={e => setNewMaterial({ ...newMaterial, nombre: e.target.value })}
+          required
+        />
+
+        {/* Descripción */}
+        <label className="form-label">Descripción</label>
+        <textarea
+          className="form-control mb-3"
+          value={newMaterial.descripcion}
+          onChange={e => setNewMaterial({ ...newMaterial, descripcion: e.target.value })}
+        />
+
+        {/* Cantidad inicial */}
+        <label className="form-label">
+          Cantidad inicial {newMaterial.subTipo === 'liquido' ? '(ml)' : newMaterial.subTipo === 'solido' ? '(g)' : '(unidades)'} *
+        </label>
+        <input
+          type="number"
+          className="form-control mb-3"
+          min="0"
+          value={newMaterial.cantidad_inicial}
+          onChange={e => setNewMaterial({ ...newMaterial, cantidad_inicial: e.target.value })}
+          required
+        />
+
+        {/* Estado */}
+        <label className="form-label">Estado</label>
+        <select
+          className="form-control mb-3"
+          value={newMaterial.estado}
+          onChange={e => setNewMaterial({ ...newMaterial, estado: e.target.value })}
+        >
+          <option value="disponible">Disponible</option>
+          {newMaterial.tipoGeneral === 'Reactivo' && (
+            <>
+              <option value="no disponible">No disponible</option>
+            </>
+          )}
+        </select>
+
+        {/* Riesgos (solo Reactivo) */}
+        {newMaterial.tipoGeneral === 'Reactivo' && (
+          <>
+            <label className="form-label">Riesgos Físicos</label>
+            <textarea
+              className="form-control mb-3"
+              placeholder="Separar con ;"
+              value={newMaterial.riesgos_fisicos}
+              onChange={e => setNewMaterial({ ...newMaterial, riesgos_fisicos: e.target.value })}
+            />
+            <label className="form-label">Riesgos Salud</label>
+            <textarea
+              className="form-control mb-3"
+              placeholder="Separar con ;"
+              value={newMaterial.riesgos_salud}
+              onChange={e => setNewMaterial({ ...newMaterial, riesgos_salud: e.target.value })}
+            />
+            <label className="form-label">Riesgos Ambientales</label>
+            <textarea
+              className="form-control mb-3"
+              placeholder="Separar con ;"
+              value={newMaterial.riesgos_ambientales}
+              onChange={e => setNewMaterial({ ...newMaterial, riesgos_ambientales: e.target.value })}
+            />
+          </>
+        )}
+
+        {/* Imagen */}
+        <label className="form-label">Imagen (.jpg)</label>
+        <input
+          type="file"
+          accept=".jpg"
+          className="form-control mb-4"
+          onChange={e => setNewMaterial({ ...newMaterial, imagenFile: e.target.files[0] })}
+          required
+        />
+
+        <div className="modal-footer-custom">
+          <button type="button" className="btn-secondary-custom" onClick={() => setShowAddModal(false)}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn-create-vale">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
+{/* =========================================== */}
+
+        
         {showRequestModal && (
           <div className="modal-overlay">
             <div className="modal-content-custom">
