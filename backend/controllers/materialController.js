@@ -91,7 +91,7 @@ const getLiquidos = async (req, res) => {
       FROM MaterialLiquido
     `);
     
-    // Usar la URL que ya está en la base de datos o un placeholder
+    // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
       imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
@@ -117,7 +117,7 @@ const getSolidos = async (req, res) => {
       FROM MaterialSolido
     `);
     
-    // Usar la URL que ya está en la base de datos o un placeholder
+    // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
       imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
@@ -142,7 +142,7 @@ const getEquipos = async (req, res) => {
       FROM MaterialEquipo
     `);
     
-    // Usar la URL que ya está en la base de datos o un placeholder
+    // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
       imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
@@ -183,7 +183,7 @@ const getLaboratorio = async (req, res) => {
       FROM MaterialLaboratorio
     `);
     
-    // Usar la URL que ya está en la base de datos o un placeholder
+    // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
       imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
@@ -869,25 +869,27 @@ const getMaterials = async (req, res) => {
       FROM MaterialEquipo
     `);
 
+    const placeholderUrl = 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+
     // Usar URLs directamente de la base de datos
     const liquidosConImagen = liquidos.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+      imagen_url: material.imagen_url || placeholderUrl
     }));
     
     const solidosConImagen = solidos.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+      imagen_url: material.imagen_url || placeholderUrl
     }));
     
     const laboratorioConImagen = laboratorio.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+      imagen_url: material.imagen_url || placeholderUrl
     }));
     
     const equiposConImagen = equipos.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+      imagen_url: material.imagen_url || placeholderUrl
     }));
 
     const materials = [...liquidosConImagen, ...solidosConImagen, ...laboratorioConImagen, ...equiposConImagen];
@@ -1048,7 +1050,6 @@ const crearMaterial = async (req, res) => {
       error: 'Faltan datos obligatorios: nombre, tipo, cantidad_inicial' 
     });
   }
-
   if (parseInt(cantidad_inicial) < 0) {
     return res.status(400).json({ 
       error: 'La cantidad inicial no puede ser negativa' 
@@ -1061,78 +1062,48 @@ const crearMaterial = async (req, res) => {
       return res.status(400).json({ error: 'Tipo de material inválido' });
     }
 
-    // Verificar si ya existe un material con el mismo nombre y tipo
+    // Verificar duplicado
     const [existingMaterial] = await pool.query(
       `SELECT id FROM ${meta.table} WHERE nombre = ?`, 
       [nombre]
     );
-    
     if (existingMaterial.length > 0) {
       return res.status(400).json({ error: 'Ya existe un material con ese nombre' });
     }
 
-    // Procesar imagen
-    let imagenUrl = null;
-    if (req.file && req.file.path) {
-      // Si se subió imagen, usar la URL de Cloudinary
-      imagenUrl = req.file.path;
-      console.log(`[INFO] Imagen subida a Cloudinary: ${imagenUrl}`);
-      console.log(`[INFO] Carpeta utilizada: ${getFolderByType(tipo)}`);
-    } else {
-      // Si no se subió imagen, generar URL potencial
-      imagenUrl = generateCloudinaryURL(nombre, tipo);
-      console.log(`[INFO] URL generada automáticamente: ${imagenUrl}`);
+    // **Procesar imagen: siempre tomamos la URL de Cloudinary**
+    const imagenUrl = req.file?.path || null;
+    if (!imagenUrl) {
+      console.warn('[Warn] No se subió imagen: crearMaterial sin URL de imagen');
     }
 
+    // Construir e insertar
     let query, params;
-    
-    // Construir query según el tipo de material - INCLUIR CAMPO IMAGEN
-    switch (tipo) {
-      case 'liquido':
-      case 'solido':
-        query = `
-          INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado, imagen) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        params = [
-          nombre, 
-          descripcion, 
-          parseInt(cantidad_inicial), 
-          categoria_id, 
-          riesgos_fisicos, 
-          riesgos_salud, 
-          riesgos_ambientales, 
-          estado,
-          imagenUrl
-        ];
-        break;
-
-      case 'equipo':
-      case 'laboratorio':
-        query = `
-          INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, estado, imagen) 
-          VALUES (?, ?, ?, ?, ?, ?)
-        `;
-        params = [
-          nombre, 
-          descripcion, 
-          parseInt(cantidad_inicial), 
-          categoria_id, 
-          estado,
-          imagenUrl
-        ];
-        break;
-
-      default:
-        return res.status(400).json({ error: 'Tipo de material no soportado' });
+    if (tipo === 'liquido' || tipo === 'solido') {
+      query = `
+        INSERT INTO ${meta.table} 
+        (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado, imagen) 
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `;
+      params = [
+        nombre, descripcion, parseInt(cantidad_inicial), categoria_id,
+        riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado,
+        imagenUrl
+      ];
+    } else {
+      query = `
+        INSERT INTO ${meta.table} 
+        (nombre, descripcion, ${meta.field}, categoria_id, estado, imagen) 
+        VALUES (?, ?, ?, ?, ?, ?)
+      `;
+      params = [
+        nombre, descripcion, parseInt(cantidad_inicial), categoria_id,
+        estado, imagenUrl
+      ];
     }
-
-    // Ejecutar inserción
     const [result] = await pool.query(query, params);
 
-    // Registrar movimiento de inventario (entrada inicial)
+    // Registrar movimiento inicial
     try {
       await pool.query(
         `INSERT INTO MovimientosInventario 
@@ -1148,10 +1119,9 @@ const crearMaterial = async (req, res) => {
         ]
       );
     } catch (movError) {
-      console.warn('[Warn] No se pudo registrar movimiento de inventario:', movError.message);
+      console.warn('[Warn] No se pudo registrar movimiento:', movError.message);
     }
 
-    // Respuesta exitosa
     res.status(201).json({ 
       message: 'Material creado exitosamente',
       material: {
@@ -1169,22 +1139,16 @@ const crearMaterial = async (req, res) => {
 
   } catch (error) {
     console.error('[Error] crearMaterial:', error);
-    
-    // Si hubo error y se subió imagen, intentar eliminarla de Cloudinary
-    if (req.file && req.file.public_id) {
+    // Si falló y se subió imagen, eliminarla de Cloudinary
+    if (req.file?.public_id) {
       try {
         await cloudinary.uploader.destroy(req.file.public_id);
-        console.log(`[INFO] Imagen eliminada de Cloudinary por error: ${req.file.public_id}`);
-      } catch (deleteError) {
-        console.error('[Error] No se pudo eliminar imagen de Cloudinary:', deleteError);
-      }
+      } catch (_) {}
     }
-
-    res.status(500).json({ 
-      error: 'Error al crear material: ' + error.message 
-    });
+    res.status(500).json({ error: 'Error al crear material: ' + error.message });
   }
 };
+
 
 // ACTUALIZAR MATERIAL EXISTENTE
 
@@ -1959,68 +1923,6 @@ const getReporteEficienciaEntrega = async (req, res) => {
   }
 };
 
-function generateCloudinaryURL(nombre, tipo) {
-  const folder = getFolderByType(tipo);
-  
-  // Limpiar nombre para que coincida exactamente con la base de datos
-  const nombreLimpio = nombre
-    .toLowerCase()
-    .trim(); // Solo trim, mantener el nombre exacto de la BD
-  
-  return cloudinary.url(`${folder}/${nombreLimpio}`, {
-    transformation: [
-      { width: 800, height: 600, crop: 'limit' },
-      { quality: 'auto' }
-    ],
-    secure: true,
-    format: 'auto' // Agregar formato automático
-  });
-}
-
-async function verificarImagenExiste(publicId) {
-  try {
-    await cloudinary.api.resource(publicId);
-    return true;
-  } catch (error) {
-    if (error.error && error.error.http_code === 404) {
-      return false;
-    }
-    console.warn('[Warn] Error al verificar imagen en Cloudinary:', error.message);
-    return false;
-  }
-}
-
-const generateCloudinaryURLWithFallback = async (nombre, tipo) => {
-  const folder = tipo === 'laboratorio' ? 'materialLaboratorio' :
-                tipo === 'liquido' ? 'materialLiquido' :
-                tipo === 'solido' ? 'materialSolido' :
-                'materialEquipo';
-  const nombreLimpio = nombre.toLowerCase().trim();
-  
-  try {
-    await cloudinary.api.resource(`materiales-laboratorio/${folder}/${nombreLimpio}`);
-    
-    return cloudinary.url(`materiales-laboratorio/${folder}/${nombreLimpio}`, {
-      transformation: [
-        { width: 800, height: 600, crop: 'limit' },
-        { quality: 'auto' }
-      ],
-      secure: true,
-      format: 'auto'
-    });
-  } catch (error) {
-    console.log(`[INFO] Imagen no encontrada para ${nombre} en ${folder}, usando placeholder`);
-    return cloudinary.url('materiales-laboratorio/placeholder/material_placeholder', {
-      transformation: [
-        { width: 800, height: 600, crop: 'limit' },
-        { quality: 'auto' }
-      ],
-      secure: true,
-      format: 'auto'
-    });
-  }
-};
-
 const verifyImage = async (req, res) => {
   logRequest('verifyImage');
   const { public_id } = req.query;
@@ -2110,7 +2012,5 @@ module.exports = {
   validarIntegridadDatos,
   resetearTodoElStock,
 
-  generateCloudinaryURL,
-  generateCloudinaryURLWithFallback,
   verifyImage
 };
