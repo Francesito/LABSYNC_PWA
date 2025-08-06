@@ -640,7 +640,8 @@ await makeSecureApiCall(
       prev.filter(material => !(material.id === materialId && material.tipo === tipo))
     );
   };
-
+  
+  console.log('Permisos cargados:', userPermissions);
   if (permissionsLoading || loading) {
     return (
       <>
