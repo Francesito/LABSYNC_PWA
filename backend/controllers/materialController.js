@@ -3,6 +3,8 @@
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
+const cloudinary = require('../config/cloudinary');
+const { getFolderByType } = require('../middleware/uploadMiddleware');
 
 /**
  * ========================================
@@ -82,7 +84,14 @@ const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
   try {
     const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
-    res.json(rows);
+    
+    // Agregar URLs de Cloudinary a cada material
+    const materialesConImagenes = rows.map(material => ({
+      ...material,
+      imagen_url: generateCloudinaryURL(material.nombre, 'liquido')
+    }));
+    
+    res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
     res.status(500).json({ error: 'Error al obtener materiales líquidos: ' + error.message });
@@ -94,7 +103,13 @@ const getSolidos = async (req, res) => {
   logRequest('getSolidos');
   try {
     const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
-    res.json(rows);
+    
+    const materialesConImagenes = rows.map(material => ({
+      ...material,
+      imagen_url: generateCloudinaryURL(material.nombre, 'solido')
+    }));
+    
+    res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
     res.status(500).json({ error: 'Error al obtener materiales sólidos: ' + error.message });
@@ -106,7 +121,13 @@ const getEquipos = async (req, res) => {
   logRequest('getEquipos');
   try {
     const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u FROM MaterialEquipo');
-    res.json(rows);
+    
+    const materialesConImagenes = rows.map(material => ({
+      ...material,
+      imagen_url: generateCloudinaryURL(material.nombre, 'equipo')
+    }));
+    
+    res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
     res.status(500).json({ error: 'Error al obtener equipos: ' + error.message });
@@ -135,7 +156,13 @@ const getLaboratorio = async (req, res) => {
   logRequest('getLaboratorio');
   try {
     const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible FROM MaterialLaboratorio');
-    res.json(rows);
+    
+    const materialesConImagenes = rows.map(material => ({
+      ...material,
+      imagen_url: generateCloudinaryURL(material.nombre, 'laboratorio')
+    }));
+    
+    res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
     res.status(500).json({ error: 'Error al obtener materiales de laboratorio: ' + error.message });
@@ -797,18 +824,23 @@ const getMaterials = async (req, res) => {
     const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible FROM MaterialLaboratorio');
     const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u FROM MaterialEquipo');
 
-    const materials = [...liquidos, ...solidos, ...laboratorio, ...equipos];
+    // Agregar URLs de Cloudinary a todos los materiales
+    const liquidosConImagenes = liquidos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'liquido') }));
+    const solidosConImagenes = solidos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'solido') }));
+    const laboratorioConImagenes = laboratorio.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'laboratorio') }));
+    const equiposConImagenes = equipos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'equipo') }));
+
+    const materials = [...liquidosConImagenes, ...solidosConImagenes, ...laboratorioConImagenes, ...equiposConImagenes];
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
     res.status(500).json({ error: 'Error al obtener materiales: ' + error.message });
   }
 };
-
 /** Obtener un material específico por ID y TIPO */
 const getMaterialById = async (req, res) => {
   const { id } = req.params;
-  const { tipo } = req.query;  // IMPORTANTE: ahora recibe el tipo
+  const { tipo } = req.query;
 
   logRequest(`getMaterialById - ID=${id}, tipo=${tipo}`);
 
@@ -823,7 +855,12 @@ const getMaterialById = async (req, res) => {
       return res.status(404).json({ error: 'Material no encontrado' });
     }
 
-    res.json({ ...result[0], tipo });
+    const material = result[0];
+    // Agregar URL de Cloudinary
+    material.imagen_url = generateCloudinaryURL(material.nombre, tipo);
+    material.tipo = tipo;
+
+    res.json(material);
   } catch (error) {
     console.error('[Error] getMaterialById:', error);
     res.status(500).json({ error: 'Error al obtener material: ' + error.message });
@@ -926,20 +963,18 @@ const getSolicitudDetalle = async (req, res) => {
 // ========================================
 
 // CREAR NUEVO MATERIAL
-// REEMPLAZAR la función crearMaterial existente en materialController.js
-
 const crearMaterial = async (req, res) => {
   logRequest('crearMaterial');
   
   const { 
     nombre, 
-    descripcion, 
+    descripcion = '',
     tipo, 
     cantidad_inicial, 
-    categoria_id, 
-    riesgos_fisicos, 
-    riesgos_salud, 
-    riesgos_ambientales,
+    categoria_id = null,
+    riesgos_fisicos = '',
+    riesgos_salud = '',
+    riesgos_ambientales = '',
     estado = 'disponible'
   } = req.body;
 
@@ -950,7 +985,7 @@ const crearMaterial = async (req, res) => {
     });
   }
 
-  if (cantidad_inicial < 0) {
+  if (parseInt(cantidad_inicial) < 0) {
     return res.status(400).json({ 
       error: 'La cantidad inicial no puede ser negativa' 
     });
@@ -962,11 +997,14 @@ const crearMaterial = async (req, res) => {
       return res.status(400).json({ error: 'Tipo de material inválido' });
     }
 
-    // Procesar imagen subida (si existe)
-    let imagenUrl = null;
-    if (req.file) {
-      imagenUrl = req.file.path; // Cloudinary devuelve la URL en req.file.path
-      console.log(`[INFO] Imagen subida a Cloudinary: ${imagenUrl}`);
+    // Verificar si ya existe un material con el mismo nombre y tipo
+    const [existingMaterial] = await pool.query(
+      `SELECT id FROM ${meta.table} WHERE nombre = ?`, 
+      [nombre]
+    );
+    
+    if (existingMaterial.length > 0) {
+      return res.status(400).json({ error: 'Ya existe un material con ese nombre' });
     }
 
     let query, params;
@@ -976,70 +1014,66 @@ const crearMaterial = async (req, res) => {
       case 'liquido':
         query = `
           INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado, imagen) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         params = [
           nombre, 
           descripcion, 
-          cantidad_inicial, 
+          parseInt(cantidad_inicial), 
           categoria_id, 
           riesgos_fisicos, 
           riesgos_salud, 
           riesgos_ambientales, 
-          estado, 
-          imagenUrl
+          estado
         ];
         break;
 
       case 'solido':
         query = `
           INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado, imagen) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         `;
         params = [
           nombre, 
           descripcion, 
-          cantidad_inicial, 
+          parseInt(cantidad_inicial), 
           categoria_id, 
           riesgos_fisicos, 
           riesgos_salud, 
           riesgos_ambientales, 
-          estado, 
-          imagenUrl
+          estado
         ];
         break;
 
       case 'equipo':
         query = `
           INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, estado, imagen) 
-          VALUES (?, ?, ?, ?, ?, ?)
+          (nombre, descripcion, ${meta.field}, categoria_id, estado) 
+          VALUES (?, ?, ?, ?, ?)
         `;
         params = [
           nombre, 
           descripcion, 
-          cantidad_inicial, 
+          parseInt(cantidad_inicial), 
           categoria_id, 
-          estado, 
-          imagenUrl
+          estado
         ];
         break;
 
       case 'laboratorio':
         query = `
           INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, estado, imagen) 
-          VALUES (?, ?, ?, ?, ?, ?)
+          (nombre, descripcion, ${meta.field}, categoria_id, estado) 
+          VALUES (?, ?, ?, ?, ?)
         `;
         params = [
           nombre, 
           descripcion, 
-          cantidad_inicial, 
+          parseInt(cantidad_inicial), 
           categoria_id, 
-          estado, 
-          imagenUrl
+          estado
         ];
         break;
 
@@ -1049,6 +1083,16 @@ const crearMaterial = async (req, res) => {
 
     // Ejecutar inserción
     const [result] = await pool.query(query, params);
+
+    // Procesar imagen si se subió
+    let imagenUrl = null;
+    if (req.file) {
+      imagenUrl = req.file.path; // Cloudinary devuelve la URL en req.file.path
+      console.log(`[INFO] Imagen subida a Cloudinary: ${imagenUrl}`);
+    } else {
+      // Si no se subió imagen, usar la URL generada basada en el nombre
+      imagenUrl = generateCloudinaryURL(nombre, tipo);
+    }
 
     // Registrar movimiento de inventario (entrada inicial)
     try {
@@ -1060,7 +1104,7 @@ const crearMaterial = async (req, res) => {
           req.usuario?.id || 1, 
           result.insertId, 
           tipo, 
-          cantidad_inicial, 
+          parseInt(cantidad_inicial), 
           'entrada', 
           'Material creado - Stock inicial'
         ]
@@ -1076,9 +1120,11 @@ const crearMaterial = async (req, res) => {
         id: result.insertId,
         nombre,
         tipo,
-        cantidad_inicial,
+        cantidad_inicial: parseInt(cantidad_inicial),
         imagen_url: imagenUrl,
-        estado
+        estado,
+        descripcion,
+        categoria_id
       }
     });
 
@@ -1088,9 +1134,8 @@ const crearMaterial = async (req, res) => {
     // Si hubo error y se subió imagen, intentar eliminarla de Cloudinary
     if (req.file && req.file.public_id) {
       try {
-        const cloudinary = require('../config/cloudinary');
         await cloudinary.uploader.destroy(req.file.public_id);
-        console.log(`[INFO] Imagen eliminada de Cloudinary: ${req.file.public_id}`);
+        console.log(`[INFO] Imagen eliminada de Cloudinary por error: ${req.file.public_id}`);
       } catch (deleteError) {
         console.error('[Error] No se pudo eliminar imagen de Cloudinary:', deleteError);
       }
@@ -1875,6 +1920,23 @@ const getReporteEficienciaEntrega = async (req, res) => {
   }
 };
 
+function generateCloudinaryURL(nombre, tipo) {
+  const folder = getFolderByType(tipo);
+  const nombreLimpio = nombre
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+  
+  return cloudinary.url(`${folder}/${nombreLimpio}`, {
+    transformation: [
+      { width: 800, height: 600, crop: 'limit' },
+      { quality: 'auto' }
+    ],
+    secure: true
+  });
+}
+
 /**
  * ========================================
  * EXPORTS
@@ -1941,5 +2003,7 @@ module.exports = {
   // Sistema y administración
   getEstadoSistema,
   validarIntegridadDatos,
-  resetearTodoElStock
+  resetearTodoElStock,
+
+  generateCloudinaryURL
 };
