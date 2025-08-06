@@ -280,22 +280,26 @@ export default function Catalog() {
     return 'unidades';
   };
 
-  const getImagePath = (material) => {
-    // Si el material tiene el campo imagen, usarlo
-    if (material.imagen) {
-      return material.imagen;
+const getImagePath = async (material) => {
+  if (material.imagen) {
+    // Verificar si la imagen existe en Cloudinary
+    try {
+      const folder = material.tipo === 'laboratorio' ? 'materialLaboratorio' :
+                    material.tipo === 'liquido' ? 'materialLiquido' :
+                    material.tipo === 'solido' ? 'materialSolido' :
+                    'materialEquipo';
+      const response = await fetch(`/api/materials/verify-image?public_id=materiales-laboratorio/${folder}/${material.nombre.toLowerCase().trim()}`);
+      const data = await response.json();
+      if (data.exists) {
+        return material.imagen; // Usar la URL almacenada si la imagen existe
+      }
+    } catch (error) {
+      console.error('[Error] Verificando imagen:', error);
     }
-    // Generar URL de Cloudinary dinámicamente si imagen es NULL
-    const typeMap = {
-      'solido': 'materialSolido',
-      'liquido': 'materialLiquido',
-      'laboratorio': 'materialLaboratorio',
-      'equipo': 'materialEquipo'
-    };
-    const folder = typeMap[material.tipo] || 'materialSolido';
-    const normalizedName = normalizeImageName(material.nombre);
-    return `https://res.cloudinary.com/${CLOUDINARY_CLOUD_NAME}/image/upload/w_300,h_300,c_fill/v1/${folder}/${normalizedName}.jpg`;
-  };
+  }
+  // Fallback a placeholder si la imagen no existe o no está definida
+  return 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+};
 
   const parseRiesgos = (riesgosString) => {
     if (!riesgosString || riesgosString.trim() === '') return [];
@@ -1598,15 +1602,12 @@ export default function Catalog() {
                           className={`material-card ${canViewDetails() ? 'clickable' : 'non-clickable'}`}
                           onClick={(e) => handleDetailClick(material, e)}
                         >
-                          <img
-                            src={getImagePath(material)}
-                            alt={formatName(material.nombre)}
-                            className="material-image"
-                            loading="lazy"
-                            onError={(e) => {
-                              e.target.src = '/placeholder.jpg';
-                            }}
-                          />
+                         <img
+  src={getImagePath(material)}
+  alt={material.nombre}
+  className={styles.materialImage}
+  onError={(e) => (e.target.src = 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg')}
+/>
                           <div className="material-card-content">
                             <div className="material-card-name">{formatName(material.nombre)}</div>
                             <span className={`material-card-type type-${material.tipo}`}>
