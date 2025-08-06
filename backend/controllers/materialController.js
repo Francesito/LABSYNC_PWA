@@ -1,4 +1,4 @@
-//frontend/controllers/materialController.js
+//backend/controllers/materialController.js
 
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
