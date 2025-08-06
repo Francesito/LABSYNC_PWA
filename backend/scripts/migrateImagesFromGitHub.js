@@ -15,7 +15,7 @@ const dbConfig = {
   charset: 'utf8mb4',
 };
 
-// ✅ URL base de GitHub RAW corregida
+// ✅ URL base correcta para archivos RAW de GitHub
 const GITHUB_BASE_URL = 'https://raw.githubusercontent.com/Francesito/LabSync/main/frontend/public/';
 
 // Tablas a migrar
@@ -26,101 +26,48 @@ const TABLAS_MATERIALES = [
   { tabla: 'MaterialLaboratorio', campo_nombre: 'nombre', carpeta: 'materialLaboratorio' },
 ];
 
+// Extensiones de imagen a buscar
+const EXTENSIONES_IMAGEN = ['jpg', 'png', 'jpeg', 'webp'];
+
 // Ruta del archivo de progreso
 const PROGRESS_FILE = path.join(__dirname, 'migration_progress.json');
 
-// ✅ Función mejorada para normalizar nombres (más conservadora)
-function normalizarNombre(nombre) {
-  return nombre.toLowerCase()
-    .trim()
-    .replace(/\s+/g, '_')
-    .replace(/[áàäâ]/g, 'a')
-    .replace(/[éèëê]/g, 'e')
-    .replace(/[íìïî]/g, 'i')
-    .replace(/[óòöô]/g, 'o')
-    .replace(/[úùüû]/g, 'u')
-    .replace(/[ñ]/g, 'n')
-    .replace(/[çç]/g, 'c')
-    .replace(/[^a-z0-9_-]/g, '_')
-    .replace(/_+/g, '_')
-    .replace(/^_|_$/g, '');
-}
-
-// ✅ Obtener lista de archivos de una carpeta desde GitHub API
-async function obtenerArchivosGitHub(carpeta) {
-  try {
-    const apiUrl = `https://api.github.com/repos/Francesito/LabSync/contents/frontend/public/${carpeta}`;
-    console.log(`📂 Obteniendo lista de archivos de: ${carpeta}`);
-    
-    const response = await axios.get(apiUrl, {
-      timeout: 10000,
-      headers: {
-        'User-Agent': 'Mozilla/5.0',
-        'Accept': 'application/vnd.github.v3+json',
-      },
-    });
-    
-    if (response.status === 200 && Array.isArray(response.data)) {
-      const archivos = response.data
-        .filter(file => file.type === 'file')
-        .map(file => ({
-          nombre: file.name,
-          nombreSinExt: file.name.replace(/\.(jpg|jpeg|png|webp|gif)$/i, ''),
-          url: file.download_url
-        }));
+// ✅ Función para verificar si una imagen existe en GitHub RAW
+async function verificarImagenEnGitHub(nombre, carpeta) {
+  for (const ext of EXTENSIONES_IMAGEN) {
+    const url = `${GITHUB_BASE_URL}${carpeta}/${nombre}.${ext}`;
+    try {
+      console.log(`🔍 Verificando: ${nombre}.${ext}`);
       
-      console.log(`✅ Encontrados ${archivos.length} archivos en ${carpeta}`);
-      return archivos;
-    }
-  } catch (error) {
-    console.error(`❌ Error obteniendo archivos de ${carpeta}:`, error.message);
-  }
-  return [];
-}
-
-// ✅ Buscar imagen por nombre con coincidencia flexible
-function buscarImagenPorNombre(nombreBuscado, listaArchivos) {
-  const nombreNormalizado = normalizarNombre(nombreBuscado);
-  
-  // Búsqueda por coincidencia exacta
-  let encontrado = listaArchivos.find(archivo => 
-    normalizarNombre(archivo.nombreSinExt) === nombreNormalizado
-  );
-  
-  if (encontrado) {
-    console.log(`✅ Coincidencia exacta: ${encontrado.nombre}`);
-    return encontrado;
-  }
-  
-  // Búsqueda por coincidencia parcial
-  encontrado = listaArchivos.find(archivo => 
-    normalizarNombre(archivo.nombreSinExt).includes(nombreNormalizado) ||
-    nombreNormalizado.includes(normalizarNombre(archivo.nombreSinExt))
-  );
-  
-  if (encontrado) {
-    console.log(`⚠️ Coincidencia parcial: ${encontrado.nombre} para "${nombreBuscado}"`);
-    return encontrado;
-  }
-  
-  // Búsqueda por palabras clave
-  const palabrasClave = nombreNormalizado.split('_').filter(p => p.length > 2);
-  if (palabrasClave.length > 0) {
-    encontrado = listaArchivos.find(archivo => {
-      const nombreArchivo = normalizarNombre(archivo.nombreSinExt);
-      return palabrasClave.some(palabra => nombreArchivo.includes(palabra));
-    });
-    
-    if (encontrado) {
-      console.log(`🔍 Coincidencia por palabra clave: ${encontrado.nombre} para "${nombreBuscado}"`);
-      return encontrado;
+      const response = await axios.head(url, {
+        timeout: 15000,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+          'Accept': 'image/*,*/*',
+        },
+        validateStatus: (status) => status < 500, // No fallar en 404, solo en errores de servidor
+      });
+      
+      if (response.status === 200) {
+        console.log(`✅ Encontrada: ${nombre}.${ext}`);
+        return url;
+      } else {
+        console.log(`⚠️ No encontrada: ${nombre}.${ext} (Status: ${response.status})`);
+      }
+    } catch (error) {
+      if (error.code === 'ECONNRESET' || error.code === 'ETIMEDOUT') {
+        console.log(`⏳ Timeout para ${nombre}.${ext}, reintentando...`);
+        // Pausa antes de continuar
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } else {
+        console.log(`❌ Error verificando ${nombre}.${ext}: ${error.message}`);
+      }
     }
   }
-  
   return null;
 }
 
-// ✅ Subir imagen a Cloudinary (mejorada)
+// ✅ Subir imagen a Cloudinary
 async function subirImagenACloudinary(imageUrl, publicId, carpeta) {
   try {
     console.log(`⬆️ Subiendo a Cloudinary: ${publicId}`);
@@ -134,7 +81,7 @@ async function subirImagenACloudinary(imageUrl, publicId, carpeta) {
         { width: 800, height: 600, crop: 'limit' },
         { quality: 'auto', fetch_format: 'auto' },
       ],
-      timeout: 60000, // 60 segundos
+      timeout: 60000,
     });
     
     console.log(`✅ Subida exitosa: ${result.secure_url}`);
@@ -145,7 +92,7 @@ async function subirImagenACloudinary(imageUrl, publicId, carpeta) {
   }
 }
 
-// Leer progreso (si existe)
+// Leer progreso
 async function leerProgreso() {
   try {
     const data = await fs.readFile(PROGRESS_FILE, 'utf8');
@@ -160,7 +107,7 @@ async function guardarProgreso(progreso) {
   await fs.writeFile(PROGRESS_FILE, JSON.stringify(progreso, null, 2));
 }
 
-// ✅ Migrar imágenes (versión mejorada)
+// ✅ Migrar imágenes (versión simplificada)
 async function migrarImagenes() {
   let connection;
   let total = 0;
@@ -184,33 +131,27 @@ async function migrarImagenes() {
     console.log('✅ Conectado a la base de datos\n');
 
     for (const { tabla, campo_nombre, carpeta } of TABLAS_MATERIALES) {
-      console.log(`\n${'='.repeat(60)}`);
-      console.log(`📋 Procesando tabla: ${tabla} (carpeta: ${carpeta})`);
-      console.log(`${'='.repeat(60)}`);
+      console.log(`\n${'='.repeat(80)}`);
+      console.log(`📋 PROCESANDO TABLA: ${tabla}`);
+      console.log(`📁 CARPETA: ${carpeta}`);
+      console.log(`${'='.repeat(80)}`);
       
-      // Obtener lista de archivos de GitHub
-      const archivosGitHub = await obtenerArchivosGitHub(carpeta);
-      if (archivosGitHub.length === 0) {
-        console.log(`⚠️ No se encontraron archivos en la carpeta ${carpeta}`);
-        continue;
-      }
-
       // Obtener registros de la base de datos
       const [materiales] = await connection.execute(
         `SELECT id, ${campo_nombre} as nombre, imagen FROM ${tabla} ORDER BY id`
       );
       
-      console.log(`📊 Registros en ${tabla}: ${materiales.length}`);
+      console.log(`📊 Total de registros en ${tabla}: ${materiales.length}`);
 
       for (const { id, nombre, imagen } of materiales) {
         total++;
         const clave = `${tabla}_${id}`;
         
-        console.log(`\n--- Procesando ${clave}: "${nombre}" ---`);
+        console.log(`\n--- ${total}. Procesando ID: ${id} | Nombre: "${nombre}" ---`);
 
         // Saltar si ya tiene imagen de Cloudinary
         if (imagen && imagen.includes('cloudinary')) {
-          console.log('⏭️ Ya tiene imagen de Cloudinary');
+          console.log('⏭️ Ya tiene imagen de Cloudinary, saltando...');
           progreso[clave] = { success: true, skipped: true };
           saltados++;
           continue;
@@ -218,35 +159,31 @@ async function migrarImagenes() {
 
         // Saltar si ya se procesó anteriormente
         if (progreso[clave] && progreso[clave].success) {
-          console.log('⏭️ Ya procesado anteriormente');
+          console.log('⏭️ Ya procesado anteriormente, saltando...');
           saltados++;
           continue;
         }
 
         if (!nombre || nombre.trim() === '') {
-          console.log('⚠️ Nombre vacío');
+          console.log('⚠️ Nombre vacío o inválido');
           errores.push(`${clave}: nombre vacío`);
           progreso[clave] = { success: false, error: 'nombre_vacio' };
           continue;
         }
 
-        // Buscar imagen correspondiente
-        const archivoEncontrado = buscarImagenPorNombre(nombre, archivosGitHub);
+        // ✅ Buscar imagen usando el nombre exacto de la BD
+        const urlImagen = await verificarImagenEnGitHub(nombre, carpeta);
         
-        if (!archivoEncontrado) {
-          console.log(`❌ No se encontró imagen para "${nombre}"`);
-          errores.push(`${clave}: imagen no encontrada para "${nombre}"`);
-          progreso[clave] = { success: false, error: 'no_encontrada' };
+        if (!urlImagen) {
+          console.log(`❌ No se encontró imagen para: ${nombre}`);
+          errores.push(`${clave}: imagen no encontrada - ${nombre}`);
+          progreso[clave] = { success: false, error: 'no_encontrada', nombre_buscado: nombre };
           continue;
         }
 
         // Subir a Cloudinary
-        const publicId = `${id}_${normalizarNombre(nombre)}`;
-        const urlCloudinary = await subirImagenACloudinary(
-          archivoEncontrado.url, 
-          publicId, 
-          carpeta
-        );
+        const publicId = `${id}_${nombre}`;
+        const urlCloudinary = await subirImagenACloudinary(urlImagen, publicId, carpeta);
 
         if (!urlCloudinary) {
           errores.push(`${clave}: error al subir a Cloudinary`);
@@ -264,14 +201,17 @@ async function migrarImagenes() {
           subidas++;
           progreso[clave] = { 
             success: true, 
-            url: urlCloudinary, 
-            archivo_origen: archivoEncontrado.nombre 
+            url: urlCloudinary,
+            nombre_original: nombre,
+            url_github: urlImagen
           };
           
-          console.log(`✅ Migrado exitosamente`);
+          console.log(`✅ MIGRADO EXITOSAMENTE`);
+          console.log(`   GitHub: ${urlImagen}`);
+          console.log(`   Cloudinary: ${urlCloudinary}`);
           
           // Pausa para evitar rate limits
-          await new Promise(r => setTimeout(r, 200));
+          await new Promise(r => setTimeout(r, 500));
           
         } catch (dbError) {
           console.error(`❌ Error actualizando BD:`, dbError.message);
@@ -279,17 +219,19 @@ async function migrarImagenes() {
           progreso[clave] = { success: false, error: 'error_bd' };
         }
 
-        // Guardar progreso cada 10 elementos
-        if (total % 10 === 0) {
+        // Guardar progreso cada 5 elementos
+        if (total % 5 === 0) {
           await guardarProgreso(progreso);
+          console.log(`💾 Progreso guardado...`);
         }
       }
 
-      console.log(`\n✅ Tabla ${tabla} completada`);
+      console.log(`\n✅ TABLA ${tabla} COMPLETADA`);
+      console.log(`📊 Procesados de esta tabla: ${materiales.length}`);
     }
 
   } catch (err) {
-    console.error('\n💥 Error general:', err.message);
+    console.error('\n💥 ERROR GENERAL:', err.message);
     errores.push(`Error general: ${err.message}`);
   } finally {
     if (connection) {
@@ -299,25 +241,36 @@ async function migrarImagenes() {
     
     await guardarProgreso(progreso);
 
-    // Resumen final
-    console.log('\n' + '='.repeat(60));
-    console.log('📊 RESUMEN FINAL');
-    console.log('='.repeat(60));
-    console.log(`📦 Total procesados: ${total}`);
-    console.log(`✅ Migrados a Cloudinary: ${subidas}`);
-    console.log(`⏭️ Saltados (ya procesados): ${saltados}`);
-    console.log(`❌ Errores: ${errores.length}`);
+    // Resumen final detallado
+    console.log('\n' + '='.repeat(80));
+    console.log('📊 RESUMEN FINAL DE MIGRACIÓN');
+    console.log('='.repeat(80));
+    console.log(`📦 Total de registros procesados: ${total}`);
+    console.log(`✅ Imágenes migradas exitosamente: ${subidas}`);
+    console.log(`⏭️ Registros saltados (ya procesados): ${saltados}`);
+    console.log(`❌ Errores encontrados: ${errores.length}`);
+    
+    if (subidas > 0) {
+      const porcentajeExito = ((subidas / (total - saltados)) * 100).toFixed(1);
+      console.log(`📈 Tasa de éxito: ${porcentajeExito}%`);
+    }
     
     if (errores.length > 0) {
       console.log('\n🚨 DETALLE DE ERRORES:');
-      console.log('-'.repeat(40));
-      errores.forEach((error, i) => console.log(`${i + 1}. ${error}`));
+      console.log('-'.repeat(50));
+      errores.slice(0, 20).forEach((error, i) => {
+        console.log(`${i + 1}. ${error}`);
+      });
+      if (errores.length > 20) {
+        console.log(`... y ${errores.length - 20} errores más`);
+      }
     }
     
-    console.log('\n🎉 Proceso de migración completado.');
+    console.log('\n🎉 PROCESO DE MIGRACIÓN COMPLETADO');
     
     if (subidas > 0) {
-      console.log(`\n✨ Se migraron ${subidas} imágenes exitosamente a Cloudinary.`);
+      console.log(`\n✨ Se migraron ${subidas} imágenes exitosamente a Cloudinary!`);
+      console.log(`🔗 Las imágenes están organizadas en: laboratory_materials/[carpeta]/`);
     }
   }
 }
@@ -327,8 +280,10 @@ async function rollbackMigracion() {
   let connection;
 
   try {
-    console.log('🔄 Iniciando rollback...');
+    console.log('🔄 Iniciando rollback de migración...');
     connection = await mysql.createConnection(dbConfig);
+
+    let totalLimpiados = 0;
 
     // Limpiar base de datos
     for (const { tabla } of TABLAS_MATERIALES) {
@@ -336,7 +291,8 @@ async function rollbackMigracion() {
       const [result] = await connection.execute(
         `UPDATE ${tabla} SET imagen = NULL WHERE imagen LIKE '%cloudinary%'`
       );
-      console.log(`✅ ${result.affectedRows} registros limpiados`);
+      totalLimpiados += result.affectedRows;
+      console.log(`✅ ${result.affectedRows} registros limpiados en ${tabla}`);
     }
 
     // Limpiar Cloudinary
@@ -348,9 +304,12 @@ async function rollbackMigracion() {
         max_results: 500,
       });
 
+      console.log(`📊 Encontradas ${resources.resources.length} imágenes en Cloudinary`);
+
       for (const resource of resources.resources) {
         await cloudinary.uploader.destroy(resource.public_id);
         console.log(`🗑️ Eliminada: ${resource.public_id}`);
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
       
       console.log(`✅ ${resources.resources.length} imágenes eliminadas de Cloudinary`);
@@ -363,10 +322,11 @@ async function rollbackMigracion() {
       await fs.unlink(PROGRESS_FILE);
       console.log('📄 Archivo de progreso eliminado');
     } catch {
-      console.log('📄 No se encontró archivo de progreso');
+      console.log('📄 No se encontró archivo de progreso para eliminar');
     }
 
-    console.log('\n✅ Rollback completado exitosamente');
+    console.log('\n✅ ROLLBACK COMPLETADO EXITOSAMENTE');
+    console.log(`📊 Total de registros limpiados en BD: ${totalLimpiados}`);
 
   } catch (err) {
     console.error('💥 Error durante el rollback:', err.message);
@@ -377,7 +337,7 @@ async function rollbackMigracion() {
 
 // ✅ Verificar configuración
 async function verificarConfiguracion() {
-  console.log('🔧 Verificando configuración...\n');
+  console.log('🔧 Verificando configuración del sistema...\n');
   
   // Verificar variables de entorno
   const envVars = [
@@ -396,7 +356,7 @@ async function verificarConfiguracion() {
     return false;
   }
   
-  console.log('✅ Variables de entorno configuradas');
+  console.log('✅ Variables de entorno configuradas correctamente');
   
   // Verificar conexión a Cloudinary
   try {
@@ -417,9 +377,55 @@ async function verificarConfiguracion() {
     console.error('❌ Error conectando a BD:', err.message);
     return false;
   }
+
+  // Verificar algunas imágenes de muestra
+  console.log('\n🔍 Verificando acceso a imágenes de GitHub...');
+  const muestras = [
+    { carpeta: 'materialEquipo', nombre: 'agitador_de_propelas' },
+    { carpeta: 'materialSolido', nombre: 'acetato_de_amonio' },
+    { carpeta: 'materialLiquido', nombre: 'acetona' }
+  ];
+
+  for (const { carpeta, nombre } of muestras) {
+    const url = await verificarImagenEnGitHub(nombre, carpeta);
+    if (url) {
+      console.log(`✅ Acceso exitoso: ${carpeta}/${nombre}`);
+    } else {
+      console.log(`⚠️ No se pudo acceder: ${carpeta}/${nombre}`);
+    }
+  }
   
-  console.log('\n🎉 Configuración verificada correctamente');
+  console.log('\n🎉 Verificación de configuración completada');
   return true;
+}
+
+// ✅ Comando para listar algunas imágenes disponibles
+async function listarImagenesMuestra() {
+  console.log('🔍 Verificando disponibilidad de imágenes...\n');
+  
+  for (const { tabla, campo_nombre, carpeta } of TABLAS_MATERIALES.slice(0, 2)) {
+    console.log(`📁 Carpeta: ${carpeta}`);
+    
+    let connection;
+    try {
+      connection = await mysql.createConnection(dbConfig);
+      const [materiales] = await connection.execute(
+        `SELECT id, ${campo_nombre} as nombre FROM ${tabla} ORDER BY id LIMIT 5`
+      );
+      
+      for (const { id, nombre } of materiales) {
+        const url = await verificarImagenEnGitHub(nombre, carpeta);
+        console.log(`   ${id}. ${nombre}: ${url ? '✅ Encontrada' : '❌ No encontrada'}`);
+      }
+      
+    } catch (err) {
+      console.error(`❌ Error consultando ${tabla}:`, err.message);
+    } finally {
+      if (connection) await connection.end();
+    }
+    
+    console.log('');
+  }
 }
 
 // Comando principal
@@ -435,12 +441,17 @@ switch (comando) {
   case 'verificar':
     verificarConfiguracion();
     break;
+  case 'listar':
+    listarImagenesMuestra();
+    break;
   default:
-    console.log('\n📖 USO DEL SCRIPT:');
-    console.log('='.repeat(50));
+    console.log('\n📖 USO DEL SCRIPT DE MIGRACIÓN:');
+    console.log('='.repeat(60));
     console.log('  node scripts/migrateImagesFromGitHub.js migrar    - Migrar imágenes a Cloudinary');
-    console.log('  node scripts/migrateImagesFromGitHub.js rollback  - Deshacer migración');
+    console.log('  node scripts/migrateImagesFromGitHub.js rollback  - Deshacer migración completa');
     console.log('  node scripts/migrateImagesFromGitHub.js verificar - Verificar configuración');
-    console.log('='.repeat(50));
+    console.log('  node scripts/migrateImagesFromGitHub.js listar    - Listar muestra de imágenes');
+    console.log('='.repeat(60));
+    console.log('\n💡 Recomendación: Ejecuta primero "verificar" y luego "listar"');
     break;
 }
