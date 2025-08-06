@@ -83,14 +83,41 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
 const getLiquidos = async (req, res) => {
   logRequest('getLiquidos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
+    const [rows] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        cantidad_disponible_ml, 
+        riesgos_fisicos, 
+        riesgos_salud, 
+        riesgos_ambientales,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialLiquido
+    `);
     
-    // Agregar URLs de Cloudinary a cada material
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'liquido')
-    }));
+    // Procesar imágenes para cada material
+    const materialesConImagenes = rows.map(material => {
+      let imagen_url = null;
+      
+      if (material.imagen && material.imagen.includes('cloudinary')) {
+        // Si ya tiene URL de Cloudinary, usarla
+        imagen_url = material.imagen;
+      } else {
+        // Generar URL basada en el nombre y tipo
+        imagen_url = generateCloudinaryURL(material.nombre, 'liquido');
+      }
+      
+      return {
+        ...material,
+        imagen_url,
+        tipo: 'liquido'
+      };
+    });
     
+    console.log(`[INFO] Devolviendo ${materialesConImagenes.length} materiales líquidos`);
     res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getLiquidos:', error);
@@ -102,13 +129,38 @@ const getLiquidos = async (req, res) => {
 const getSolidos = async (req, res) => {
   logRequest('getSolidos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
+    const [rows] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        cantidad_disponible_g, 
+        riesgos_fisicos, 
+        riesgos_salud, 
+        riesgos_ambientales,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialSolido
+    `);
     
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'solido')
-    }));
+    const materialesConImagenes = rows.map(material => {
+      let imagen_url = null;
+      
+      if (material.imagen && material.imagen.includes('cloudinary')) {
+        imagen_url = material.imagen;
+      } else {
+        imagen_url = generateCloudinaryURL(material.nombre, 'solido');
+      }
+      
+      return {
+        ...material,
+        imagen_url,
+        tipo: 'solido'
+      };
+    });
     
+    console.log(`[INFO] Devolviendo ${materialesConImagenes.length} materiales sólidos`);
     res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getSolidos:', error);
@@ -120,13 +172,35 @@ const getSolidos = async (req, res) => {
 const getEquipos = async (req, res) => {
   logRequest('getEquipos');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible_u FROM MaterialEquipo');
+    const [rows] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        cantidad_disponible_u,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialEquipo
+    `);
     
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'equipo')
-    }));
+    const materialesConImagenes = rows.map(material => {
+      let imagen_url = null;
+      
+      if (material.imagen && material.imagen.includes('cloudinary')) {
+        imagen_url = material.imagen;
+      } else {
+        imagen_url = generateCloudinaryURL(material.nombre, 'equipo');
+      }
+      
+      return {
+        ...material,
+        imagen_url,
+        tipo: 'equipo'
+      };
+    });
     
+    console.log(`[INFO] Devolviendo ${materialesConImagenes.length} equipos`);
     res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getEquipos:', error);
@@ -155,13 +229,35 @@ const obtenerDocentesParaSolicitud = async (req, res) => {
 const getLaboratorio = async (req, res) => {
   logRequest('getLaboratorio');
   try {
-    const [rows] = await pool.query('SELECT id, nombre, cantidad_disponible FROM MaterialLaboratorio');
+    const [rows] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        cantidad_disponible,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialLaboratorio
+    `);
     
-    const materialesConImagenes = rows.map(material => ({
-      ...material,
-      imagen_url: generateCloudinaryURL(material.nombre, 'laboratorio')
-    }));
+    const materialesConImagenes = rows.map(material => {
+      let imagen_url = null;
+      
+      if (material.imagen && material.imagen.includes('cloudinary')) {
+        imagen_url = material.imagen;
+      } else {
+        imagen_url = generateCloudinaryURL(material.nombre, 'laboratorio');
+      }
+      
+      return {
+        ...material,
+        imagen_url,
+        tipo: 'laboratorio'
+      };
+    });
     
+    console.log(`[INFO] Devolviendo ${materialesConImagenes.length} materiales de laboratorio`);
     res.json(materialesConImagenes);
   } catch (error) {
     console.error('[Error] getLaboratorio:', error);
@@ -819,18 +915,101 @@ const getMaterialesStockBajo = async (req, res) => {
 const getMaterials = async (req, res) => {
   logRequest('getMaterials');
   try {
-    const [liquidos] = await pool.query('SELECT id, nombre, "liquido" AS tipo, cantidad_disponible_ml, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialLiquido');
-    const [solidos] = await pool.query('SELECT id, nombre, "solido" AS tipo, cantidad_disponible_g, riesgos_fisicos, riesgos_salud, riesgos_ambientales FROM MaterialSolido');
-    const [laboratorio] = await pool.query('SELECT id, nombre, "laboratorio" AS tipo, cantidad_disponible FROM MaterialLaboratorio');
-    const [equipos] = await pool.query('SELECT id, nombre, "equipo" AS tipo, cantidad_disponible_u FROM MaterialEquipo');
+    const [liquidos] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        "liquido" AS tipo, 
+        cantidad_disponible_ml, 
+        riesgos_fisicos, 
+        riesgos_salud, 
+        riesgos_ambientales,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialLiquido
+    `);
+    
+    const [solidos] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        "solido" AS tipo, 
+        cantidad_disponible_g, 
+        riesgos_fisicos, 
+        riesgos_salud, 
+        riesgos_ambientales,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialSolido
+    `);
+    
+    const [laboratorio] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        "laboratorio" AS tipo, 
+        cantidad_disponible,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialLaboratorio
+    `);
+    
+    const [equipos] = await pool.query(`
+      SELECT 
+        id, 
+        nombre, 
+        "equipo" AS tipo, 
+        cantidad_disponible_u,
+        imagen,
+        descripcion,
+        categoria_id,
+        estado
+      FROM MaterialEquipo
+    `);
 
-    // Agregar URLs de Cloudinary a todos los materiales
-    const liquidosConImagenes = liquidos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'liquido') }));
-    const solidosConImagenes = solidos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'solido') }));
-    const laboratorioConImagenes = laboratorio.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'laboratorio') }));
-    const equiposConImagenes = equipos.map(m => ({ ...m, imagen_url: generateCloudinaryURL(m.nombre, 'equipo') }));
+    // Procesar imágenes para cada tipo
+    const liquidosConImagenes = liquidos.map(m => ({
+      ...m,
+      imagen_url: m.imagen && m.imagen.includes('cloudinary') 
+        ? m.imagen 
+        : generateCloudinaryURL(m.nombre, 'liquido')
+    }));
+    
+    const solidosConImagenes = solidos.map(m => ({
+      ...m,
+      imagen_url: m.imagen && m.imagen.includes('cloudinary') 
+        ? m.imagen 
+        : generateCloudinaryURL(m.nombre, 'solido')
+    }));
+    
+    const laboratorioConImagenes = laboratorio.map(m => ({
+      ...m,
+      imagen_url: m.imagen && m.imagen.includes('cloudinary') 
+        ? m.imagen 
+        : generateCloudinaryURL(m.nombre, 'laboratorio')
+    }));
+    
+    const equiposConImagenes = equipos.map(m => ({
+      ...m,
+      imagen_url: m.imagen && m.imagen.includes('cloudinary') 
+        ? m.imagen 
+        : generateCloudinaryURL(m.nombre, 'equipo')
+    }));
 
-    const materials = [...liquidosConImagenes, ...solidosConImagenes, ...laboratorioConImagenes, ...equiposConImagenes];
+    const materials = [
+      ...liquidosConImagenes, 
+      ...solidosConImagenes, 
+      ...laboratorioConImagenes, 
+      ...equiposConImagenes
+    ];
+    
+    console.log(`[INFO] Devolviendo ${materials.length} materiales en total`);
     res.json(materials);
   } catch (error) {
     console.error('[Error] getMaterials:', error);
@@ -1007,33 +1186,29 @@ const crearMaterial = async (req, res) => {
       return res.status(400).json({ error: 'Ya existe un material con ese nombre' });
     }
 
+    // Procesar imagen
+    let imagenUrl = null;
+    if (req.file && req.file.path) {
+      // Si se subió imagen, usar la URL de Cloudinary
+      imagenUrl = req.file.path;
+      console.log(`[INFO] Imagen subida a Cloudinary: ${imagenUrl}`);
+      console.log(`[INFO] Carpeta utilizada: ${getFolderByType(tipo)}`);
+    } else {
+      // Si no se subió imagen, generar URL potencial
+      imagenUrl = generateCloudinaryURL(nombre, tipo);
+      console.log(`[INFO] URL generada automáticamente: ${imagenUrl}`);
+    }
+
     let query, params;
     
-    // Construir query según el tipo de material
+    // Construir query según el tipo de material - INCLUIR CAMPO IMAGEN
     switch (tipo) {
       case 'liquido':
-        query = `
-          INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-        `;
-        params = [
-          nombre, 
-          descripcion, 
-          parseInt(cantidad_inicial), 
-          categoria_id, 
-          riesgos_fisicos, 
-          riesgos_salud, 
-          riesgos_ambientales, 
-          estado
-        ];
-        break;
-
       case 'solido':
         query = `
           INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado) 
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+          (nombre, descripcion, ${meta.field}, categoria_id, riesgos_fisicos, riesgos_salud, riesgos_ambientales, estado, imagen) 
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
         params = [
           nombre, 
@@ -1043,37 +1218,25 @@ const crearMaterial = async (req, res) => {
           riesgos_fisicos, 
           riesgos_salud, 
           riesgos_ambientales, 
-          estado
+          estado,
+          imagenUrl
         ];
         break;
 
       case 'equipo':
-        query = `
-          INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, estado) 
-          VALUES (?, ?, ?, ?, ?)
-        `;
-        params = [
-          nombre, 
-          descripcion, 
-          parseInt(cantidad_inicial), 
-          categoria_id, 
-          estado
-        ];
-        break;
-
       case 'laboratorio':
         query = `
           INSERT INTO ${meta.table} 
-          (nombre, descripcion, ${meta.field}, categoria_id, estado) 
-          VALUES (?, ?, ?, ?, ?)
+          (nombre, descripcion, ${meta.field}, categoria_id, estado, imagen) 
+          VALUES (?, ?, ?, ?, ?, ?)
         `;
         params = [
           nombre, 
           descripcion, 
           parseInt(cantidad_inicial), 
           categoria_id, 
-          estado
+          estado,
+          imagenUrl
         ];
         break;
 
@@ -1083,16 +1246,6 @@ const crearMaterial = async (req, res) => {
 
     // Ejecutar inserción
     const [result] = await pool.query(query, params);
-
-    // Procesar imagen si se subió
-    let imagenUrl = null;
-    if (req.file) {
-      imagenUrl = req.file.path; // Cloudinary devuelve la URL en req.file.path
-      console.log(`[INFO] Imagen subida a Cloudinary: ${imagenUrl}`);
-    } else {
-      // Si no se subió imagen, usar la URL generada basada en el nombre
-      imagenUrl = generateCloudinaryURL(nombre, tipo);
-    }
 
     // Registrar movimiento de inventario (entrada inicial)
     try {
@@ -1124,7 +1277,8 @@ const crearMaterial = async (req, res) => {
         imagen_url: imagenUrl,
         estado,
         descripcion,
-        categoria_id
+        categoria_id,
+        carpeta_cloudinary: getFolderByType(tipo)
       }
     });
 
@@ -1921,6 +2075,11 @@ const getReporteEficienciaEntrega = async (req, res) => {
 };
 
 function generateCloudinaryURL(nombre, tipo) {
+  if (!nombre || !tipo) {
+    console.warn('[Warn] generateCloudinaryURL: nombre o tipo faltante', { nombre, tipo });
+    return null;
+  }
+
   const folder = getFolderByType(tipo);
   const nombreLimpio = nombre
     .toLowerCase()
@@ -1928,14 +2087,29 @@ function generateCloudinaryURL(nombre, tipo) {
     .replace(/_+/g, '_')
     .replace(/^_|_$/g, '');
   
+  // Generar URL con la carpeta correcta
   return cloudinary.url(`${folder}/${nombreLimpio}`, {
     transformation: [
       { width: 800, height: 600, crop: 'limit' },
-      { quality: 'auto' }
+      { quality: 'auto', fetch_format: 'auto' }
     ],
     secure: true
   });
 }
+
+async function verificarImagenExiste(publicId) {
+  try {
+    await cloudinary.api.resource(publicId);
+    return true;
+  } catch (error) {
+    if (error.error && error.error.http_code === 404) {
+      return false;
+    }
+    console.warn('[Warn] Error al verificar imagen en Cloudinary:', error.message);
+    return false;
+  }
+}
+
 
 /**
  * ========================================
