@@ -1,7 +1,9 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Configuración para Render
+  images: {
+    domains: ['res.cloudinary.com'], // 👈 NECESARIO para que cargue imágenes externas
+  },
   async headers() {
     return [
       {
