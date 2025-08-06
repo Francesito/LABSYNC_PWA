@@ -1602,11 +1602,11 @@ const getImagePath = async (material) => {
                           className={`material-card ${canViewDetails() ? 'clickable' : 'non-clickable'}`}
                           onClick={(e) => handleDetailClick(material, e)}
                         >
-                         <img
-  src={getImagePath(material)}
+    <img
+ src={material.imagen_url}
   alt={material.nombre}
-  className="material-image"
-  onError={(e) => (e.target.src = 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg')}
+ className="material-image"
+  onError={(e) => (e.target.src = 'https://res.cloudinary.com/dgte7l2cg/.../placeholder.jpg')}
 />
                           <div className="material-card-content">
                             <div className="material-card-name">{formatName(material.nombre)}</div>
