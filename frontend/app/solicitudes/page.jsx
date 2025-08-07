@@ -157,9 +157,9 @@ export default function Solicitudes() {
                 estado: item.estado === 'pendiente' && usuario?.rol === 'alumno' ? 'aprobación pendiente' :
                         item.estado === 'aprobada' ? 'entrega pendiente' :
                         item.estado === 'entregado' ? 'entregada' : item.estado,
-                grupo: item.grupo_id && grupos[item.grupo_id] ? grupos[item.grupo_id] :
-                       usuario.rol === 'alumno' ? usuario.grupo :
-                       usuario.rol === 'docente' ? '—' : '—',
+                grupo: item.grupo_nombre || 
+                       (item.grupo_id && grupos[item.grupo_id] ? grupos[item.grupo_id] : 
+                       usuario.rol === 'alumno' && item.nombre_alumno ? usuario.grupo : '—'),
                 isDocenteRequest: !item.nombre_alumno, // Indica si la solicitud es de un docente
                 items: [],
               };
@@ -296,7 +296,7 @@ export default function Solicitudes() {
         doc.text('Grupo:', marginLeft, yPos);
         doc.setFont('helvetica', 'normal');
         doc.setTextColor(...secondaryColor);
-        doc.text(vale.grupo || '—', marginLeft + 50, yPos);
+        doc.text(vale.grupo, marginLeft + 50, yPos);
 
         yPos += 10;
         doc.setFont('helvetica', 'bold');
