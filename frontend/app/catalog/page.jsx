@@ -119,12 +119,9 @@ const [addError, setAddError] = useState('');
   };
 
   const canMakeRequests = () => {
-    if (userPermissions.rol === 'administrador') return false;
-    if (userPermissions.rol === 'alumno') return true;
-    if (userPermissions.rol === 'docente') return true;
-    if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) return true;
-    return false;
-  };
+    return userPermissions.rol === 'alumno' 
+       || userPermissions.rol === 'docente';
+ };
 
   const canViewDetails = () => {
     if (userPermissions.rol === 'administrador') return false;
@@ -1765,7 +1762,7 @@ await makeSecureApiCall(
             </div>
           </div>
 
-          {canMakeRequests() && (
+          {(userPermissions.rol === 'alumno' || userPermissions.rol === 'docente') && (
             <div className="cart-container">
               <div className="cart-header">
                 <h4>Carrito de Solicitud</h4>
