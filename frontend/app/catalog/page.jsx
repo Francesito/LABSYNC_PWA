@@ -2045,13 +2045,12 @@ await makeSecureApiCall(
                   <label className="form-label">
                     Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
                   </label>
-                  <input
+                                  <input
                     type="number"
                     className="form-control mt-2"
                     value={adjustAmount}
                     onChange={(e) => setAdjustAmount(e.target.value)}
-                    placeholder="Nueva cantidad"
-                    min="0"
+                    placeholder="Añade o quita stock"
                     disabled={!canModifyStock()}
                   />
                 </div>
@@ -2063,11 +2062,28 @@ await makeSecureApiCall(
                 >
                   Cancelar
                 </button>
-                <button
-                  className="btn-adjust"
-                  onClick={handleAdjustSubmit}
-                  disabled={!adjustAmount || parseInt(adjustAmount) < 0 || !canModifyStock()}
-                >
+               {(() => {
+  const delta = parseInt(adjustAmount, 10);
+  const newStock =
+    materialToAdjust && !isNaN(delta)
+      ? materialToAdjust.cantidad + delta
+      : null;
+  const disableGuardar =
+    adjustAmount === '' ||
+    isNaN(delta) ||
+    newStock < 0 ||
+    !canModifyStock();
+
+  return (
+    <button
+      className="btn-adjust"
+      onClick={handleAdjustSubmit}
+      disabled={disableGuardar}
+    >
+      Guardar
+    </button>
+  );
+})()}
                   Guardar
                 </button>
                 <button
