@@ -2055,45 +2055,44 @@ await makeSecureApiCall(
                   />
                 </div>
               </div>
-              <div className="modal-footer-custom">
-                <button
-                  className="btn-secondary-custom"
-                  onClick={() => setShowAdjustModal(false)}
-                >
-                  Cancelar
-                </button>
-               {(() => {
-  const delta = parseInt(adjustAmount, 10);
-  const newStock =
-    materialToAdjust && !isNaN(delta)
-      ? materialToAdjust.cantidad + delta
-      : null;
-  const disableGuardar =
-    adjustAmount === '' ||
-    isNaN(delta) ||
-    newStock < 0 ||
-    !canModifyStock();
-
-  return (
-    <button
-      className="btn-adjust"
-      onClick={handleAdjustSubmit}
-      disabled={disableGuardar}
-    >
-      Guardar
-    </button>
-  );
-})()}
-                  Guardar
-                </button>
-                <button
-   className="btn-remove mt-2"
-   onClick={handleDeleteMaterial}
-   style={{ background: '#ef4444', width: '100%', marginTop: '0.5rem' }}
+             <div className="modal-footer-custom">
+  <button
+    className="btn-secondary-custom"
+    onClick={() => setShowAdjustModal(false)}
   >
-  Eliminar Material
+    Cancelar
   </button>
-              </div>
+  {(() => {
+    const delta = parseInt(adjustAmount, 10);
+    const newStock =
+      materialToAdjust && !isNaN(delta)
+        ? materialToAdjust.cantidad + delta
+        : null;
+    const disableGuardar =
+      adjustAmount === '' ||
+      isNaN(delta) ||
+      newStock < 0 ||
+      !canModifyStock();
+
+    return (
+      <button
+        className="btn-adjust"
+        onClick={handleAdjustSubmit}
+        disabled={disableGuardar}
+      >
+        Guardar
+      </button>
+    );
+  })()}
+  <button
+    className="btn-remove mt-2"
+    onClick={handleDeleteMaterial}
+    style={{ background: '#ef4444', width: '100%', marginTop: '0.5rem' }}
+  >
+    Eliminar Material
+  </button>
+</div>
+
             </div>
           </div>
         )}
