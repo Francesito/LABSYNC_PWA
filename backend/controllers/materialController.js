@@ -649,43 +649,88 @@ const cancelSolicitud = async (req, res) => {
 };
 
 /**
- * ========================================
- * AJUSTE DE INVENTARIO (SOLO ALMACENISTA)
- * ========================================
+ * Ajuste de inventario (solo almacenista con permisos)
  */
-
 const adjustInventory = async (req, res) => {
   logRequest('adjustInventory');
   const { id } = req.params;
-  const { cantidad, tipo } = req.body;
+  let { cantidad, tipo } = req.body;
   const token = req.headers.authorization?.split(' ')[1];
 
-  if (!token) return res.status(401).json({ error: 'Token requerido' });
+  if (!token) {
+    return res.status(401).json({ error: 'Token requerido' });
+  }
 
   try {
+    // Verificar rol y permisos
     const { rol_id } = jwt.verify(token, process.env.JWT_SECRET);
     if (rol_id !== 3 && !req.user?.permisos?.modificar_stock) {
-      return res.status(403).json({ error: 'Solo almacenistas con permisos de stock pueden ajustar inventario' });
+      return res
+        .status(403)
+        .json({ error: 'Solo almacenistas con permisos de stock pueden ajustar inventario' });
     }
 
-    if (isNaN(cantidad)) return res.status(400).json({ error: 'Cantidad debe ser un número válido' });
+    // Parsear y validar nueva cantidad absoluta
+    cantidad = parseInt(cantidad, 10);
+    if (isNaN(cantidad)) {
+      return res.status(400).json({ error: 'Cantidad debe ser un número válido' });
+    }
+    if (cantidad < 0) {
+      return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
+    }
 
-    let meta = detectTableAndField(tipo);
-    if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
+    // Determinar tabla y campo
+    const meta = detectTableAndField(tipo);
+    if (!meta) {
+      return res.status(400).json({ error: 'Tipo de material inválido' });
+    }
 
-    const [material] = await pool.query(`SELECT ${meta.field} FROM ${meta.table} WHERE id = ?`, [id]);
-    if (!material.length) return res.status(404).json({ error: 'Material no encontrado' });
+    // Leer stock actual para calcular delta
+    const [[actualRow]] = await pool.query(
+      `SELECT ${meta.field} AS actual FROM ${meta.table} WHERE id = ?`,
+      [id]
+    );
+    if (actualRow == null) {
+      return res.status(404).json({ error: 'Material no encontrado' });
+    }
+    const actual = actualRow.actual;
+    const delta = cantidad - actual;
 
-    const nuevaCantidad = material[0][meta.field] + parseInt(cantidad);
-    if (nuevaCantidad < 0) return res.status(400).json({ error: 'La cantidad no puede ser negativa' });
+    // Actualizar stock al valor absoluto
+    await pool.query(
+      `UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`,
+      [cantidad, id]
+    );
 
-    await pool.query(`UPDATE ${meta.table} SET ${meta.field} = ? WHERE id = ?`, [nuevaCantidad, id]);
-    res.status(200).json({ message: 'Inventario actualizado correctamente', nuevoStock: nuevaCantidad });
+    // Registrar movimiento con la diferencia
+    await pool.query(
+      `INSERT INTO MovimientosInventario 
+         (usuario_id, material_id, tipo, cantidad, tipo_movimiento, motivo, fecha_movimiento)
+       VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+      [
+        req.usuario?.id || null,
+        id,
+        tipo,
+        delta,
+        'ajuste',
+        'Ajuste de inventario via API'
+      ]
+    );
+
+    // Responder con éxito y nuevo stock
+    res.status(200).json({
+      message: 'Inventario actualizado correctamente',
+      nuevoStock: cantidad
+    });
+
   } catch (error) {
     console.error('[Error] adjustInventory:', error);
-    res.status(500).json({ error: 'Error al ajustar inventario: ' + error.message });
+    res
+      .status(500)
+      .json({ error: 'Error al ajustar inventario: ' + error.message });
   }
 };
+
 
 /**
  * ========================================
