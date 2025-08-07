@@ -1572,7 +1572,7 @@ await makeSecureApiCall(
           <div className="flex-grow-1">
             <div className="main-card">
             <div className="header-section">
-  {userPermissions.rol === 3 && userPermissions.modificar_stock && (
+  {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
     <button
    onClick={() => setShowAddModal(true)}
       className="mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
