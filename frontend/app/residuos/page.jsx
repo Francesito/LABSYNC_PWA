@@ -547,4 +547,120 @@ export default function ResiduosPage() {
           <div className="space-y-8">
             <div className="bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
               <h3 className="text-2xl font-bold mb-6 flex items-center gap-3">
-                <Eye className="text-
+                <Eye className="text-purple-600" />
+                Análisis Avanzado de Residuos
+              </h3>
+              
+              {/* Timeline de residuos */}
+              <div className="mb-8">
+                <h4 className="text-lg font-semibold mb-4">Tendencia Temporal de Residuos</h4>
+                <ResponsiveContainer width="100%" height={300}>
+                  <AreaChart data={Object.entries(analytics.timeline).map(([month, amount]) => ({
+                    month: month,
+                    amount: parseFloat(amount.toFixed(1))
+                  }))}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+                    <XAxis dataKey="month" />
+                    <YAxis />
+                    <Tooltip formatter={(value) => [`${value} g/mL`, 'Residuos']} />
+                    <Area type="monotone" dataKey="amount" stroke="#8b5cf6" fill="url(#areaGradient)" />
+                    <defs>
+                      <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                        <stop offset="100%" stopColor="#8b5cf6" stopOpacity={0.1}/>
+                      </linearGradient>
+                    </defs>
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Análisis de eficiencia */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold mb-4 text-blue-800">Eficiencia de Uso</h4>
+                  <div className="space-y-3">
+                    {Object.entries(analytics.byLab).map(([lab, waste]) => {
+                      const used = entries.filter(e => e.laboratorio === lab).reduce((sum, e) => sum + parseFloat(e.cantidadUsada), 0);
+                      const efficiency = used > 0 ? ((used - waste) / used * 100) : 0;
+                      return (
+                        <div key={lab} className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-blue-700">{lab.replace('Laboratorio de ', '').replace('Lab. de ', '')}</span>
+                          <div className="flex items-center gap-2">
+                            <div className="w-24 bg-blue-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${Math.max(0, Math.min(100, efficiency))}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-sm font-semibold text-blue-800">{efficiency.toFixed(1)}%</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-6">
+                  <h4 className="text-lg font-semibold mb-4 text-red-800">Compuestos Más Peligrosos</h4>
+                  <div className="space-y-3">
+                    {entries
+                      .filter(entry => ['extremo', 'alto'].includes(getCompoundInfo(entry.compuesto).danger))
+                      .reduce((acc, entry) => {
+                        const compound = entry.compuesto;
+                        if (!acc[compound]) {
+                          acc[compound] = { total: 0, info: getCompoundInfo(compound) };
+                        }
+                        acc[compound].total += parseFloat(entry.cantidadDesecho);
+                        return acc;
+                      }, {})
+                      |> Object.entries
+                      |> (arr => arr.sort((a, b) => b[1].total - a[1].total))
+                      |> (arr => arr.slice(0, 5))
+                      |> (arr => arr.map(([compound, data]) => (
+                        <div key={compound} className="flex items-center justify-between p-3 bg-white bg-opacity-50 rounded-lg">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xl">{data.info.icon}</span>
+                            <div>
+                              <span className="text-sm font-medium text-red-700">{compound}</span>
+                              <p className="text-xs text-red-600">{data.info.type}</p>
+                            </div>
+                          </div>
+                          <span className="text-sm font-semibold text-red-800">{data.total.toFixed(1)} g/mL</span>
+                        </div>
+                      )))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recomendaciones inteligentes */}
+              <div className="bg-gradient-to-r from-green-500 to-emerald-500 rounded-2xl p-6 text-white">
+                <h4 className="text-xl font-bold mb-4 flex items-center gap-2">
+                  <Zap size={24} />
+                  Recomendaciones Inteligentes
+                </h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                    <h5 className="font-semibold">🎯 Optimización</h5>
+                    <ul className="text-sm space-y-1 opacity-90">
+                      <li>• Reducir uso de benceno en 20% (alta toxicidad)</li>
+                      <li>• Implementar reciclaje de etanol</li>
+                      <li>• Mejorar dosificación en Lab. de Química Analítica</li>
+                    </ul>
+                  </div>
+                  <div className="space-y-3">
+                    <h5 className="font-semibold">⚠️ Alertas de Seguridad</h5>
+                    <ul className="text-sm space-y-1 opacity-90">
+                      <li>• Compuestos carcinógenos: {entries.filter(e => getCompoundInfo(e.compuesto).type === 'carcinógeno').length} registros</li>
+                      <li>• Revisar protocolos de manipulación de ácidos</li>
+                      <li>• Actualizar inventario de EPP</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
