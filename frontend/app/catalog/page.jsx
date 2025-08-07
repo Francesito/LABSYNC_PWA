@@ -1852,9 +1852,9 @@ export default function Catalog() {
           )}
         </div>
 
-        {showAddModal && (
+       {showAddModal && (
   <div className="modal-overlay">
-    <div className="modal-content-custom" style={{ maxWidth: '900px', width: '95%' }}>
+    <div className="modal-content-custom" style={{ maxWidth: '1000px', width: '95%' }}>
       <div className="modal-header-custom">
         <h5 className="modal-title">Agregar Material / Reactivo</h5>
         <button
@@ -1863,23 +1863,24 @@ export default function Catalog() {
         />
       </div>
       <form className="modal-body p-4" onSubmit={handleAddSubmit}>
-        {addError && <div className="alert-custom">{addError}</div>}
+        {addError && <div className="alert-custom mb-3">{addError}</div>}
 
         <div className="form-grid">
           <div className="form-group">
-            <label className="form-label">¿Es Reactivo o Material?</label>
+            <label className="form-label">¿Es Reactivo o Material? *</label>
             <select
               className="form-control"
               value={newMaterial.tipoGeneral}
               onChange={(e) => setNewMaterial({ ...newMaterial, tipoGeneral: e.target.value, subTipo: '' })}
+              required
             >
-              <option>Reactivo</option>
-              <option>Material</option>
+              <option value="Reactivo">Reactivo</option>
+              <option value="Material">Material</option>
             </select>
           </div>
 
           <div className="form-group">
-            <label className="form-label">Categoría específica</label>
+            <label className="form-label">Categoría específica *</label>
             <select
               className="form-control"
               value={newMaterial.subTipo}
@@ -1913,7 +1914,9 @@ export default function Catalog() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Cantidad inicial {newMaterial.subTipo === 'liquido' ? '(ml)' : newMaterial.subTipo === 'solido' ? '(g)' : '(unidades)'} *</label>
+            <label className="form-label">
+              Cantidad inicial {newMaterial.subTipo === 'liquido' ? '(ml)' : newMaterial.subTipo === 'solido' ? '(g)' : '(unidades)'} *
+            </label>
             <input
               type="number"
               className="form-control"
@@ -1925,19 +1928,29 @@ export default function Catalog() {
           </div>
 
           <div className="form-group">
-            <label className="form-label">Estado</label>
+            <label className="form-label">Estado *</label>
             <select
               className="form-control"
               value={newMaterial.estado}
               onChange={(e) => setNewMaterial({ ...newMaterial, estado: e.target.value })}
+              required
             >
               <option value="disponible">Disponible</option>
               {newMaterial.tipoGeneral === 'Reactivo' && (
-                <>
-                  <option value="no disponible">No disponible</option>
-                </>
+                <option value="no disponible">No disponible</option>
               )}
             </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Imagen (.jpg) *</label>
+            <input
+              type="file"
+              accept=".jpg"
+              className="form-control"
+              onChange={(e) => setNewMaterial({ ...newMaterial, imagenFile: e.target.files[0] })}
+              required
+            />
           </div>
 
           <div className="form-group full-width">
@@ -1946,7 +1959,7 @@ export default function Catalog() {
               className="form-control"
               value={newMaterial.descripcion}
               onChange={(e) => setNewMaterial({ ...newMaterial, descripcion: e.target.value })}
-              rows="3"
+              rows="2"
             />
           </div>
 
@@ -1956,45 +1969,34 @@ export default function Catalog() {
                 <label className="form-label">Riesgos Físicos</label>
                 <textarea
                   className="form-control"
-                  placeholder="Separar con ;"
+                  placeholder="Separar con ; (ej. Inflamable;Oxidante)"
                   value={newMaterial.riesgos_fisicos}
                   onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_fisicos: e.target.value })}
-                  rows="3"
+                  rows="2"
                 />
               </div>
               <div className="form-group">
                 <label className="form-label">Riesgos Salud</label>
                 <textarea
                   className="form-control"
-                  placeholder="Separar con ;"
+                  placeholder="Separar con ; (ej. Tóxico agudo;Irritante)"
                   value={newMaterial.riesgos_salud}
                   onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_salud: e.target.value })}
-                  rows="3"
+                  rows="2"
                 />
               </div>
               <div className="form-group">
                 <label className="form-label">Riesgos Ambientales</label>
                 <textarea
                   className="form-control"
-                  placeholder="Separar con ;"
+                  placeholder="Separar con ; (ej. Persistente)"
                   value={newMaterial.riesgos_ambientales}
                   onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_ambientales: e.target.value })}
-                  rows="3"
+                  rows="2"
                 />
               </div>
             </>
           )}
-
-          <div className="form-group full-width">
-            <label className="form-label">Imagen (.jpg)</label>
-            <input
-              type="file"
-              accept=".jpg"
-              className="form-control"
-              onChange={(e) => setNewMaterial({ ...newMaterial, imagenFile: e.target.files[0] })}
-              required
-            />
-          </div>
         </div>
 
         <div className="modal-footer-custom">
