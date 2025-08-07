@@ -28,7 +28,13 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
   const [usuario, setUsuario] = useState(null);
+  const [permissions, setPermissions] = useState({
+    acceso_chat: false,
+    modificar_stock: false,
+    rol: null,
+  });
   const [loading, setLoading] = useState(true);
+  
   const router = useRouter();
   const pathname = usePathname();
 
@@ -45,6 +51,30 @@ export function AuthProvider({ children }) {
     return decoded.exp < now;
   };
 
+   // ============================
+  // Carga permisos de chat y stock
+  // ============================
+  const fetchPermissions = async (token) => {
+    try {
+     const [chatRes, stockRes] = await Promise.all([
+ axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/permisos-chat`, {
+    headers: { Authorization: `Bearer ${token}` },
+  }),
+  axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/auth/permisos-stock`, {
+   headers: { Authorization: `Bearer ${token}` },
+ }),
+ ]);
+      setPermissions({
+        acceso_chat: chatRes.data.acceso_chat,
+        modificar_stock: stockRes.data.modificar_stock,
+        rol: stockRes.data.rol,
+      });
+    } catch (err) {
+      console.error('Error cargando permisos:', err);
+      if (err.response?.status === 401) limpiarSesion();
+    }
+  };
+  
   useEffect(() => {
     const cargarUsuario = async () => {
       const token = localStorage.getItem('token');
@@ -126,6 +156,7 @@ export function AuthProvider({ children }) {
           };
 
           setUsuario(usuarioData);
+          await fetchPermissions(token);
 
           // Redirecciones basadas en el estado de autenticación y rol
           if (esRutaPublica && pathname !== '/reset-password' && !pathname.startsWith('/reset-password')) {
@@ -206,6 +237,7 @@ export function AuthProvider({ children }) {
         grupo: grupo,
       };
 
+      await fetchPermissions(token);
       setUsuario(usuarioData);
       router.push('/catalog');
       return true;
@@ -236,6 +268,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{ 
       usuario, 
+    permissions,
       setUsuario, 
       login, 
       logout,
