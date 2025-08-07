@@ -28,37 +28,37 @@ export default function Catalog() {
   const [docentes, setDocentes] = useState([]);
   const [selectedDocenteId, setSelectedDocenteId] = useState('');
   const [showAddModal, setShowAddModal] = useState(false);
-const [newMaterial, setNewMaterial] = useState({
-  tipoGeneral: 'Reactivo',  // o 'Material'
-  subTipo: '',              // 'liquido'|'solido' o 'equipo'|'laboratorio'
-  nombre: '',
-  descripcion: '',
-  cantidad_inicial: '',
-  estado: 'disponible',
-  riesgos_fisicos: '',
-  riesgos_salud: '',
-  riesgos_ambientales: '',
-  imagenFile: null
-});
-const [addError, setAddError] = useState('');
+  const [newMaterial, setNewMaterial] = useState({
+    tipoGeneral: 'Reactivo',
+    subTipo: '',
+    nombre: '',
+    descripcion: '',
+    cantidad_inicial: '',
+    estado: 'disponible',
+    riesgos_fisicos: '',
+    riesgos_salud: '',
+    riesgos_ambientales: '',
+    imagenFile: null,
+  });
+  const [addError, setAddError] = useState('');
 
   const [userPermissions, setUserPermissions] = useState({
     acceso_chat: false,
     modificar_stock: false,
-    rol: null
+    rol: null,
   });
   const [permissionsLoading, setPermissionsLoading] = useState(true);
   const [permissionsError, setPermissionsError] = useState('');
 
   const LOW_STOCK_THRESHOLD = 50;
-  const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tu-cloud-name'; // Reemplaza con tu cloud name
+  const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tu-cloud-name';
 
   // Cargar permisos del usuario
   const loadUserPermissions = async () => {
     try {
       setPermissionsLoading(true);
       const token = localStorage.getItem('token');
-      
+
       if (!token) {
         router.push('/login');
         return;
@@ -72,14 +72,14 @@ const [addError, setAddError] = useState('');
       setUserPermissions({
         acceso_chat: response.data.acceso_chat || false,
         modificar_stock: response.data.modificar_stock || false,
-        rol: response.data.rol
+        rol: response.data.rol,
       });
 
       setPermissionsError('');
     } catch (error) {
       console.error('Error al cargar permisos:', error);
       setPermissionsError('Error al verificar permisos de usuario');
-      
+
       if (error.response?.status === 401) {
         localStorage.removeItem('token');
         router.push('/login');
@@ -100,7 +100,6 @@ const [addError, setAddError] = useState('');
         { headers: { Authorization: `Bearer ${token}` } }
       );
       setDocentes(response.data);
-      // Set default docente_id: for docentes, use their own ID; for others, use the first docente
       if (userPermissions.rol === 'docente') {
         setSelectedDocenteId(usuario.id.toString());
       } else if (response.data.length > 0) {
@@ -119,9 +118,8 @@ const [addError, setAddError] = useState('');
   };
 
   const canMakeRequests = () => {
-    return userPermissions.rol === 'alumno' 
-       || userPermissions.rol === 'docente';
- };
+    return userPermissions.rol === 'alumno' || userPermissions.rol === 'docente';
+  };
 
   const canViewDetails = () => {
     if (userPermissions.rol === 'administrador') return false;
@@ -131,33 +129,32 @@ const [addError, setAddError] = useState('');
 
   const handlePermissionError = (action) => {
     const messages = {
-      'modify_stock': 'No tienes permisos para modificar el stock. Contacta al administrador.',
-      'make_request': 'No tienes permisos para realizar solicitudes.',
-      'view_details': 'No tienes permisos para ver los detalles de este material.',
-      'adjust_stock': 'Solo usuarios con permisos de stock pueden ajustar inventario.',
-      'low_stock_alerts': 'Solo usuarios con permisos de stock pueden gestionar alertas.'
+      modify_stock: 'No tienes permisos para modificar el stock. Contacta al administrador.',
+      make_request: 'No tienes permisos para realizar solicitudes.',
+      view_details: 'No tienes permisos para ver los detalles de este material.',
+      adjust_stock: 'Solo usuarios con permisos de stock pueden ajustar inventario.',
+      low_stock_alerts: 'Solo usuarios con permisos de stock pueden gestionar alertas.',
     };
-    
+
     setError(messages[action] || 'No tienes permisos para realizar esta acción.');
     setTimeout(() => setError(''), 5000);
   };
 
   const handleDeleteMaterial = async () => {
-  if (!window.confirm('¿Seguro que quieres eliminar este material?')) return;
-  try {
-    await makeSecureApiCall(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/materials/${materialToAdjust.id}/eliminar?tipo=${materialToAdjust.tipo}`,
-      { method: 'DELETE' }
-    );
-    setShowAdjustModal(false);
-    await fetchMaterials();
-  } catch (err) {
-    console.error('Error al eliminar material:', err);
-    setError('No se pudo eliminar el material.');
-  }
-};
+    if (!window.confirm('¿Seguro que quieres eliminar este material?')) return;
+    try {
+      await makeSecureApiCall(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/${materialToAdjust.id}/eliminar?tipo=${materialToAdjust.tipo}`,
+        { method: 'DELETE' }
+      );
+      setShowAdjustModal(false);
+      await fetchMaterials();
+    } catch (err) {
+      console.error('Error al eliminar material:', err);
+      setError('No se pudo eliminar el material.');
+    }
+  };
 
-  
   const makeSecureApiCall = async (url, options = {}) => {
     try {
       const token = localStorage.getItem('token');
@@ -165,10 +162,10 @@ const [addError, setAddError] = useState('');
         ...options,
         headers: {
           ...options.headers,
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       };
-      
+
       const response = await axios(url, config);
       return response;
     } catch (error) {
@@ -203,7 +200,6 @@ const [addError, setAddError] = useState('');
     initializeComponent();
   }, [usuario, router]);
 
-  // Separar fetchMaterials en un useEffect dependiente de userPermissions
   useEffect(() => {
     if (userPermissions.rol) {
       Promise.all([fetchMaterials(), loadDocentes()]);
@@ -213,7 +209,7 @@ const [addError, setAddError] = useState('');
   const fetchMaterials = async () => {
     try {
       setLoading(true);
-      console.log('fetchMaterials: Rol del usuario:', userPermissions.rol); // Depuración
+      console.log('fetchMaterials: Rol del usuario:', userPermissions.rol);
 
       if (userPermissions.rol === 'administrador') {
         setError('Como administrador, solo puedes ver los reactivos (sin interacción)');
@@ -250,30 +246,32 @@ const [addError, setAddError] = useState('');
         cantidad: m.cantidad_disponible_u ?? 0,
         riesgos_fisicos: '',
         riesgos_salud: '',
-        riesgos_ambientales: ''
+        riesgos_ambientales: '',
       }));
 
       let all = [...liquidos, ...solidos, ...laboratorio, ...equipos];
-      
-      // Aplicar filtrado según el rol
+
       if (userPermissions.rol === 'alumno') {
-        all = all.filter(m => m.tipo === 'laboratorio' || m.tipo === 'equipo');
+        all = all.filter((m) => m.tipo === 'laboratorio' || m.tipo === 'equipo');
       } else if (userPermissions.rol === 'docente') {
-        all = all.filter(m => m.tipo === 'liquido' || m.tipo === 'solido');
+        all = all.filter((m) => m.tipo === 'liquido' || m.tipo === 'solido');
       }
 
-      console.log('Materiales filtrados:', all.map(m => ({ id: m.id, nombre: m.nombre, tipo: m.tipo, imagen: m.imagen }))); // Depuración
+      console.log(
+        'Materiales filtrados:',
+        all.map((m) => ({ id: m.id, nombre: m.nombre, tipo: m.tipo, imagen: m.imagen }))
+      );
       setAllMaterials(all);
 
-    if (canModifyStock()) {
-  const lowStock = all.filter(material =>
-    (material.tipo === 'liquido' || material.tipo === 'solido') &&  // sólo reactivos
-    material.cantidad > 0 &&
-    material.cantidad <= LOW_STOCK_THRESHOLD
-  );
-  setLowStockMaterials(lowStock);
-}
-
+      if (canModifyStock()) {
+        const lowStock = all.filter(
+          (material) =>
+            (material.tipo === 'liquido' || material.tipo === 'solido') &&
+            material.cantidad > 0 &&
+            material.cantidad <= LOW_STOCK_THRESHOLD
+        );
+        setLowStockMaterials(lowStock);
+      }
     } catch (err) {
       console.error('Error al cargar materiales:', err);
       if (!err.response || err.response.status !== 403) {
@@ -286,7 +284,8 @@ const [addError, setAddError] = useState('');
 
   const formatName = (name) =>
     name
-      ? name.replace(/_/g, ' ')
+      ? name
+          .replace(/_/g, ' ')
           .split(' ')
           .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
           .join(' ')
@@ -308,62 +307,66 @@ const [addError, setAddError] = useState('');
     return 'unidades';
   };
 
-const getImagePath = async (material) => {
-  if (material.imagen) {
-    // Verificar si la imagen existe en Cloudinary
-    try {
-      const folder = material.tipo === 'laboratorio' ? 'materialLaboratorio' :
-                    material.tipo === 'liquido' ? 'materialLiquido' :
-                    material.tipo === 'solido' ? 'materialSolido' :
-                    'materialEquipo';
-      const response = await fetch(`/api/materials/verify-image?public_id=materiales-laboratorio/${folder}/${material.nombre.toLowerCase().trim()}`);
-      const data = await response.json();
-      if (data.exists) {
-        return material.imagen; // Usar la URL almacenada si la imagen existe
+  const getImagePath = async (material) => {
+    if (material.imagen) {
+      try {
+        const folder =
+          material.tipo === 'laboratorio'
+            ? 'materialLaboratorio'
+            : material.tipo === 'liquido'
+            ? 'materialLiquido'
+            : material.tipo === 'solido'
+            ? 'materialSolido'
+            : 'materialEquipo';
+        const response = await fetch(
+          `/api/materials/verify-image?public_id=materiales-laboratorio/${folder}/${material.nombre.toLowerCase().trim()}`
+        );
+        const data = await response.json();
+        if (data.exists) {
+          return material.imagen;
+        }
+      } catch (error) {
+        console.error('[Error] Verificando imagen:', error);
       }
-    } catch (error) {
-      console.error('[Error] Verificando imagen:', error);
     }
-  }
-  // Fallback a placeholder si la imagen no existe o no está definida
-  return 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
-};
+    return 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+  };
 
   const parseRiesgos = (riesgosString) => {
     if (!riesgosString || riesgosString.trim() === '') return [];
-    return riesgosString.split(';').filter(r => r.trim());
+    return riesgosString.split(';').filter((r) => r.trim());
   };
 
   const getRiesgoColor = (riesgo) => {
     const colorMap = {
-      'Inflamable': 'bg-red-100 text-red-800',
-      'Oxidante': 'bg-orange-100 text-orange-800',
+      Inflamable: 'bg-red-100 text-red-800',
+      Oxidante: 'bg-orange-100 text-orange-800',
       'Corrosivo para metales': 'bg-gray-100 text-gray-800',
       'Reacciona violentamente con agua': 'bg-purple-100 text-purple-800',
       'Tóxico agudo': 'bg-red-200 text-red-900',
-      'Cancerígeno': 'bg-black text-white',
+      Cancerígeno: 'bg-black text-white',
       'Corrosivo para la piel': 'bg-yellow-100 text-yellow-800',
-      'Irritante': 'bg-blue-100 text-blue-800',
-      'Sensibilizante': 'bg-pink-100 text-pink-800',
+      Irritante: 'bg-blue-100 text-blue-800',
+      Sensibilizante: 'bg-pink-100 text-pink-800',
       'Peligroso para el medio ambiente acuático': 'bg-green-100 text-green-800',
-      'Persistente': 'bg-teal-100 text-teal-800'
+      Persistente: 'bg-teal-100 text-teal-800',
     };
     return colorMap[riesgo] || 'bg-gray-100 text-gray-600';
   };
 
   const getRiesgoIcon = (riesgo) => {
     const iconMap = {
-      'Inflamable': '🔥',
-      'Oxidante': '⚗️',
+      Inflamable: '🔥',
+      Oxidante: '⚗️',
       'Corrosivo para metales': '🛠️',
       'Reacciona violentamente con agua': '💥',
       'Tóxico agudo': '☠️',
-      'Cancerígeno': '⚠️',
+      Cancerígeno: '⚠️',
       'Corrosivo para la piel': '🧪',
-      'Irritante': '⚡',
-      'Sensibilizante': '🤧',
+      Irritante: '⚡',
+      Sensibilizante: '🤧',
       'Peligroso para el medio ambiente acuático': '🐟',
-      'Persistente': '🌱'
+      Persistente: '🌱',
     };
     return iconMap[riesgo] || '⚪';
   };
@@ -372,7 +375,7 @@ const getImagePath = async (material) => {
     const allRiesgos = [
       ...parseRiesgos(material.riesgos_fisicos),
       ...parseRiesgos(material.riesgos_salud),
-      ...parseRiesgos(material.riesgos_ambientales)
+      ...parseRiesgos(material.riesgos_ambientales),
     ];
 
     if (allRiesgos.includes('Cancerígeno') || allRiesgos.includes('Tóxico agudo')) return 4;
@@ -394,7 +397,7 @@ const getImagePath = async (material) => {
     if (!canModifyStock()) {
       return material.cantidad > 0 ? 'text-green-600' : 'text-red-600';
     }
-    
+
     if (material.cantidad === 0) return 'text-red-600';
     if (material.cantidad <= LOW_STOCK_THRESHOLD) return 'text-orange-600';
     return 'text-green-600';
@@ -405,7 +408,7 @@ const getImagePath = async (material) => {
       handlePermissionError('make_request');
       return;
     }
-    
+
     const cantidadNum = parseInt(cantidad) || 0;
     if (cantidadNum <= 0) {
       setError(`Ingresa una cantidad válida para ${formatName(material.nombre)}`);
@@ -457,13 +460,12 @@ const getImagePath = async (material) => {
       handlePermissionError('make_request');
       return;
     }
-    
+
     if (selectedCart.length === 0 || totalItems === 0) {
       setError('Selecciona al menos un material con cantidad válida.');
       return;
     }
 
-    // For docentes, use usuario.id; for others, validate selectedDocenteId
     let docenteIdToUse = userPermissions.rol === 'docente' ? usuario.id : parseInt(selectedDocenteId);
     if (userPermissions.rol !== 'docente' && !docenteIdToUse) {
       setError('Debes seleccionar un docente encargado.');
@@ -471,34 +473,33 @@ const getImagePath = async (material) => {
     }
 
     try {
-      const selectedDocente = docentes.find(doc => doc.id === docenteIdToUse);
+      const selectedDocente = docentes.find((doc) => doc.id === docenteIdToUse);
       if (!selectedDocente) {
         setError('Docente seleccionado no válido.');
         return;
       }
 
-      await makeSecureApiCall(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes`,
-        {
-          method: 'POST',
-          data: {
-            materiales: selectedCart.map((item) => ({
-              material_id: item.id,
-              cantidad: item.cantidad,
-              tipo: item.tipo
-            })),
-            motivo: 'Solicitud desde catálogo',
-            fecha_solicitud: new Date().toISOString().split('T')[0],
-            aprobar_automatico: userPermissions.rol === 'docente',
-            docente_id: docenteIdToUse,
-            nombre_alumno: userPermissions.rol === 'alumno' ? formatName(usuario.nombre) : null
-          }
-        }
-      );
+      await makeSecureApiCall(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes`, {
+        method: 'POST',
+        data: {
+          materiales: selectedCart.map((item) => ({
+            material_id: item.id,
+            cantidad: item.cantidad,
+            tipo: item.tipo,
+          })),
+          motivo: 'Solicitud desde catálogo',
+          fecha_solicitud: new Date().toISOString().split('T')[0],
+          aprobar_automatico: userPermissions.rol === 'docente',
+          docente_id: docenteIdToUse,
+          nombre_alumno: userPermissions.rol === 'alumno' ? formatName(usuario.nombre) : null,
+        },
+      });
 
       setSelectedCart([]);
       setShowRequestModal(false);
-      setSelectedDocenteId(userPermissions.rol === 'docente' ? usuario.id.toString() : docentes[0]?.id?.toString() || '');
+      setSelectedDocenteId(
+        userPermissions.rol === 'docente' ? usuario.id.toString() : docentes[0]?.id?.toString() || ''
+      );
       router.push('/solicitudes');
     } catch (err) {
       console.error('Error al enviar solicitud:', err);
@@ -508,11 +509,11 @@ const getImagePath = async (material) => {
 
   const filteredMaterials = allMaterials.filter((m) => {
     const matchesSearch = formatName(m.nombre).toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRiesgoFisico = selectedRiesgoFisico === '' || 
-      (m.riesgos_fisicos && m.riesgos_fisicos.includes(selectedRiesgoFisico));
-    const matchesRiesgoSalud = selectedRiesgoSalud === '' || 
-      (m.riesgos_salud && m.riesgos_salud.includes(selectedRiesgoSalud));
-    
+    const matchesRiesgoFisico =
+      selectedRiesgoFisico === '' || (m.riesgos_fisicos && m.riesgos_fisicos.includes(selectedRiesgoFisico));
+    const matchesRiesgoSalud =
+      selectedRiesgoSalud === '' || (m.riesgos_salud && m.riesgos_salud.includes(selectedRiesgoSalud));
+
     return matchesSearch && matchesRiesgoFisico && matchesRiesgoSalud;
   });
 
@@ -532,69 +533,67 @@ const getImagePath = async (material) => {
     if (!canViewDetails()) {
       return;
     }
-    console.log(`Clic en material: ${material.nombre}, ID: ${material.id}, Tipo: ${material.tipo}, Image Path: ${getImagePath(material)}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${material.riesgos_ambientales}`);
+    console.log(
+      `Clic en material: ${material.nombre}, ID: ${material.id}, Tipo: ${material.tipo}, Image Path: ${getImagePath(
+        material
+      )}, Riesgos Fisicos: ${material.riesgos_fisicos}, Riesgos Salud: ${material.riesgos_salud}, Riesgos Ambientales: ${
+        material.riesgos_ambientales
+      }`
+    );
     setSelectedMaterial(material);
     setDetailAmount('');
     setShowDetailModal(true);
     setError('');
   };
 
-// ---------------------------------------
-// 1) Nuevo handleAdjustSubmit
-const handleAdjustSubmit = async () => {
-  if (!materialToAdjust || !canModifyStock()) {
-    handlePermissionError('adjust_stock');
-    return;
-  }
+  const handleAdjustSubmit = async () => {
+    if (!materialToAdjust || !canModifyStock()) {
+      handlePermissionError('adjust_stock');
+      return;
+    }
 
-  // parseInt recoge correctamente el signo “-”:
-  const delta = parseInt(adjustAmount, 10);
-  if (isNaN(delta)) {
-    setError('Ingresa un número válido');
-    return;
-  }
+    const delta = parseInt(adjustAmount, 10);
+    if (isNaN(delta)) {
+      setError('Ingresa un número válido');
+      return;
+    }
 
-  const newStock = materialToAdjust.cantidad + delta;
-  if (newStock < 0) {
-    setError('El stock no puede quedar en negativo');
-    return;
-  }
+    const newStock = materialToAdjust.cantidad + delta;
+    if (newStock < 0) {
+      setError('El stock no puede quedar en negativo');
+      return;
+    }
 
-  try {
-    //  enviamos al backend el stock absoluto
-    await makeSecureApiCall(
-      `${process.env.NEXT_PUBLIC_API_URL}/api/materials/material/${materialToAdjust.id}/ajustar`,
-      {
-        method: 'POST',
-        data: {
-          cantidad: newStock,
-          tipo: materialToAdjust.tipo
+    try {
+      await makeSecureApiCall(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/material/${materialToAdjust.id}/ajustar`,
+        {
+          method: 'POST',
+          data: {
+            cantidad: newStock,
+            tipo: materialToAdjust.tipo,
+          },
         }
-      }
-    );
+      );
 
-    //  reflejamos al instante el nuevo stock en la UI
-    setAllMaterials(prev =>
-      prev.map(item =>
-        item.id === materialToAdjust.id && item.tipo === materialToAdjust.tipo
-          ? { ...item, cantidad: newStock }
-          : item
-      )
-    );
+      setAllMaterials((prev) =>
+        prev.map((item) =>
+          item.id === materialToAdjust.id && item.tipo === materialToAdjust.tipo
+            ? { ...item, cantidad: newStock }
+            : item
+        )
+      );
 
-    setShowAdjustModal(false);
-    setAdjustAmount('');
-    setError('');
-  } catch (err) {
-    console.error('Error al ajustar inventario:', err);
-    setError('No se pudo ajustar el stock');
-  }
-};
+      setShowAdjustModal(false);
+      setAdjustAmount('');
+      setError('');
+    } catch (err) {
+      console.error('Error al ajustar inventario:', err);
+      setError('No se pudo ajustar el stock');
+    }
+  };
 
-
-
-  // === PARTE 4: Manejo de envío del formulario de "Agregar" ===
-  const handleAddSubmit = async e => {
+  const handleAddSubmit = async (e) => {
     e.preventDefault();
     setAddError('');
     const {
@@ -607,7 +606,7 @@ const handleAdjustSubmit = async () => {
       riesgos_fisicos,
       riesgos_salud,
       riesgos_ambientales,
-      imagenFile
+      imagenFile,
     } = newMaterial;
 
     if (!subTipo || !nombre || !cantidad_inicial || !imagenFile) {
@@ -629,16 +628,12 @@ const handleAdjustSubmit = async () => {
       }
       formData.append('imagen', imagenFile);
 
-await makeSecureApiCall(
-  `${process.env.NEXT_PUBLIC_API_URL}/api/materials/crear`,
-  {
-    method: 'POST',
-    data: formData
-  }
-);
+      await makeSecureApiCall(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/crear`, {
+        method: 'POST',
+        data: formData,
+      });
 
       setShowAddModal(false);
-      // Reset formulario
       setNewMaterial({
         tipoGeneral: 'Reactivo',
         subTipo: '',
@@ -649,28 +644,25 @@ await makeSecureApiCall(
         riesgos_fisicos: '',
         riesgos_salud: '',
         riesgos_ambientales: '',
-        imagenFile: null
+        imagenFile: null,
       });
-      // Refrescar lista
       await fetchMaterials();
     } catch (err) {
       console.error('Error al crear material:', err);
       setAddError(err.response?.data?.error || err.message);
     }
   };
-  // ================================================
 
-  
   const dismissLowStockAlert = (materialId, tipo) => {
     if (!canModifyStock()) {
       handlePermissionError('low_stock_alerts');
       return;
     }
-    setLowStockMaterials(prev => 
-      prev.filter(material => !(material.id === materialId && material.tipo === tipo))
+    setLowStockMaterials((prev) =>
+      prev.filter((material) => !(material.id === materialId && material.tipo === tipo))
     );
   };
-  
+
   console.log('Permisos cargados:', userPermissions);
   if (permissionsLoading || loading) {
     return (
@@ -682,31 +674,33 @@ await makeSecureApiCall(
             align-items: center;
             height: 100vh;
             margin-left: 16rem;
-            background: #f8f9fa;
+            background: #f9fafb;
+            font-family: 'Inter', system-ui, sans-serif;
           }
           .loading-content {
             text-align: center;
             background: white;
-            padding: 3rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
           }
           .spinner {
-            width: 40px;
-            height: 40px;
-            border: 3px solid #e5e7eb;
-            border-top: 3px solid #1e3a8a;
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #2563eb;
             border-radius: 50%;
             animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
+            margin: 0 auto 1.5rem;
           }
           @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
           }
           .loading-text {
-            color: #6b7280;
-            font-size: 1rem;
+            color: #4b5563;
+            font-size: 1.125rem;
+            font-weight: 500;
           }
         `}</style>
         <div className="loading-container">
@@ -731,44 +725,47 @@ await makeSecureApiCall(
             align-items: center;
             height: 100vh;
             margin-left: 16rem;
-            background: #f8f9fa;
+            background: #f9fafb;
+            font-family: 'Inter', system-ui, sans-serif;
           }
           .error-content {
             text-align: center;
             background: white;
             padding: 3rem;
-            border-radius: 8px;
-            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-            max-width: 500px;
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            max-width: 600px;
           }
           .error-icon {
-            font-size: 3rem;
+            font-size: 3.5rem;
             color: #ef4444;
-            margin-bottom: 1rem;
+            margin-bottom: 1.5rem;
           }
           .error-title {
-            font-size: 1.5rem;
-            font-weight: 600;
+            font-size: 1.75rem;
+            font-weight: 700;
             color: #1f2937;
             margin-bottom: 1rem;
           }
           .error-message {
             color: #6b7280;
-            font-size: 1rem;
+            font-size: 1.125rem;
             margin-bottom: 2rem;
+            line-height: 1.6;
           }
           .retry-button {
-            background: #1e3a8a;
+            background: #2563eb;
             color: white;
             border: none;
-            border-radius: 6px;
-            padding: 0.75rem 1.5rem;
-            font-weight: 500;
+            border-radius: 8px;
+            padding: 0.875rem 2rem;
+            font-weight: 600;
+            font-size: 1rem;
             cursor: pointer;
-            transition: background-color 0.15s ease;
+            transition: background-color 0.2s ease;
           }
           .retry-button:hover {
-            background: #1e40af;
+            background: #1d4ed8;
           }
         `}</style>
         <div className="error-container">
@@ -776,8 +773,8 @@ await makeSecureApiCall(
             <div className="error-icon">⚠️</div>
             <h2 className="error-title">Error de Permisos</h2>
             <p className="error-message">{permissionsError}</p>
-            <button 
-              className="retry-button" 
+            <button
+              className="retry-button"
               onClick={() => {
                 setPermissionsError('');
                 loadUserPermissions();
@@ -794,37 +791,64 @@ await makeSecureApiCall(
   return (
     <>
       <style jsx>{`
+        /* Font and Base Styles */
+        * {
+          font-family: 'Inter', system-ui, -apple-system, sans-serif;
+          box-sizing: border-box;
+        }
+
         .catalog-container {
-          background: #f8f9fa;
+          background: #f9fafb;
           min-height: 100vh;
           padding: 2rem;
           margin-left: 16rem;
+          transition: margin-left 0.3s ease;
         }
 
         .main-card {
           background: white;
-          border-radius: 8px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
           overflow: hidden;
         }
 
         .header-section {
-          background: #1e293b;
+          background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
           color: white;
           padding: 2rem;
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
         }
 
         .header-section h1 {
-          font-size: 1.75rem;
-          font-weight: 600;
+          font-size: 1.875rem;
+          font-weight: 700;
           margin: 0;
+        }
+
+        .btn-add-material {
+          background: #16a34a;
+          color: white;
+          border: none;
+          border-radius: 8px;
+          padding: 0.75rem 1.5rem;
+          font-weight: 600;
+          font-size: 1rem;
+          cursor: pointer;
+          transition: background-color 0.2s ease;
+        }
+
+        .btn-add-material:hover {
+          background: #15803d;
         }
 
         .low-stock-alerts {
           background: #fef3c7;
           border-left: 4px solid #f59e0b;
-          padding: 1rem 1.5rem;
+          padding: 1.5rem;
           margin-bottom: 1rem;
+          border-radius: 8px;
         }
 
         .low-stock-item {
@@ -832,10 +856,15 @@ await makeSecureApiCall(
           justify-content: space-between;
           align-items: center;
           background: white;
-          border: 1px solid #fbbf24;
-          border-radius: 6px;
-          padding: 0.75rem 1rem;
-          margin-bottom: 0.5rem;
+          border: 1px solid #fed7aa;
+          border-radius: 8px;
+          padding: 1rem;
+          margin-bottom: 0.75rem;
+          transition: transform 0.2s ease;
+        }
+
+        .low-stock-item:hover {
+          transform: translateY(-2px);
         }
 
         .low-stock-content {
@@ -845,12 +874,12 @@ await makeSecureApiCall(
         .low-stock-material {
           font-weight: 600;
           color: #92400e;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
         }
 
         .low-stock-quantity {
           color: #b45309;
-          font-size: 0.75rem;
+          font-size: 0.85rem;
           margin-top: 0.25rem;
         }
 
@@ -859,9 +888,10 @@ await makeSecureApiCall(
           border: none;
           color: #92400e;
           cursor: pointer;
-          padding: 0.25rem;
-          border-radius: 4px;
-          transition: background-color 0.15s ease;
+          padding: 0.5rem;
+          border-radius: 6px;
+          transition: background-color 0.2s ease;
+          font-size: 1.25rem;
         }
 
         .dismiss-btn:hover {
@@ -870,41 +900,43 @@ await makeSecureApiCall(
 
         .search-filter-container {
           padding: 1.5rem;
-          background: #fafbfc;
+          background: #f8fafc;
           border-bottom: 1px solid #e5e7eb;
           display: grid;
           grid-template-columns: 2fr 1fr 1fr;
-          gap: 1rem;
+          gap: 1.25rem;
         }
 
-        .search-input, .filter-select {
+        .search-input,
+        .filter-select {
           border: 1px solid #d1d5db;
-          border-radius: 6px;
-          padding: 0.75rem 1rem;
-          font-size: 0.95rem;
+          border-radius: 8px;
+          padding: 0.875rem 1rem;
+          font-size: 1rem;
           background: white;
           transition: all 0.2s ease;
         }
 
-        .search-input:focus, .filter-select:focus {
+        .search-input:focus,
+        .filter-select:focus {
           outline: none;
-          border-color: #1e3a8a;
-          box-shadow: 0 0 0 3px rgba(30, 58, 138, 0.1);
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .material-grid {
           display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
           gap: 1.5rem;
           padding: 1.5rem;
         }
 
         .material-card {
           background: white;
-          border-radius: 8px;
-          box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
           overflow: hidden;
-          transition: transform 0.2s ease;
+          transition: transform 0.2s ease, box-shadow 0.2s ease;
         }
 
         .material-card.clickable {
@@ -913,88 +945,46 @@ await makeSecureApiCall(
 
         .material-card.clickable:hover {
           transform: translateY(-4px);
+          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
         }
 
         .material-card.non-clickable {
           cursor: default;
-          opacity: 0.8;
+          opacity: 0.85;
         }
 
         .material-image {
           width: 100%;
-          height: 150px;
+          height: 160px;
           object-fit: contain;
           object-position: center;
-          background: #f8f9fa;
+          background: #f8fafc;
+          border-bottom: 1px solid #e5e7eb;
         }
 
         .material-card-content {
-          padding: 1rem;
+          padding: 1.25rem;
         }
 
         .material-card-name {
           font-weight: 600;
           color: #1f2937;
-          font-size: 0.95rem;
+          font-size: 1rem;
           margin-bottom: 0.5rem;
         }
 
         .material-card-type {
-          padding: 0.25rem 0.625rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
+          padding: 0.375rem 0.75rem;
+          border-radius: 6px;
+          font-size: 0.85rem;
           font-weight: 500;
           text-transform: capitalize;
         }
 
         .material-card-stock {
-          font-size: 0.85rem;
+          font-size: 0.9rem;
           margin-top: 0.5rem;
-        }
-
-        .table {
-          margin: 0;
-        }
-
-        .table-header {
-          background: #f8f9fa;
-          font-weight: 600;
-          color: #374151;
-          font-size: 0.875rem;
-          border-bottom: 1px solid #e5e7eb;
-        }
-
-        .table-header th {
-          padding: 1rem;
-          font-weight: 600;
-        }
-
-        .table-row {
-          border-bottom: 1px solid #f3f4f6;
-          transition: background-color 0.15s ease;
-        }
-
-        .table-row:hover {
-          background: #f8f9fa;
-        }
-
-        .table-row td {
-          padding: 1rem;
-          vertical-align: middle;
-        }
-
-        .material-name {
-          font-weight: 600;
-          color: #1f2937;
-          font-size: 0.95rem;
-        }
-
-        .material-type {
-          padding: 0.25rem 0.625rem;
-          border-radius: 4px;
-          font-size: 0.75rem;
           font-weight: 500;
-          text-transform: capitalize;
         }
 
         .type-liquido {
@@ -1018,20 +1008,21 @@ await makeSecureApiCall(
         }
 
         .riesgo-badge {
-          display: inline-block;
-          padding: 0.125rem 0.375rem;
-          border-radius: 4px;
-          font-size: 0.625rem;
+          display: inline-flex;
+          align-items: center;
+          padding: 0.25rem 0.5rem;
+          border-radius: 6px;
+          font-size: 0.75rem;
           font-weight: 500;
-          margin: 0.125rem;
+          margin: 0.25rem;
           white-space: nowrap;
         }
 
         .riesgos-container {
           display: flex;
           flex-wrap: wrap;
-          gap: 0.25rem;
-          max-width: 200px;
+          gap: 0.5rem;
+          max-width: 220px;
         }
 
         .stock-display {
@@ -1040,32 +1031,31 @@ await makeSecureApiCall(
 
         .quantity-input {
           border: 1px solid #d1d5db;
-          border-radius: 4px;
-          padding: 0.5rem;
+          border-radius: 6px;
+          padding: 0.625rem;
           text-align: center;
           font-weight: 500;
-          font-size: 0.875rem;
-          transition: border-color 0.15s ease;
-          width: 80px;
+          font-size: 0.95rem;
+          transition: border-color 0.2s ease;
+          width: 90px;
         }
 
         .quantity-input:focus {
-          border-color: #1e3a8a;
-          box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
+          border-color: #2563eb;
+          box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
           outline: none;
         }
 
         .btn-adjust {
           background: #f59e0b;
           border: none;
-          border-radius: 4px;
+          border-radius: 8px;
           color: white;
-          font-weight: 500;
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-          transition: background-color 0.15s ease;
+          font-weight: 600;
+          padding: 0.75rem 1.5rem;
+          font-size: 1rem;
+          transition: background-color 0.2s ease;
           cursor: pointer;
-          margin-top: 8px;
           width: 100%;
         }
 
@@ -1080,32 +1070,33 @@ await makeSecureApiCall(
         }
 
         .btn-add-to-cart {
-          background: #1e3a8a;
+          background: #2563eb;
           border: none;
-          border-radius: 4px;
+          border-radius: 8px;
           color: white;
-          font-weight: 500;
-          padding: 0.5rem 1rem;
-          font-size: 0.875rem;
-          transition: background-color 0.15s ease;
+          font-weight: 600;
+          padding: 0.75rem 1.5rem;
+          font-size: 1rem;
+          transition: background-color 0.2s ease;
           cursor: pointer;
           width: 100%;
         }
 
         .btn-add-to-cart:hover {
-          background: #1e40af;
+          background: #1d4ed8;
         }
 
         .btn-add-to-cart:disabled {
           background: #d1d5db;
           cursor: not-allowed;
+          opacity: 0.6;
         }
 
         .cart-container {
           background: white;
-          border-radius: 8px;
-          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
-          width: 400px;
+          border-radius: 12px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+          width: 420px;
           position: sticky;
           top: 2rem;
           max-height: calc(100vh - 4rem);
@@ -1115,19 +1106,19 @@ await makeSecureApiCall(
         }
 
         .cart-header {
-          background: #1e293b;
+          background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
           color: white;
           padding: 1.5rem;
         }
 
         .cart-header h4 {
-          font-size: 1.125rem;
-          font-weight: 600;
+          font-size: 1.25rem;
+          font-weight: 700;
           margin: 0 0 0.25rem 0;
         }
 
         .cart-header small {
-          font-size: 0.875rem;
+          font-size: 0.9rem;
           opacity: 0.9;
         }
 
@@ -1138,39 +1129,44 @@ await makeSecureApiCall(
         }
 
         .cart-item {
-          background: #f8f9fa;
+          background: #f8fafc;
           border: 1px solid #e5e7eb;
-          border-radius: 6px;
+          border-radius: 8px;
           padding: 1rem;
           margin-bottom: 0.75rem;
+          transition: transform 0.2s ease;
+        }
+
+        .cart-item:hover {
+          transform: translateY(-2px);
         }
 
         .cart-item-name {
           font-weight: 600;
           color: #1f2937;
           margin-bottom: 0.25rem;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
         }
 
         .cart-item-quantity {
           color: #6b7280;
-          font-size: 0.813rem;
+          font-size: 0.85rem;
           margin-bottom: 0.5rem;
         }
 
         .btn-remove {
           background: #ef4444;
           border: none;
-          border-radius: 4px;
+          border-radius: 6px;
           color: white;
-          width: 28px;
-          height: 28px;
+          width: 32px;
+          height: 32px;
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1.125rem;
+          font-size: 1.25rem;
           font-weight: 600;
-          transition: background-color 0.15s ease;
+          transition: background-color 0.2s ease;
           cursor: pointer;
         }
 
@@ -1179,42 +1175,43 @@ await makeSecureApiCall(
         }
 
         .btn-create-vale {
-          background: #1e3a8a;
+          background: #2563eb;
           border: none;
-          border-radius: 6px;
+          border-radius: 8px;
           color: white;
           font-weight: 600;
           padding: 0.875rem 1.5rem;
-          font-size: 0.95rem;
-          transition: background-color 0.15s ease;
+          font-size: 1rem;
+          transition: background-color 0.2s ease;
           width: 100%;
           cursor: pointer;
         }
 
         .btn-create-vale:hover:not(:disabled) {
-          background: #1e40af;
+          background: #1d4ed8;
         }
 
         .btn-create-vale:disabled {
           background: #d1d5db;
           cursor: not-allowed;
+          opacity: 0.6;
         }
 
         .btn-clear {
           background: white;
           border: 1px solid #d1d5db;
-          border-radius: 6px;
+          border-radius: 8px;
           color: #4b5563;
-          font-weight: 500;
+          font-weight: 600;
           padding: 0.75rem 1.5rem;
-          font-size: 0.875rem;
-          transition: all 0.15s ease;
+          font-size: 1rem;
+          transition: all 0.2s ease;
           width: 100%;
           cursor: pointer;
         }
 
         .btn-clear:hover:not(:disabled) {
-          background: #f8f9fa;
+          background: #f8fafc;
           border-color: #9ca3af;
         }
 
@@ -1229,7 +1226,7 @@ await makeSecureApiCall(
           left: 0;
           width: 100vw;
           height: 100vh;
-          background: rgba(0, 0, 0, 0.5);
+          background: rgba(0, 0, 0, 0.6);
           display: flex;
           justify-content: center;
           align-items: center;
@@ -1239,21 +1236,17 @@ await makeSecureApiCall(
 
         .modal-content-custom {
           background: white;
-          border-radius: 8px;
-          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+          border-radius: 12px;
+          box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
           border: none;
-          overflow: hidden;
-          max-width: 500px;
+          max-width: 600px;
           width: 90%;
-          margin: 0 auto;
-          position: absolute;
-          left: 50%;
-          top: 50%;
-          transform: translate(-50%, -50%);
+          margin: 2rem auto;
+          position: relative;
         }
 
         .modal-header-custom {
-          background: #1e293b;
+          background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%);
           color: white;
           padding: 1.5rem;
           border-bottom: none;
@@ -1263,19 +1256,19 @@ await makeSecureApiCall(
         }
 
         .modal-header-custom .modal-title {
-          font-size: 1.25rem;
-          font-weight: 600;
+          font-size: 1.5rem;
+          font-weight: 700;
           margin: 0;
         }
 
         .alert-custom {
           background: #fee2e2;
           border: 1px solid #fecaca;
-          border-radius: 6px;
-          padding: 0.875rem 1rem;
+          border-radius: 8px;
+          padding: 1rem;
           margin-bottom: 1rem;
           color: #dc2626;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
         }
 
         .loading-spinner {
@@ -1286,17 +1279,12 @@ await makeSecureApiCall(
         }
 
         .spinner {
-          width: 40px;
-          height: 40px;
-          border: 3px solid #e5e7eb;
-          border-top: 3px solid #1e3a8a;
+          width: 48px;
+          height: 48px;
+          border: 4px solid #e5e7eb;
+          border-top: 4px solid #2563eb;
           border-radius: 50%;
           animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-          0% { transform: rotate(0deg); }
-          100% { transform: rotate(360deg); }
         }
 
         .empty-cart {
@@ -1306,35 +1294,35 @@ await makeSecureApiCall(
         }
 
         .empty-cart-icon {
-          font-size: 3rem;
+          font-size: 3.5rem;
           margin-bottom: 1rem;
-          opacity: 0.3;
+          opacity: 0.4;
         }
 
         .empty-cart p {
-          font-weight: 500;
+          font-weight: 600;
           color: #4b5563;
           margin-bottom: 0.25rem;
         }
 
         .empty-cart small {
           color: #9ca3af;
-          font-size: 0.875rem;
+          font-size: 0.9rem;
         }
 
         .modal-footer-custom {
           padding: 1.5rem;
           border-top: 1px solid #e5e7eb;
-          background: #f8f9fa;
+          background: #f8fafc;
           display: flex;
-          gap: 0.75rem;
+          gap: 1rem;
           justify-content: flex-end;
         }
 
         .request-summary {
-          background: #f8f9fa;
+          background: #f8fafc;
           border: 1px solid #e5e7eb;
-          border-radius: 6px;
+          border-radius: 8px;
           padding: 0;
           overflow: hidden;
         }
@@ -1343,7 +1331,7 @@ await makeSecureApiCall(
           display: flex;
           justify-content: space-between;
           align-items: center;
-          padding: 0.875rem 1rem;
+          padding: 1rem;
           border-bottom: 1px solid #e5e7eb;
         }
 
@@ -1354,96 +1342,97 @@ await makeSecureApiCall(
         .request-item .fw-semibold {
           font-weight: 600;
           color: #1f2937;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
         }
 
         .request-item small {
           color: #6b7280;
-          font-size: 0.75rem;
+          font-size: 0.85rem;
         }
 
         .request-item .fw-bold {
-          font-weight: 600;
-          color: #1e3a8a;
-          font-size: 0.875rem;
+          font-weight: 700;
+          color: #2563eb;
+          font-size: 0.95rem;
         }
 
         .btn-secondary-custom {
           background: white;
           border: 1px solid #d1d5db;
-          border-radius: 6px;
+          border-radius: 8px;
           color: #4b5563;
-          font-weight: 500;
+          font-weight: 600;
           padding: 0.75rem 1.5rem;
-          font-size: 0.875rem;
-          transition: all 0.15s ease;
+          font-size: 1rem;
+          transition: all 0.2s ease;
           cursor: pointer;
         }
 
         .btn-secondary-custom:hover {
-          background: #f8f9fa;
+          background: #f8fafc;
           border-color: #9ca3af;
         }
 
         .info-alert {
           background: #eff6ff;
           border: 1px solid #bfdbfe;
-          border-radius: 6px;
-          padding: 0.875rem 1rem;
+          border-radius: 8px;
+          padding: 1rem;
           color: #1e40af;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
         }
 
         .security-alert {
           background: #fef3c7;
           border: 1px solid #fbbf24;
-          border-radius: 6px;
-          padding: 0.875rem 1rem;
+          border-radius: 8px;
+          padding: 1rem;
           color: #92400e;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
           margin-bottom: 1rem;
         }
 
         .form-label {
           color: #374151;
-          font-weight: 500;
+          font-weight: 600;
           margin-bottom: 0.5rem;
-          font-size: 0.875rem;
+          font-size: 0.95rem;
         }
 
         .form-control {
           border: 1px solid #d1d5db;
-          border-radius: 4px;
-          padding: 0.625rem 0.875rem;
-          font-size: 0.95rem;
-          transition: all 0.15s ease;
+          border-radius: 8px;
+          padding: 0.75rem 1rem;
+          font-size: 1rem;
+          transition: all 0.2s ease;
         }
 
         .form-control:focus {
           outline: none;
-          border-color: #1e3a8a;
-          box-shadow: 0 0 0 2px rgba(30, 58, 138, 0.1);
+          border-color: #2563eb;
+          box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
         }
 
         .detail-image {
-          max-width: 200px;
-          max-height: 200px;
+          max-width: 220px;
+          max-height: 220px;
           object-fit: contain;
-          border-radius: 8px;
+          border-radius: 10px;
           margin-bottom: 1rem;
+          border: 1px solid #e5e7eb;
         }
 
         .text-muted {
           color: #6b7280 !important;
-          font-size: 0.875rem;
+          font-size: 0.9rem;
         }
 
         .text-red-600 {
-          color: #dc2626;
+          color: #ef4444;
         }
 
         .text-orange-600 {
-          color: #ea580c;
+          color: #f59e0b;
         }
 
         .text-green-600 {
@@ -1452,8 +1441,8 @@ await makeSecureApiCall(
 
         .modal-body h5 {
           color: #1f2937;
-          font-size: 1.125rem;
-          font-weight: 600;
+          font-size: 1.25rem;
+          font-weight: 700;
           margin-bottom: 0.75rem;
         }
 
@@ -1526,10 +1515,6 @@ await makeSecureApiCall(
           padding: 1.5rem;
         }
 
-        .table-responsive {
-          overflow-x: auto;
-        }
-
         .min-w-full {
           min-width: 100%;
         }
@@ -1549,12 +1534,13 @@ await makeSecureApiCall(
         .btn-close {
           background: none;
           border: none;
-          font-size: 1.5rem;
+          font-size: 1.75rem;
           color: white;
           cursor: pointer;
           padding: 0;
-          width: 24px;
-          height: 24px;
+          width: 28px;
+          height: 28px;
+          line-height: 1;
         }
 
         .btn-close-white {
@@ -1567,32 +1553,72 @@ await makeSecureApiCall(
 
         .no-risks {
           color: #6b7280;
-          font-size: 0.875rem;
+          font-size: 0.9rem;
           font-style: italic;
         }
 
         @media (max-width: 1200px) {
           .catalog-container {
             margin-left: 0;
+            padding: 1.5rem;
           }
-          
+
           .d-flex.gap-4 {
             flex-direction: column;
           }
-          
+
           .cart-container {
             width: 100%;
             position: relative;
             max-height: none;
-            margin-top: 2rem;
+            margin-top: 1.5rem;
           }
 
           .search-filter-container {
             grid-template-columns: 1fr;
+            gap: 1rem;
           }
 
           .material-grid {
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+            gap: 1rem;
+          }
+
+          .modal-content-custom {
+            width: 95%;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .header-section {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+          }
+
+          .material-card {
+            border-radius: 10px;
+          }
+
+          .material-image {
+            height: 140px;
+          }
+
+          .material-card-name {
+            font-size: 0.95rem;
+          }
+
+          .material-card-stock {
+            font-size: 0.85rem;
+          }
+
+          .btn-add-material,
+          .btn-create-vale,
+          .btn-clear,
+          .btn-adjust,
+          .btn-add-to-cart {
+            font-size: 0.95rem;
+            padding: 0.625rem 1rem;
           }
         }
       `}</style>
@@ -1601,44 +1627,47 @@ await makeSecureApiCall(
         <div className="d-flex gap-4">
           <div className="flex-grow-1">
             <div className="main-card">
-            <div className="header-section">
-  {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
-    <button
-   onClick={() => setShowAddModal(true)}
-      className="mb-4 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded"
-  >
-     Agregar Material/Reactivo
-   </button>
- )}
-   <h1>Catálogo de Reactivos</h1>
-</div>
-
+              <div className="header-section">
+                {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
+                  <button
+                    onClick={() => setShowAddModal(true)}
+                    className="btn-add-material"
+                  >
+                    Agregar Material/Reactivo
+                  </button>
+                )}
+                <h1>Catálogo de Materiales</h1>
+              </div>
 
               {canModifyStock() && lowStockMaterials.length > 0 && (
                 <div className="low-stock-alerts">
                   <div style={{ display: 'flex', alignItems: 'center', marginBottom: '1rem' }}>
-                    <div style={{ 
-                      width: '24px', 
-                      height: '24px', 
-                      background: '#f59e0b', 
-                      borderRadius: '50%', 
-                      display: 'flex', 
-                      alignItems: 'center', 
-                      justifyContent: 'center', 
-                      marginRight: '0.75rem' 
-                    }}>
-                      <span style={{ color: 'white', fontSize: '14px', fontWeight: 'bold' }}>!</span>
+                    <div
+                      style={{
+                        width: '28px',
+                        height: '28px',
+                        background: '#f59e0b',
+                        borderRadius: '50%',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        marginRight: '0.75rem',
+                      }}
+                    >
+                      <span style={{ color: 'white', fontSize: '16px', fontWeight: 'bold' }}>
+                        !
+                      </span>
                     </div>
                     <div>
-                      <h4 style={{ margin: 0, color: '#92400e', fontSize: '1rem', fontWeight: '600' }}>
+                      <h4 style={{ margin: 0, color: '#92400e', fontSize: '1.125rem', fontWeight: '600' }}>
                         Advertencia de Stock Bajo
                       </h4>
-                      <p style={{ margin: 0, color: '#b45309', fontSize: '0.875rem' }}>
-                        Los siguientes materiales tienen stock por debajo del umbral mínimo ({LOW_STOCK_THRESHOLD} unidades):
+                      <p style={{ margin: 0, color: '#b45309', fontSize: '0.9rem' }}>
+                        Materiales con stock por debajo de {LOW_STOCK_THRESHOLD} unidades:
                       </p>
                     </div>
                   </div>
-                  
+
                   {lowStockMaterials.map((material) => (
                     <div key={`${material.tipo}-${material.id}`} className="low-stock-item">
                       <div className="low-stock-content">
@@ -1646,7 +1675,7 @@ await makeSecureApiCall(
                           {formatName(material.nombre)} ({material.tipo})
                         </div>
                         <div className="low-stock-quantity">
-                          Stock actual: {material.cantidad} {getUnidad(material.tipo)}
+                          Stock: {material.cantidad} {getUnidad(material.tipo)}
                         </div>
                       </div>
                       <button
@@ -1714,36 +1743,38 @@ await makeSecureApiCall(
                 ) : (
                   <div className="material-grid">
                     {filteredMaterials.length === 0 ? (
-                      <p style={{ padding: '1rem 1.5rem', fontSize: '1rem', color: '#6b7280' }}>
+                      <p style={{ padding: '1.5rem', fontSize: '1.125rem', color: '#6b7280' }}>
                         No se encontraron materiales.
                       </p>
                     ) : (
                       filteredMaterials.map((material) => (
-                      <div
-  key={`${material.tipo}-${material.id}`}
-  className={`material-card ${
-    userPermissions.rol === 'almacen' && userPermissions.modificar_stock
-      ? 'clickable'
-      : canViewDetails()
-      ? 'clickable'
-      : 'non-clickable'
-  }`}
-  onClick={(e) => {
-    e.stopPropagation();
-    if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) {
-      // Para almacenista abro solo ajuste
-      handleAdjustClick(material);
-    } else {
-      handleDetailClick(material, e);
-    }
-  }}
->
-    <img
-    src={material.imagen_url}
-    alt={material.nombre}
-    className="material-image"
-    onError={e => (e.target.src = 'https://res.cloudinary.com/.../placeholder.jpg')}
-/>
+                        <div
+                          key={`${material.tipo}-${material.id}`}
+                          className={`material-card ${
+                            userPermissions.rol === 'almacen' && userPermissions.modificar_stock
+                              ? 'clickable'
+                              : canViewDetails()
+                              ? 'clickable'
+                              : 'non-clickable'
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) {
+                              handleAdjustClick(material);
+                            } else {
+                              handleDetailClick(material, e);
+                            }
+                          }}
+                        >
+                          <img
+                            src={material.imagen_url}
+                            alt={material.nombre}
+                            className="material-image"
+                            onError={(e) =>
+                              (e.target.src =
+                                'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg')
+                            }
+                          />
                           <div className="material-card-content">
                             <div className="material-card-name">{formatName(material.nombre)}</div>
                             <span className={`material-card-type type-${material.tipo}`}>
@@ -1766,7 +1797,9 @@ await makeSecureApiCall(
             <div className="cart-container">
               <div className="cart-header">
                 <h4>Carrito de Solicitud</h4>
-                <small>{totalItems} {totalItems === 1 ? 'material' : 'materiales'} seleccionados</small>
+                <small>
+                  {totalItems} {totalItems === 1 ? 'material' : 'materiales'} seleccionados
+                </small>
               </div>
               <div className="cart-body">
                 {selectedCart.length === 0 ? (
@@ -1819,151 +1852,146 @@ await makeSecureApiCall(
           )}
         </div>
 
-        {/* === PARTE 3: Modal Agregar Material/Reactivo === */}
-{showAddModal && (
-  <div className="modal-overlay">
-    <div className="modal-content-custom">
-      <div className="modal-header-custom">
-        <h5 className="modal-title">Agregar Material / Reactivo</h5>
-        <button
-          className="btn-close btn-close-white"
-          onClick={() => setShowAddModal(false)}
-        />
-      </div>
-      <form className="modal-body p-4" onSubmit={handleAddSubmit}>
-        {addError && <div className="alert-custom">{addError}</div>}
+        {showAddModal && (
+          <div className="modal-overlay">
+            <div className="modal-content-custom">
+              <div className="modal-header-custom">
+                <h5 className="modal-title">Agregar Material / Reactivo</h5>
+                <button
+                  className="btn-close btn-close-white"
+                  onClick={() => setShowAddModal(false)}
+                />
+              </div>
+              <form className="modal-body p-4" onSubmit={handleAddSubmit}>
+                {addError && <div className="alert-custom">{addError}</div>}
 
-        {/* Tipo general */}
-        <label className="form-label">¿Es Reactivo o Material?</label>
-        <select
-          className="form-control mb-3"
-          value={newMaterial.tipoGeneral}
-          onChange={e => setNewMaterial({ ...newMaterial, tipoGeneral: e.target.value, subTipo: '' })}
-        >
-          <option>Reactivo</option>
-          <option>Material</option>
-        </select>
+                <label className="form-label">¿Es Reactivo o Material?</label>
+                <select
+                  className="form-control mb-3"
+                  value={newMaterial.tipoGeneral}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, tipoGeneral: e.target.value, subTipo: '' })}
+                >
+                  <option>Reactivo</option>
+                  <option>Material</option>
+                </select>
 
-        {/* Subtipo */}
-        <label className="form-label">Categoría específica</label>
-        <select
-          className="form-control mb-3"
-          value={newMaterial.subTipo}
-          onChange={e => setNewMaterial({ ...newMaterial, subTipo: e.target.value })}
-          required
-        >
-          <option value="">-- Selecciona --</option>
-          {newMaterial.tipoGeneral === 'Reactivo' ? (
-            <>
-              <option value="liquido">Líquido</option>
-              <option value="solido">Sólido</option>
-            </>
-          ) : (
-            <>
-              <option value="equipo">Equipo</option>
-              <option value="laboratorio">Laboratorio</option>
-            </>
-          )}
-        </select>
+                <label className="form-label">Categoría específica</label>
+                <select
+                  className="form-control mb-3"
+                  value={newMaterial.subTipo}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, subTipo: e.target.value })}
+                  required
+                >
+                  <option value="">-- Selecciona --</option>
+                  {newMaterial.tipoGeneral === 'Reactivo' ? (
+                    <>
+                      <option value="liquido">Líquido</option>
+                      <option value="solido">Sólido</option>
+                    </>
+                  ) : (
+                    <>
+                      <option value="equipo">Equipo</option>
+                      <option value="laboratorio">Laboratorio</option>
+                    </>
+                  )}
+                </select>
 
-        {/* Nombre */}
-        <label className="form-label">Nombre *</label>
-        <input
-          type="text"
-          className="form-control mb-3"
-          value={newMaterial.nombre}
-          onChange={e => setNewMaterial({ ...newMaterial, nombre: e.target.value })}
-          required
-        />
+                <label className="form-label">Nombre *</label>
+                <input
+                  type="text"
+                  className="form-control mb-3"
+                  value={newMaterial.nombre}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, nombre: e.target.value })}
+                  required
+                />
 
-        {/* Descripción */}
-        <label className="form-label">Descripción</label>
-        <textarea
-          className="form-control mb-3"
-          value={newMaterial.descripcion}
-          onChange={e => setNewMaterial({ ...newMaterial, descripcion: e.target.value })}
-        />
+                <label className="form-label">Descripción</label>
+                <textarea
+                  className="form-control mb-3"
+                  value={newMaterial.descripcion}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, descripcion: e.target.value })}
+                />
 
-        {/* Cantidad inicial */}
-        <label className="form-label">
-          Cantidad inicial {newMaterial.subTipo === 'liquido' ? '(ml)' : newMaterial.subTipo === 'solido' ? '(g)' : '(unidades)'} *
-        </label>
-        <input
-          type="number"
-          className="form-control mb-3"
-          min="0"
-          value={newMaterial.cantidad_inicial}
-          onChange={e => setNewMaterial({ ...newMaterial, cantidad_inicial: e.target.value })}
-          required
-        />
+                <label className="form-label">
+                  Cantidad inicial{' '}
+                  {newMaterial.subTipo === 'liquido'
+                    ? '(ml)'
+                    : newMaterial.subTipo === 'solido'
+                    ? '(g)'
+                    : '(unidades)'}{' '}
+                  *
+                </label>
+                <input
+                  type="number"
+                  className="form-control mb-3"
+                  min="0"
+                  value={newMaterial.cantidad_inicial}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, cantidad_inicial: e.target.value })}
+                  required
+                />
 
-        {/* Estado */}
-        <label className="form-label">Estado</label>
-        <select
-          className="form-control mb-3"
-          value={newMaterial.estado}
-          onChange={e => setNewMaterial({ ...newMaterial, estado: e.target.value })}
-        >
-          <option value="disponible">Disponible</option>
-          {newMaterial.tipoGeneral === 'Reactivo' && (
-            <>
-              <option value="no disponible">No disponible</option>
-            </>
-          )}
-        </select>
+                <label className="form-label">Estado</label>
+                <select
+                  className="form-control mb-3"
+                  value={newMaterial.estado}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, estado: e.target.value })}
+                >
+                  <option value="disponible">Disponible</option>
+                  {newMaterial.tipoGeneral === 'Reactivo' && (
+                    <>
+                      <option value="no disponible">No disponible</option>
+                    </>
+                  )}
+                </select>
 
-        {/* Riesgos (solo Reactivo) */}
-        {newMaterial.tipoGeneral === 'Reactivo' && (
-          <>
-            <label className="form-label">Riesgos Físicos</label>
-            <textarea
-              className="form-control mb-3"
-              placeholder="Separar con ;"
-              value={newMaterial.riesgos_fisicos}
-              onChange={e => setNewMaterial({ ...newMaterial, riesgos_fisicos: e.target.value })}
-            />
-            <label className="form-label">Riesgos Salud</label>
-            <textarea
-              className="form-control mb-3"
-              placeholder="Separar con ;"
-              value={newMaterial.riesgos_salud}
-              onChange={e => setNewMaterial({ ...newMaterial, riesgos_salud: e.target.value })}
-            />
-            <label className="form-label">Riesgos Ambientales</label>
-            <textarea
-              className="form-control mb-3"
-              placeholder="Separar con ;"
-              value={newMaterial.riesgos_ambientales}
-              onChange={e => setNewMaterial({ ...newMaterial, riesgos_ambientales: e.target.value })}
-            />
-          </>
+                {newMaterial.tipoGeneral === 'Reactivo' && (
+                  <>
+                    <label className="form-label">Riesgos Físicos</label>
+                    <textarea
+                      className="form-control mb-3"
+                      placeholder="Separar con ;"
+                      value={newMaterial.riesgos_fisicos}
+                      onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_fisicos: e.target.value })}
+                    />
+                    <label className="form-label">Riesgos Salud</label>
+                    <textarea
+                      className="form-control mb-3"
+                      placeholder="Separar con ;"
+                      value={newMaterial.riesgos_salud}
+                      onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_salud: e.target.value })}
+                    />
+                    <label className="form-label">Riesgos Ambientales</label>
+                    <textarea
+                      className="form-control mb-3"
+                      placeholder="Separar con ;"
+                      value={newMaterial.riesgos_ambientales}
+                      onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_ambientales: e.target.value })}
+                    />
+                  </>
+                )}
+
+                <label className="form-label">Imagen (.jpg)</label>
+                <input
+                  type="file"
+                  accept=".jpg"
+                  className="form-control mb-4"
+                  onChange={(e) => setNewMaterial({ ...newMaterial, imagenFile: e.target.files[0] })}
+                  required
+                />
+
+                <div className="modal-footer-custom">
+                  <button type="button" className="btn-secondary-custom" onClick={() => setShowAddModal(false)}>
+                    Cancelar
+                  </button>
+                  <button type="submit" className="btn-create-vale">
+                    Crear
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
         )}
 
-        {/* Imagen */}
-        <label className="form-label">Imagen (.jpg)</label>
-        <input
-          type="file"
-          accept=".jpg"
-          className="form-control mb-4"
-          onChange={e => setNewMaterial({ ...newMaterial, imagenFile: e.target.files[0] })}
-          required
-        />
-
-        <div className="modal-footer-custom">
-          <button type="button" className="btn-secondary-custom" onClick={() => setShowAddModal(false)}>
-            Cancelar
-          </button>
-          <button type="submit" className="btn-create-vale">
-            Crear
-          </button>
-        </div>
-      </form>
-    </div>
-  </div>
-)}
-{/* =========================================== */}
-
-        
         {showRequestModal && (
           <div className="modal-overlay">
             <div className="modal-content-custom">
@@ -2058,7 +2086,7 @@ await makeSecureApiCall(
                   <label className="form-label">
                     Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
                   </label>
-                                  <input
+                  <input
                     type="number"
                     className="form-control mt-2"
                     value={adjustAmount}
@@ -2068,47 +2096,38 @@ await makeSecureApiCall(
                   />
                 </div>
               </div>
-             <div className="modal-footer-custom">
-  <button
-    className="btn-secondary-custom"
-    onClick={() => setShowAdjustModal(false)}
-  >
-    Cancelar
-  </button>
+              <div className="modal-footer-custom">
+                <button
+                  className="btn-secondary-custom"
+                  onClick={() => setShowAdjustModal(false)}
+                >
+                  Cancelar
+                </button>
+                {(() => {
+                  const delta = parseInt(adjustAmount, 10);
+                  const newStock =
+                    materialToAdjust && !isNaN(delta) ? materialToAdjust.cantidad + delta : null;
+                  const disableGuardar =
+                    adjustAmount === '' || isNaN(delta) || newStock < 0 || !canModifyStock();
 
-  {(() => {
-    const delta = parseInt(adjustAmount, 10);
-    // calcular newStock para habilitar/deshabilitar:
-    const newStock =
-      materialToAdjust && !isNaN(delta)
-        ? materialToAdjust.cantidad + delta
-        : null;
-    const disableGuardar =
-      adjustAmount === '' ||
-      isNaN(delta) ||
-      newStock < 0 ||
-      !canModifyStock();
-
-    return (
-      <button
-        className="btn-adjust"
-        onClick={handleAdjustSubmit}
-        disabled={disableGuardar}
-      >
-        Guardar
-      </button>
-    );
-  })()}
-
-  <button
-    className="btn-remove mt-2"
-    onClick={handleDeleteMaterial}
-    style={{ background: '#ef4444', width: '100%', marginTop: '0.5rem' }}
-  >
-    Eliminar Material
-  </button>
-</div>
-
+                  return (
+                    <button
+                      className="btn-adjust"
+                      onClick={handleAdjustSubmit}
+                      disabled={disableGuardar}
+                    >
+                      Guardar
+                    </button>
+                  );
+                })()}
+                <button
+                  className="btn-remove mt-2"
+                  onClick={handleDeleteMaterial}
+                  style={{ background: '#ef4444', width: '100%', marginTop: '0.5rem' }}
+                >
+                  Eliminar Material
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -2125,41 +2144,45 @@ await makeSecureApiCall(
               </div>
               <div className="modal-body p-4 align-items-start">
                 {error && <div className="alert-custom mb-3">{error}</div>}
-                
+
                 {!canViewDetails() && (
                   <div className="security-alert mb-3">
                     ⚠️ Vista limitada: Como {userPermissions.rol}, solo puedes consultar la información básica del material.
                   </div>
                 )}
-                
-            
-         <img
-  src={selectedMaterial.imagen_url}
-  alt={formatName(selectedMaterial.nombre)}
-  className="detail-image"
-  loading="lazy"
-  onError={e => (e.target.src = '/placeholder.jpg')}
-/>
+
+                <img
+                  src={selectedMaterial.imagen_url}
+                  alt={formatName(selectedMaterial.nombre)}
+                  className="detail-image"
+                  loading="lazy"
+                  onError={(e) =>
+                    (e.target.src =
+                      'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg')
+                  }
+                />
                 <h5 className="mt-4">Información</h5>
                 <p className="text-muted">
                   Tipo: {selectedMaterial.tipo}
                   <br />
                   Stock: {displayStock(selectedMaterial)}
                 </p>
-                
+
                 {userPermissions.rol === 'administrador' && (
                   <div className="info-alert mt-3">
                     Como administrador, puedes ver toda la información pero no puedes realizar solicitudes ni modificar directamente el stock desde este módulo.
                   </div>
                 )}
-                
+
                 {userPermissions.rol === 'almacen' && !userPermissions.modificar_stock && (
                   <div className="security-alert mt-3">
                     Tienes permisos limitados de almacén. Para modificar stock o realizar solicitudes, contacta al administrador.
                   </div>
                 )}
-                
-                {selectedMaterial.riesgos_fisicos || selectedMaterial.riesgos_salud || selectedMaterial.riesgos_ambientales ? (
+
+                {selectedMaterial.riesgos_fisicos ||
+                selectedMaterial.riesgos_salud ||
+                selectedMaterial.riesgos_ambientales ? (
                   <div>
                     <h5 className="mt-4">Riesgos</h5>
                     <div className="riesgos-container">
@@ -2183,7 +2206,7 @@ await makeSecureApiCall(
                 ) : (
                   <p className="no-risks mt-4">No se han registrado riesgos para este material.</p>
                 )}
-                
+
                 {canMakeRequests() && canViewDetails() && (
                   <div className="mt-4">
                     <label className="form-label">Cantidad a solicitar</label>
@@ -2201,8 +2224,8 @@ await makeSecureApiCall(
                       className="btn-add-to-cart mt-3"
                       onClick={() => addToCart(selectedMaterial, detailAmount)}
                       disabled={
-                        !detailAmount || 
-                        parseInt(detailAmount) <= 0 || 
+                        !detailAmount ||
+                        parseInt(detailAmount) <= 0 ||
                         parseInt(detailAmount) > selectedMaterial.cantidad ||
                         selectedMaterial.cantidad === 0 ||
                         !canMakeRequests()
@@ -2210,35 +2233,34 @@ await makeSecureApiCall(
                     >
                       {selectedMaterial.cantidad === 0 ? 'Material Agotado' : 'Añadir al carrito'}
                     </button>
-                    
+
                     {userPermissions.rol === 'alumno' && (
                       <div className="info-alert mt-3">
                         💡 Como alumno, tu solicitud necesitará aprobación docente antes de procesarse.
                       </div>
                     )}
-                    
+
                     {userPermissions.rol === 'docente' && (
                       <div className="info-alert mt-3">
                         ⚡ Como docente, tu solicitud será aprobada automáticamente.
                       </div>
                     )}
-                    
-                    {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
+
+                                     {userPermissions.rol === 'almacen' && userPermissions.modificar_stock && (
                       <div className="info-alert mt-3">
                         🔧 Como personal de almacén con permisos, puedes tanto solicitar materiales como ajustar el inventario.
                       </div>
                     )}
                   </div>
                 )}
-                
-                {!canMakeRequests() && canViewDetails() && (
-                  <div className="security-alert mt-4">
-                    {userPermissions.rol === 'administrador' 
-                      ? '🔒 Los administradores gestionan el sistema pero no realizan solicitudes directamente.'
-                      : '🔒 No tienes permisos para realizar solicitudes. Contacta al administrador.'
-                    }
-                  </div>
-                )}
+              </div>
+              <div className="modal-footer-custom">
+                <button
+                  className="btn-secondary-custom"
+                  onClick={() => setShowDetailModal(false)}
+                >
+                  Cerrar
+                </button>
               </div>
             </div>
           </div>
