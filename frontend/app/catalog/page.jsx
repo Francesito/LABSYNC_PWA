@@ -542,12 +542,15 @@ const getImagePath = async (material) => {
     setError('');
   };
 
+// ---------------------------------------
+// 1) Nuevo handleAdjustSubmit
 const handleAdjustSubmit = async () => {
   if (!materialToAdjust || !canModifyStock()) {
     handlePermissionError('adjust_stock');
     return;
   }
-  
+
+  // parseInt recoge correctamente el signo “-”:
   const delta = parseInt(adjustAmount, 10);
   if (isNaN(delta)) {
     setError('Ingresa un número válido');
@@ -556,13 +559,12 @@ const handleAdjustSubmit = async () => {
 
   const newStock = materialToAdjust.cantidad + delta;
   if (newStock < 0) {
-    // (En teoría el botón ya viene deshabilitado, pero por seguridad reforzamos)
     setError('El stock no puede quedar en negativo');
     return;
   }
 
   try {
-    // enviamos el stock absoluto al backend
+    //  enviamos al backend el stock absoluto
     await makeSecureApiCall(
       `${process.env.NEXT_PUBLIC_API_URL}/api/materials/material/${materialToAdjust.id}/ajustar`,
       {
@@ -574,7 +576,7 @@ const handleAdjustSubmit = async () => {
       }
     );
 
-    // Actualizamos inmediatamente la UI con newStock
+    //  reflejamos al instante el nuevo stock en la UI
     setAllMaterials(prev =>
       prev.map(item =>
         item.id === materialToAdjust.id && item.tipo === materialToAdjust.tipo
@@ -585,11 +587,13 @@ const handleAdjustSubmit = async () => {
 
     setShowAdjustModal(false);
     setAdjustAmount('');
+    setError('');
   } catch (err) {
     console.error('Error al ajustar inventario:', err);
     setError('No se pudo ajustar el stock');
   }
 };
+
 
 
   // === PARTE 4: Manejo de envío del formulario de "Agregar" ===
@@ -2074,25 +2078,30 @@ await makeSecureApiCall(
   >
     Cancelar
   </button>
-{(() => {
-  const delta = parseInt(adjustAmount, 10);
-  const newStock = materialToAdjust ? materialToAdjust.cantidad + (isNaN(delta) ? 0 : delta) : null;
-  const disableGuardar =
-    adjustAmount === '' ||
-    isNaN(delta) ||
-    newStock < 0 ||
-    !canModifyStock();
 
-  return (
-    <button
-      className="btn-adjust"
-      onClick={handleAdjustSubmit}
-      disabled={disableGuardar}
-    >
-      Guardar
-    </button>
-  );
-})()}
+  {(() => {
+    const delta = parseInt(adjustAmount, 10);
+    // calcular newStock para habilitar/deshabilitar:
+    const newStock =
+      materialToAdjust && !isNaN(delta)
+        ? materialToAdjust.cantidad + delta
+        : null;
+    const disableGuardar =
+      adjustAmount === '' ||
+      isNaN(delta) ||
+      newStock < 0 ||
+      !canModifyStock();
+
+    return (
+      <button
+        className="btn-adjust"
+        onClick={handleAdjustSubmit}
+        disabled={disableGuardar}
+      >
+        Guardar
+      </button>
+    );
+  })()}
 
   <button
     className="btn-remove mt-2"
