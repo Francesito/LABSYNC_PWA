@@ -145,6 +145,22 @@ const [addError, setAddError] = useState('');
     setTimeout(() => setError(''), 5000);
   };
 
+  const handleDeleteMaterial = async () => {
+  if (!window.confirm('¿Seguro que quieres eliminar este material?')) return;
+  try {
+    await makeSecureApiCall(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/materials/${materialToAdjust.id}/eliminar?tipo=${materialToAdjust.tipo}`,
+      { method: 'DELETE' }
+    );
+    setShowAdjustModal(false);
+    await fetchMaterials();
+  } catch (err) {
+    console.error('Error al eliminar material:', err);
+    setError('No se pudo eliminar el material.');
+  }
+};
+
+  
   const makeSecureApiCall = async (url, options = {}) => {
     try {
       const token = localStorage.getItem('token');
@@ -1689,11 +1705,25 @@ await makeSecureApiCall(
                       </p>
                     ) : (
                       filteredMaterials.map((material) => (
-                        <div
-                          key={`${material.tipo}-${material.id}`}
-                          className={`material-card ${canViewDetails() ? 'clickable' : 'non-clickable'}`}
-                          onClick={(e) => handleDetailClick(material, e)}
-                        >
+                      <div
+  key={`${material.tipo}-${material.id}`}
+  className={`material-card ${
+    userPermissions.rol === 'almacen' && userPermissions.modificar_stock
+      ? 'clickable'
+      : canViewDetails()
+      ? 'clickable'
+      : 'non-clickable'
+  }`}
+  onClick={(e) => {
+    e.stopPropagation();
+    if (userPermissions.rol === 'almacen' && userPermissions.modificar_stock) {
+      // Para almacenista abro solo ajuste
+      handleAdjustClick(material);
+    } else {
+      handleDetailClick(material, e);
+    }
+  }}
+>
     <img
     src={material.imagen_url}
     alt={material.nombre}
@@ -2051,6 +2081,13 @@ await makeSecureApiCall(
                 >
                   Guardar
                 </button>
+                <button
+   className="btn-remove mt-2"
+   onClick={handleDeleteMaterial}
+   style={{ background: '#ef4444', width: '100%', marginTop: '0.5rem' }}
+  >
+  Eliminar Material
+  </button>
               </div>
             </div>
           </div>
