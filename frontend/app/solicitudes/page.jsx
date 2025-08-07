@@ -13,7 +13,17 @@ const encabezadoUT = '/universidad.png';
 // Componente para el estado simplificado
 const EstadoBadge = ({ estado }) => {
   const config = {
-    aprobada: {
+    'aprobación pendiente': {
+      bg: 'bg-amber-100',
+      text: 'text-amber-800',
+      icon: '⏳'
+    },
+    'entrega pendiente': {
+      bg: 'bg-blue-100',
+      text: 'text-blue-800',
+      icon: '📦'
+    },
+    entregada: {
       bg: 'bg-green-100',
       text: 'text-green-800',
       icon: '✓'
@@ -23,16 +33,6 @@ const EstadoBadge = ({ estado }) => {
       text: 'text-red-800',
       icon: '✗'
     },
-    pendiente: {
-      bg: 'bg-amber-100',
-      text: 'text-amber-800',
-      icon: '⏳'
-    },
-    entregado: {
-      bg: 'bg-blue-100',
-      text: 'text-blue-800',
-      icon: '📦'
-    },
     cancelado: {
       bg: 'bg-gray-100',
       text: 'text-gray-800',
@@ -40,7 +40,7 @@ const EstadoBadge = ({ estado }) => {
     }
   };
 
-  const { bg, text, icon } = config[estado] || config.cancelado;
+  const { bg, text, icon } = config[estado.toLowerCase()] || config.cancelado;
 
   return (
     <span className={`${bg} ${text} inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium`}>
@@ -144,7 +144,6 @@ export default function Solicitudes() {
         const agrupadas = Object.values(
           response.data.reduce((acc, item) => {
             const key = item.solicitud_id;
-            // Filtrar solicitudes de docentes si el usuario es docente
             if (usuario?.rol === 'docente' && item.usuario_id === usuario.id) {
               return acc; // Omitir solicitudes del propio docente
             }
@@ -155,10 +154,13 @@ export default function Solicitudes() {
                 nombre_alumno: item.nombre_alumno,
                 profesor: item.profesor,
                 fecha_solicitud: item.fecha_solicitud,
-                estado: item.estado,
-                grupo: item.grupo_nombre || 
-                       (item.grupo_id ? grupos[item.grupo_id] : null) || 
-                       (usuario.rol === 'alumno' ? usuario.grupo : 'No especificado'),
+                estado: item.estado === 'pendiente' && usuario?.rol === 'alumno' ? 'aprobación pendiente' :
+                        item.estado === 'aprobada' ? 'entrega pendiente' :
+                        item.estado === 'entregado' ? 'entregada' : item.estado,
+                grupo: item.grupo_id && grupos[item.grupo_id] ? grupos[item.grupo_id] :
+                       usuario.rol === 'alumno' ? usuario.grupo :
+                       usuario.rol === 'docente' ? '—' : '—',
+                isDocenteRequest: !item.nombre_alumno, // Indica si la solicitud es de un docente
                 items: [],
               };
             }
@@ -184,7 +186,7 @@ export default function Solicitudes() {
 
     cargarGrupos();
     cargarDatos();
-  }, [usuario, router]);
+  }, [usuario, router, grupos]);
 
   const getUnidad = (tipo) => {
     const unidades = {
@@ -237,51 +239,77 @@ export default function Solicitudes() {
       doc.setLineWidth(0.3);
       doc.line(marginLeft, 55, pageWidth - marginRight, 55);
 
-      // Información del vale (sin tabla, diseño limpio)
+      // Información del vale
       let yPos = 65;
       doc.setFontSize(12);
       doc.setFont('helvetica', 'bold');
       doc.setTextColor(...primaryColor);
+
+      // Siempre incluir Folio
       doc.text('Folio:', marginLeft, yPos);
       doc.setFont('helvetica', 'normal');
       doc.setTextColor(...secondaryColor);
       doc.text(vale.folio, marginLeft + 50, yPos);
 
-      yPos += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Solicitante:', marginLeft, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(vale.nombre_alumno, marginLeft + 50, yPos);
+      // Si es solicitud de docente
+      if (vale.isDocenteRequest) {
+        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...primaryColor);
+        doc.text('Solicitante:', marginLeft, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...secondaryColor);
+        doc.text(`${vale.profesor} (Docente)`, marginLeft + 50, yPos);
 
-      yPos += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Encargado:', marginLeft, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(vale.profesor, marginLeft + 50, yPos);
+        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...primaryColor);
+        doc.text('Fecha:', marginLeft, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...secondaryColor);
+        doc.text(new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }), marginLeft + 50, yPos);
+      } else {
+        // Si es solicitud de alumno
+        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...primaryColor);
+        doc.text('Solicitante:', marginLeft, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...secondaryColor);
+        doc.text(vale.nombre_alumno, marginLeft + 50, yPos);
 
-      yPos += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Grupo:', marginLeft, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(vale.grupo || 'No especificado', marginLeft + 50, yPos);
+        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...primaryColor);
+        doc.text('Encargado:', marginLeft, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...secondaryColor);
+        doc.text(vale.profesor, marginLeft + 50, yPos);
 
-      yPos += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Fecha:', marginLeft, yPos);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }), marginLeft + 50, yPos);
+        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...primaryColor);
+        doc.text('Grupo:', marginLeft, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...secondaryColor);
+        doc.text(vale.grupo || '—', marginLeft + 50, yPos);
+
+        yPos += 10;
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...primaryColor);
+        doc.text('Fecha:', marginLeft, yPos);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...secondaryColor);
+        doc.text(new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        }), marginLeft + 50, yPos);
+      }
 
       // Línea divisoria antes de la tabla de materiales
       yPos += 10;
@@ -376,7 +404,10 @@ export default function Solicitudes() {
 
   const filteredData = useMemo(() =>
     solicitudes.filter(s => {
-      if (usuario?.rol === 'docente' && s.estado === 'cancelado') {
+      if (usuario?.rol === 'docente') {
+        return s.estado === 'entrega pendiente' || s.estado === 'entregada';
+      }
+      if (usuario?.rol === 'alumno' && s.estado === 'cancelado') {
         return false;
       }
       return filtroEstado === 'todos' || s.estado === filtroEstado;
@@ -396,15 +427,22 @@ export default function Solicitudes() {
   const filtrosDisponibles = usuario?.rol === 'almacen'
     ? {
         todos: { color: 'slate', icon: '📊', label: 'Todas' },
-        aprobada: { color: 'green', icon: '✓', label: 'Aprobada' },
-        entregado: { color: 'blue', icon: '📦', label: 'Entregado' },
+        'entrega pendiente': { color: 'blue', icon: '📦', label: 'Entrega Pendiente' },
+        entregada: { color: 'green', icon: '✓', label: 'Entregada' },
+      }
+    : usuario?.rol === 'docente'
+    ? {
+        todos: { color: 'slate', icon: '📊', label: 'Todas' },
+        'entrega pendiente': { color: 'blue', icon: '📦', label: 'Entrega Pendiente' },
+        entregada: { color: 'green', icon: '✓', label: 'Entregada' },
       }
     : {
         todos: { color: 'slate', icon: '📊', label: 'Todas' },
-        pendiente: { color: 'amber', icon: '⏳', label: 'Pendiente' },
-        aprobada: { color: 'green', icon: '✓', label: 'Aprobada' },
+        'aprobación pendiente': { color: 'amber', icon: '⏳', label: 'Aprobación Pendiente' },
+        'entrega pendiente': { color: 'blue', icon: '📦', label: 'Entrega Pendiente' },
+        entregada: { color: 'green', icon: '✓', label: 'Entregada' },
         rechazada: { color: 'red', icon: '✗', label: 'Rechazada' },
-        entregado: { color: 'blue', icon: '📦', label: 'Entregado' },
+        cancelado: { color: 'gray', icon: '❌', label: 'Cancelado' },
       };
 
   return (
@@ -513,9 +551,11 @@ export default function Solicitudes() {
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Solicitante
                   </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Encargado
-                  </th>
+                  {usuario?.rol !== 'docente' && (
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Encargado
+                    </th>
+                  )}
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                     Materiales
                   </th>
@@ -540,11 +580,15 @@ export default function Solicitudes() {
                       <div className="text-sm font-medium text-gray-900">{item.folio}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{item.nombre_alumno}</div>
+                      <div className="text-sm font-medium text-gray-900">
+                        {item.isDocenteRequest ? `${item.profesor} (Docente)` : item.nombre_alumno}
+                      </div>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="text-sm font-medium text-gray-900">{item.profesor}</div>
-                    </td>
+                    {usuario?.rol !== 'docente' && (
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{item.profesor}</div>
+                      </td>
+                    )}
                     <td className="px-6 py-4">
                       <div className="space-y-2">
                         {item.items.map((mat, idx) => (
@@ -570,11 +614,11 @@ export default function Solicitudes() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {usuario?.rol === 'docente' && item.estado === 'pendiente' && (
+                        {usuario?.rol === 'docente' && item.estado === 'aprobación pendiente' && (
                           <>
                             <button
                               className="px-3 py-1 bg-green-600 text-white text-sm rounded-md hover:bg-green-700 disabled:opacity-50"
-                              onClick={() => actualizarEstadoGrupo(item.id, 'aprobar', 'aprobada')}
+                              onClick={() => actualizarEstadoGrupo(item.id, 'aprobar', 'entrega pendiente')}
                               disabled={procesando === item.id}
                             >
                               {procesando === item.id ? 'Procesando...' : 'Aprobar'}
@@ -589,17 +633,17 @@ export default function Solicitudes() {
                           </>
                         )}
 
-                        {usuario?.rol === 'almacen' && item.estado === 'aprobada' && (
+                        {usuario?.rol === 'almacen' && item.estado === 'entrega pendiente' && (
                           <button
                             className="px-3 py-1 bg-blue-600 text-white text-sm rounded-md hover:bg-blue-700 disabled:opacity-50"
-                            onClick={() => actualizarEstadoGrupo(item.id, 'entregar', 'entregado')}
+                            onClick={() => actualizarEstadoGrupo(item.id, 'entregar', 'entregada')}
                             disabled={procesando === item.id}
                           >
                             {procesando === item.id ? 'Procesando...' : 'Entregar'}
                           </button>
                         )}
 
-                        {usuario?.rol === 'alumno' && item.estado === 'pendiente' && (
+                        {usuario?.rol === 'alumno' && item.estado === 'aprobación pendiente' && (
                           <button
                             className="px-3 py-1 bg-gray-600 text-white text-sm rounded-md hover:bg-gray-700 disabled:opacity-50"
                             onClick={() => actualizarEstadoGrupo(item.id, 'cancelar', 'cancelado')}
