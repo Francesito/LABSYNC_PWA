@@ -1304,40 +1304,61 @@ const getCategorias = async (req, res) => {
   }
 };
 
-// ELIMINAR MATERIAL
+// ELIMINAR MATERIAL Y SU IMAGEN EN CLOUDINARY
 const eliminarMaterial = async (req, res) => {
   logRequest('eliminarMaterial');
   const { id } = req.params;
   const { tipo } = req.query;
 
-  if (!tipo) return res.status(400).json({ error: 'Parámetro tipo requerido' });
+  if (!tipo) {
+    return res.status(400).json({ error: 'Parámetro tipo requerido' });
+  }
 
   try {
     const meta = detectTableAndField(tipo);
     if (!meta) return res.status(400).json({ error: 'Tipo de material inválido' });
 
-    // Verificar si el material tiene solicitudes pendientes
-    const [solicitudesPendientes] = await pool.query(
-      'SELECT COUNT(*) as count FROM SolicitudItem si JOIN Solicitud s ON si.solicitud_id = s.id WHERE si.material_id = ? AND si.tipo = ? AND s.estado IN ("pendiente", "aprobada")',
+    // 1) Obtener URL de la imagen antes de eliminar
+    const [rows] = await pool.query(
+      `SELECT imagen FROM ${meta.table} WHERE id = ?`,
+      [id]
+    );
+    if (!rows.length) {
+      return res.status(404).json({ error: 'Material no encontrado' });
+    }
+    const imagenUrl = rows[0].imagen;
+
+    // 2) Verificar que no haya solicitudes pendientes
+    const [pendientes] = await pool.query(
+      `SELECT COUNT(*) AS count
+         FROM SolicitudItem si
+         JOIN Solicitud s ON si.solicitud_id = s.id
+        WHERE si.material_id = ? AND si.tipo = ? AND s.estado IN ('pendiente','aprobada')`,
       [id, tipo]
     );
-
-    if (solicitudesPendientes[0].count > 0) {
+    if (pendientes[0].count > 0) {
       return res.status(400).json({ error: 'No se puede eliminar material con solicitudes pendientes' });
     }
 
-    const [result] = await pool.query(`DELETE FROM ${meta.table} WHERE id = ?`, [id]);
+    // 3) Eliminar registro de la base de datos
+    await pool.query(`DELETE FROM ${meta.table} WHERE id = ?`, [id]);
 
-    if (result.affectedRows === 0) {
-      return res.status(404).json({ error: 'Material no encontrado' });
+    // 4) Extraer public_id de Cloudinary y destruir el recurso
+    if (imagenUrl && imagenUrl.includes('/upload/')) {
+      // Quedamos con todo lo que va después de '/upload/'
+      let publicId = imagenUrl
+        .split('/upload/')[1]       // ej: "v123456/path/to/file.jpg"
+        .split('.')[0];             // quitamos la extensión
+      await cloudinary.uploader.destroy(publicId);
     }
 
-    res.json({ message: 'Material eliminado exitosamente' });
+    res.json({ message: 'Material y su imagen eliminados exitosamente' });
   } catch (error) {
     console.error('[Error] eliminarMaterial:', error);
     res.status(500).json({ error: 'Error al eliminar material: ' + error.message });
   }
 };
+
 
 // ACTUALIZAR STOCK ESPECÍFICO
 const actualizarStock = async (req, res) => {
@@ -1923,6 +1944,7 @@ const getReporteEficienciaEntrega = async (req, res) => {
   }
 };
 
+
 const verifyImage = async (req, res) => {
   logRequest('verifyImage');
   const { public_id } = req.query;
@@ -2012,5 +2034,5 @@ module.exports = {
   validarIntegridadDatos,
   resetearTodoElStock,
 
-  verifyImage
+  verifyImage,
 };
