@@ -1853,144 +1853,162 @@ export default function Catalog() {
         </div>
 
         {showAddModal && (
-          <div className="modal-overlay">
-            <div className="modal-content-custom">
-              <div className="modal-header-custom">
-                <h5 className="modal-title">Agregar Material / Reactivo</h5>
-                <button
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowAddModal(false)}
+  <div className="modal-overlay">
+    <div className="modal-content-custom" style={{ maxWidth: '900px', width: '95%' }}>
+      <div className="modal-header-custom">
+        <h5 className="modal-title">Agregar Material / Reactivo</h5>
+        <button
+          className="btn-close btn-close-white"
+          onClick={() => setShowAddModal(false)}
+        />
+      </div>
+      <form className="modal-body p-4" onSubmit={handleAddSubmit}>
+        {addError && <div className="alert-custom">{addError}</div>}
+
+        <div className="form-grid">
+          <div className="form-group">
+            <label className="form-label">¿Es Reactivo o Material?</label>
+            <select
+              className="form-control"
+              value={newMaterial.tipoGeneral}
+              onChange={(e) => setNewMaterial({ ...newMaterial, tipoGeneral: e.target.value, subTipo: '' })}
+            >
+              <option>Reactivo</option>
+              <option>Material</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Categoría específica</label>
+            <select
+              className="form-control"
+              value={newMaterial.subTipo}
+              onChange={(e) => setNewMaterial({ ...newMaterial, subTipo: e.target.value })}
+              required
+            >
+              <option value="">-- Selecciona --</option>
+              {newMaterial.tipoGeneral === 'Reactivo' ? (
+                <>
+                  <option value="liquido">Líquido</option>
+                  <option value="solido">Sólido</option>
+                </>
+              ) : (
+                <>
+                  <option value="equipo">Equipo</option>
+                  <option value="laboratorio">Laboratorio</option>
+                </>
+              )}
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Nombre *</label>
+            <input
+              type="text"
+              className="form-control"
+              value={newMaterial.nombre}
+              onChange={(e) => setNewMaterial({ ...newMaterial, nombre: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Cantidad inicial {newMaterial.subTipo === 'liquido' ? '(ml)' : newMaterial.subTipo === 'solido' ? '(g)' : '(unidades)'} *</label>
+            <input
+              type="number"
+              className="form-control"
+              min="0"
+              value={newMaterial.cantidad_inicial}
+              onChange={(e) => setNewMaterial({ ...newMaterial, cantidad_inicial: e.target.value })}
+              required
+            />
+          </div>
+
+          <div className="form-group">
+            <label className="form-label">Estado</label>
+            <select
+              className="form-control"
+              value={newMaterial.estado}
+              onChange={(e) => setNewMaterial({ ...newMaterial, estado: e.target.value })}
+            >
+              <option value="disponible">Disponible</option>
+              {newMaterial.tipoGeneral === 'Reactivo' && (
+                <>
+                  <option value="no disponible">No disponible</option>
+                </>
+              )}
+            </select>
+          </div>
+
+          <div className="form-group full-width">
+            <label className="form-label">Descripción</label>
+            <textarea
+              className="form-control"
+              value={newMaterial.descripcion}
+              onChange={(e) => setNewMaterial({ ...newMaterial, descripcion: e.target.value })}
+              rows="3"
+            />
+          </div>
+
+          {newMaterial.tipoGeneral === 'Reactivo' && (
+            <>
+              <div className="form-group">
+                <label className="form-label">Riesgos Físicos</label>
+                <textarea
+                  className="form-control"
+                  placeholder="Separar con ;"
+                  value={newMaterial.riesgos_fisicos}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_fisicos: e.target.value })}
+                  rows="3"
                 />
               </div>
-              <form className="modal-body p-4" onSubmit={handleAddSubmit}>
-                {addError && <div className="alert-custom">{addError}</div>}
-
-                <label className="form-label">¿Es Reactivo o Material?</label>
-                <select
-                  className="form-control mb-3"
-                  value={newMaterial.tipoGeneral}
-                  onChange={(e) => setNewMaterial({ ...newMaterial, tipoGeneral: e.target.value, subTipo: '' })}
-                >
-                  <option>Reactivo</option>
-                  <option>Material</option>
-                </select>
-
-                <label className="form-label">Categoría específica</label>
-                <select
-                  className="form-control mb-3"
-                  value={newMaterial.subTipo}
-                  onChange={(e) => setNewMaterial({ ...newMaterial, subTipo: e.target.value })}
-                  required
-                >
-                  <option value="">-- Selecciona --</option>
-                  {newMaterial.tipoGeneral === 'Reactivo' ? (
-                    <>
-                      <option value="liquido">Líquido</option>
-                      <option value="solido">Sólido</option>
-                    </>
-                  ) : (
-                    <>
-                      <option value="equipo">Equipo</option>
-                      <option value="laboratorio">Laboratorio</option>
-                    </>
-                  )}
-                </select>
-
-                <label className="form-label">Nombre *</label>
-                <input
-                  type="text"
-                  className="form-control mb-3"
-                  value={newMaterial.nombre}
-                  onChange={(e) => setNewMaterial({ ...newMaterial, nombre: e.target.value })}
-                  required
-                />
-
-                <label className="form-label">Descripción</label>
+              <div className="form-group">
+                <label className="form-label">Riesgos Salud</label>
                 <textarea
-                  className="form-control mb-3"
-                  value={newMaterial.descripcion}
-                  onChange={(e) => setNewMaterial({ ...newMaterial, descripcion: e.target.value })}
+                  className="form-control"
+                  placeholder="Separar con ;"
+                  value={newMaterial.riesgos_salud}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_salud: e.target.value })}
+                  rows="3"
                 />
-
-                <label className="form-label">
-                  Cantidad inicial{' '}
-                  {newMaterial.subTipo === 'liquido'
-                    ? '(ml)'
-                    : newMaterial.subTipo === 'solido'
-                    ? '(g)'
-                    : '(unidades)'}{' '}
-                  *
-                </label>
-                <input
-                  type="number"
-                  className="form-control mb-3"
-                  min="0"
-                  value={newMaterial.cantidad_inicial}
-                  onChange={(e) => setNewMaterial({ ...newMaterial, cantidad_inicial: e.target.value })}
-                  required
+              </div>
+              <div className="form-group">
+                <label className="form-label">Riesgos Ambientales</label>
+                <textarea
+                  className="form-control"
+                  placeholder="Separar con ;"
+                  value={newMaterial.riesgos_ambientales}
+                  onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_ambientales: e.target.value })}
+                  rows="3"
                 />
+              </div>
+            </>
+          )}
 
-                <label className="form-label">Estado</label>
-                <select
-                  className="form-control mb-3"
-                  value={newMaterial.estado}
-                  onChange={(e) => setNewMaterial({ ...newMaterial, estado: e.target.value })}
-                >
-                  <option value="disponible">Disponible</option>
-                  {newMaterial.tipoGeneral === 'Reactivo' && (
-                    <>
-                      <option value="no disponible">No disponible</option>
-                    </>
-                  )}
-                </select>
-
-                {newMaterial.tipoGeneral === 'Reactivo' && (
-                  <>
-                    <label className="form-label">Riesgos Físicos</label>
-                    <textarea
-                      className="form-control mb-3"
-                      placeholder="Separar con ;"
-                      value={newMaterial.riesgos_fisicos}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_fisicos: e.target.value })}
-                    />
-                    <label className="form-label">Riesgos Salud</label>
-                    <textarea
-                      className="form-control mb-3"
-                      placeholder="Separar con ;"
-                      value={newMaterial.riesgos_salud}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_salud: e.target.value })}
-                    />
-                    <label className="form-label">Riesgos Ambientales</label>
-                    <textarea
-                      className="form-control mb-3"
-                      placeholder="Separar con ;"
-                      value={newMaterial.riesgos_ambientales}
-                      onChange={(e) => setNewMaterial({ ...newMaterial, riesgos_ambientales: e.target.value })}
-                    />
-                  </>
-                )}
-
-                <label className="form-label">Imagen (.jpg)</label>
-                <input
-                  type="file"
-                  accept=".jpg"
-                  className="form-control mb-4"
-                  onChange={(e) => setNewMaterial({ ...newMaterial, imagenFile: e.target.files[0] })}
-                  required
-                />
-
-                <div className="modal-footer-custom">
-                  <button type="button" className="btn-secondary-custom" onClick={() => setShowAddModal(false)}>
-                    Cancelar
-                  </button>
-                  <button type="submit" className="btn-create-vale">
-                    Crear
-                  </button>
-                </div>
-              </form>
-            </div>
+          <div className="form-group full-width">
+            <label className="form-label">Imagen (.jpg)</label>
+            <input
+              type="file"
+              accept=".jpg"
+              className="form-control"
+              onChange={(e) => setNewMaterial({ ...newMaterial, imagenFile: e.target.files[0] })}
+              required
+            />
           </div>
-        )}
+        </div>
+
+        <div className="modal-footer-custom">
+          <button type="button" className="btn-secondary-custom" onClick={() => setShowAddModal(false)}>
+            Cancelar
+          </button>
+          <button type="submit" className="btn-create-vale">
+            Crear
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+)}
 
         {showRequestModal && (
           <div className="modal-overlay">
