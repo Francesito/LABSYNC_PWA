@@ -603,20 +603,21 @@ export default function ResiduosPage() {
                 <div className="bg-gradient-to-br from-red-50 to-pink-50 rounded-xl p-6">
                   <h4 className="text-lg font-semibold mb-4 text-red-800">Compuestos Más Peligrosos</h4>
                   <div className="space-y-3">
-                    {entries
-                      .filter(entry => ['extremo', 'alto'].includes(getCompoundInfo(entry.compuesto).danger))
-                      .reduce((acc, entry) => {
-                        const compound = entry.compuesto;
-                        if (!acc[compound]) {
-                          acc[compound] = { total: 0, info: getCompoundInfo(compound) };
-                        }
-                        acc[compound].total += parseFloat(entry.cantidadDesecho);
-                        return acc;
-                      }, {})
-                      |> Object.entries
-                      |> (arr => arr.sort((a, b) => b[1].total - a[1].total))
-                      |> (arr => arr.slice(0, 5))
-                      |> (arr => arr.map(([compound, data]) => (
+                    {Object.entries(
+                      entries
+                        .filter(entry => ['extremo', 'alto'].includes(getCompoundInfo(entry.compuesto).danger))
+                        .reduce((acc, entry) => {
+                          const compound = entry.compuesto;
+                          if (!acc[compound]) {
+                            acc[compound] = { total: 0, info: getCompoundInfo(compound) };
+                          }
+                          acc[compound].total += parseFloat(entry.cantidadDesecho);
+                          return acc;
+                        }, {})
+                    )
+                      .sort((a, b) => b[1].total - a[1].total)
+                      .slice(0, 5)
+                      .map(([compound, data]) => (
                         <div key={compound} className="flex items-center justify-between p-3 bg-white bg-opacity-50 rounded-lg">
                           <div className="flex items-center gap-2">
                             <span className="text-xl">{data.info.icon}</span>
@@ -627,7 +628,7 @@ export default function ResiduosPage() {
                           </div>
                           <span className="text-sm font-semibold text-red-800">{data.total.toFixed(1)} g/mL</span>
                         </div>
-                      )))}
+                      ))}
                   </div>
                 </div>
               </div>
