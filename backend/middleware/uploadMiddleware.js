@@ -6,11 +6,11 @@ const { CloudinaryStorage } = require('multer-storage-cloudinary');
 // Función para determinar la carpeta según el tipo de material  
 const getFolderByType = (tipo) => {
   switch (tipo) {
-    case 'liquido': return 'materiales-laboratorio/liquido';
-    case 'solido': return 'materiales-laboratorio/materialSolido';
-    case 'equipo': return 'materiales-laboratorio/equipo';
-    case 'laboratorio': return 'materiales-laboratorio/laboratorio';
-    default: return 'materiales-laboratorio';
+    case 'liquido':     return 'materialLiquido';
+    case 'solido':      return 'materialSolido';
+    case 'equipo':      return 'materialEquipo';
+    case 'laboratorio': return 'materialLaboratorio';
+    default:            return 'materiales';
   }
 };
 
@@ -18,20 +18,17 @@ const getFolderByType = (tipo) => {
 const storage = new CloudinaryStorage({
   cloudinary: cloudinary,
   params: async (req, file) => {
-    const tipo = req.body.tipo || req.query.tipo;
+    const tipo   = req.body.tipo || req.query.tipo;
     const nombre = req.body.nombre || `material_${Date.now()}`;
-    
-    // Limpiar nombre para usar como public_id (sin espacios ni caracteres especiales)
     const nombreLimpio = nombre
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '_')
       .replace(/_+/g, '_')
       .replace(/^_|_$/g, '');
-    
     return {
-      folder: getFolderByType(tipo), // Usa la carpeta correcta según el tipo
+      folder: getFolderByType(tipo),
       allowed_formats: ['jpg', 'jpeg', 'png', 'webp'],
-      public_id: nombreLimpio, // Usar el nombre del material como public_id
+      public_id: nombreLimpio,
       transformation: [
         { width: 800, height: 600, crop: 'limit' },
         { quality: 'auto' }
