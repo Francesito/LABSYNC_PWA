@@ -268,13 +268,14 @@ const [addError, setAddError] = useState('');
       console.log('Materiales filtrados:', all.map(m => ({ id: m.id, nombre: m.nombre, tipo: m.tipo, imagen: m.imagen }))); // Depuración
       setAllMaterials(all);
 
-      if (canModifyStock()) {
-        const lowStock = all.filter(material =>
-          material.cantidad > 0 &&
-          material.cantidad <= LOW_STOCK_THRESHOLD
-        );
-        setLowStockMaterials(lowStock);
-      }
+    if (canModifyStock()) {
+  const lowStock = all.filter(material =>
+    (material.tipo === 'liquido' || material.tipo === 'solido') &&  // sólo reactivos
+    material.cantidad > 0 &&
+    material.cantidad <= LOW_STOCK_THRESHOLD
+  );
+  setLowStockMaterials(lowStock);
+}
 
     } catch (err) {
       console.error('Error al cargar materiales:', err);
@@ -1739,18 +1740,6 @@ await makeSecureApiCall(
                               {displayStock(material)}
                             </div>
                           </div>
-                          {canModifyStock() && (
-                            <button
-                              className="btn-adjust"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleAdjustClick(material);
-                              }}
-                              disabled={!canModifyStock()}
-                            >
-                              Ajustar Stock
-                            </button>
-                          )}
                         </div>
                       ))
                     )}
