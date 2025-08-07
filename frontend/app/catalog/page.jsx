@@ -542,43 +542,55 @@ const getImagePath = async (material) => {
     setError('');
   };
 
-  const handleAdjustSubmit = async () => {
-    if (!materialToAdjust || !canModifyStock()) {
-      handlePermissionError('adjust_stock');
-      return;
-    }
-    
-    const amountNum = parseInt(adjustAmount);
-    if (isNaN(amountNum)) {
-      setError('Ingresa un número válido');
-      return;
-    }
+const handleAdjustSubmit = async () => {
+  if (!materialToAdjust || !canModifyStock()) {
+    handlePermissionError('adjust_stock');
+    return;
+  }
+  
+  const delta = parseInt(adjustAmount, 10);
+  if (isNaN(delta)) {
+    setError('Ingresa un número válido');
+    return;
+  }
 
-    try {
-      await makeSecureApiCall(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/materials/material/${materialToAdjust.id}/ajustar`,
-        {
-          method: 'POST',
-          data: {
-            cantidad: amountNum,
-            tipo: materialToAdjust.tipo
-          }
+  const newStock = materialToAdjust.cantidad + delta;
+  if (newStock < 0) {
+    // (En teoría el botón ya viene deshabilitado, pero por seguridad reforzamos)
+    setError('El stock no puede quedar en negativo');
+    return;
+  }
+
+  try {
+    // enviamos el stock absoluto al backend
+    await makeSecureApiCall(
+      `${process.env.NEXT_PUBLIC_API_URL}/api/materials/material/${materialToAdjust.id}/ajustar`,
+      {
+        method: 'POST',
+        data: {
+          cantidad: newStock,
+          tipo: materialToAdjust.tipo
         }
-      );
-      
-      setShowAdjustModal(false);
-      setAdjustAmount('');
-      setAllMaterials(prev =>
-        prev.map(item =>
-          item.id === materialToAdjust.id && item.tipo === materialToAdjust.tipo
-            ? { ...item, cantidad: amountNum }
-            : item
-        )
-      );
-    } catch (err) {
-      console.error('Error al ajustar inventario:', err);
-    }
-  };
+      }
+    );
+
+    // Actualizamos inmediatamente la UI con newStock
+    setAllMaterials(prev =>
+      prev.map(item =>
+        item.id === materialToAdjust.id && item.tipo === materialToAdjust.tipo
+          ? { ...item, cantidad: newStock }
+          : item
+      )
+    );
+
+    setShowAdjustModal(false);
+    setAdjustAmount('');
+  } catch (err) {
+    console.error('Error al ajustar inventario:', err);
+    setError('No se pudo ajustar el stock');
+  }
+};
+
 
   // === PARTE 4: Manejo de envío del formulario de "Agregar" ===
   const handleAddSubmit = async e => {
@@ -2062,28 +2074,26 @@ await makeSecureApiCall(
   >
     Cancelar
   </button>
-  {(() => {
-    const delta = parseInt(adjustAmount, 10);
-    const newStock =
-      materialToAdjust && !isNaN(delta)
-        ? materialToAdjust.cantidad + delta
-        : null;
-    const disableGuardar =
-      adjustAmount === '' ||
-      isNaN(delta) ||
-      newStock < 0 ||
-      !canModifyStock();
+{(() => {
+  const delta = parseInt(adjustAmount, 10);
+  const newStock = materialToAdjust ? materialToAdjust.cantidad + (isNaN(delta) ? 0 : delta) : null;
+  const disableGuardar =
+    adjustAmount === '' ||
+    isNaN(delta) ||
+    newStock < 0 ||
+    !canModifyStock();
 
-    return (
-      <button
-        className="btn-adjust"
-        onClick={handleAdjustSubmit}
-        disabled={disableGuardar}
-      >
-        Guardar
-      </button>
-    );
-  })()}
+  return (
+    <button
+      className="btn-adjust"
+      onClick={handleAdjustSubmit}
+      disabled={disableGuardar}
+    >
+      Guardar
+    </button>
+  );
+})()}
+
   <button
     className="btn-remove mt-2"
     onClick={handleDeleteMaterial}
