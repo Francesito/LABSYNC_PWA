@@ -138,7 +138,7 @@ const iniciarSesion = async (req, res) => {
         grupo_id: usuario.grupo_id
       },
       process.env.JWT_SECRET,
-      { expiresIn: '24h' }
+      { expiresIn: '7d' }
     );
 
     res.json({ 
