@@ -162,14 +162,14 @@ export default function Solicitudes() {
                     : item.estado === 'entregado'
                     ? 'entregada'
                     : item.estado,
-                grupo:
-                  item.grupo_nombre ||
-                  (item.grupo_id && grupos[item.grupo_id]
-                    ? grupos[item.grupo_id]
-                    : usuario.rol === 'alumno' && item.nombre_alumno
-                    ? usuario.grupo
-                    : '—'),
-                isDocenteRequest: !item.nombre_alumno,
+                const isDocenteReq = !item.nombre_alumno;
+                grupo: isDocenteReq
+               ? ''  // vacío para solicitudes de docente
+                  : ( item.grupo_nombre 
+                  || (item.grupo_id && grupos[item.grupo_id])  
+                    || usuario.grupo
+                     ),
+               isDocenteRequest: isDocenteReq,
                 items: []
               };
             }
@@ -248,64 +248,48 @@ export default function Solicitudes() {
     doc.setFont('helvetica', 'bold');
     doc.setTextColor(...primaryColor);
 
-    // Folio
-    doc.text('Folio:', margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...secondaryColor);
-    doc.text(vale.folio, margin + 50, y);
+  let yPos = 65;
+doc.setFont('helvetica','bold');
+doc.text('Folio:', marginLeft, yPos);
+doc.setFont('helvetica','normal');
+doc.text(vale.folio, marginLeft + 50, yPos);
 
-    // Fecha
-    y += 10;
-    doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...primaryColor);
-    doc.text('Fecha:', margin, y);
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...secondaryColor);
-    doc.text(
-      new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric'
-      }),
-      margin + 50,
-      y
-    );
+yPos += 10;
+doc.setFont('helvetica','bold');
+doc.text('Fecha:', marginLeft, yPos);
+doc.setFont('helvetica','normal');
+doc.text(
+  new Date(vale.fecha_solicitud).toLocaleDateString('es-MX', {
+    year: 'numeric', month: 'long', day: 'numeric'
+  }),
+  marginLeft + 50, yPos
+);
 
-    if (!vale.isDocenteRequest) {
-      // Alumno: solicitante, encargado, grupo
-      y += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Solicitante:', margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(vale.nombre_alumno, margin + 50, y);
+   if (vale.isDocenteRequest) {
+  yPos += 10;
+  doc.setFont('helvetica','bold');
+  doc.text('Solicitante:', marginLeft, yPos);
+  doc.setFont('helvetica','normal');
+  doc.text(`${vale.profesor} (Docente)`, marginLeft + 50, yPos);
+}else{
+  yPos += 10;
+  doc.setFont('helvetica','bold');
+  doc.text('Solicitante:', marginLeft, yPos);
+  doc.setFont('helvetica','normal');
+  doc.text(vale.nombre_alumno, marginLeft + 50, yPos);
 
-      y += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Encargado:', margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(vale.profesor, margin + 50, y);
+  yPos += 10;
+  doc.setFont('helvetica','bold');
+  doc.text('Encargado:', marginLeft, yPos);
+  doc.setFont('helvetica','normal');
+  doc.text(vale.profesor, marginLeft + 50, yPos);
 
-      y += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Grupo:', margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(vale.grupo, margin + 50, y);
-    } else {
-      // Docente: solo solicitante (Docente)
-      y += 10;
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(...primaryColor);
-      doc.text('Solicitante:', margin, y);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(...secondaryColor);
-      doc.text(`${vale.profesor} (Docente)`, margin + 50, y);
-    }
+  yPos += 10;
+  doc.setFont('helvetica','bold');
+  doc.text('Grupo:', marginLeft, yPos);
+  doc.setFont('helvetica','normal');
+  doc.text(vale.grupo, marginLeft + 50, yPos);
+}
 
     // Línea antes tabla
     y += 15;
