@@ -42,6 +42,33 @@ const LoadingSpinner = () => (
   </div>
 );
 
+/* ===========================
+   Helpers de normalización
+   =========================== */
+function unidadFromTipo(tipo) {
+  const t = (tipo || '').toLowerCase();
+  if (t === 'liquido') return 'ml';
+  if (t === 'solido') return 'g';
+  return 'u'; // equipo / laboratorio / fallback
+}
+
+function normalizarAdeudo(a) {
+  return {
+    solicitud_id: a.solicitud_id ?? a.id_solicitud ?? a.solicitud ?? a.solicitudId,
+    solicitud_item_id: a.solicitud_item_id ?? a.item_id ?? a.id_item ?? a.itemId ?? `${a.solicitud_id || ''}-${a.material_id || ''}`,
+    folio: a.folio ?? a.solicitud_folio ?? a.codigo ?? '—',
+    nombre_material: a.nombre_material ?? a.material_nombre ?? a.nombre ?? a.descripcion ?? '(Sin nombre)',
+    cantidad: a.cantidad_pendiente ?? a.cantidad ?? a.qty ?? 0,
+    unidad: a.unidad ?? unidadFromTipo(a.tipo),
+    fecha_entrega: a.fecha_entrega ?? a.fecha || null,
+  };
+}
+
+function normalizarListaAdeudos(lista) {
+  if (!Array.isArray(lista)) return [];
+  return lista.map(normalizarAdeudo);
+}
+
 export default function Adeudos() {
   const { usuario } = useAuth();
   const [adeudos, setAdeudos] = useState([]);
@@ -71,14 +98,13 @@ export default function Adeudos() {
         let data;
         try {
           data = await obtenerAdeudosConFechaEntrega();
-          console.log('Adeudos obtenidos con fechas:', data); // Debug
-        } catch (error) {
-          console.warn('No se pudo obtener adeudos con fecha, usando método básico:', error);
+        } catch (_) {
+          // Si falla, usamos el método básico
           data = await obtenerAdeudos();
-          console.log('Adeudos obtenidos (método básico):', data); // Debug
         }
         
-        setAdeudos(data);
+        // Normaliza para garantizar claves esperadas
+        setAdeudos(normalizarListaAdeudos(data));
         setError('');
       } catch (err) {
         console.error('Error al cargar adeudos:', err);
@@ -193,15 +219,13 @@ export default function Adeudos() {
                     <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Unidad
                     </th>
-                    <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Estado
-                    </th>
+                    {/* Estado: removido */}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {adeudos.map((a, index) => (
                     <tr
-                      key={`${a.solicitud_id}-${a.solicitud_item_id}`}
+                      key={`${a.solicitud_id}-${a.solicitud_item_id}-${index}`}
                       className={`hover:bg-gray-50 transition-colors duration-200 animate-slideIn ${
                         isOverdue(a.fecha_entrega) ? 'bg-red-50' : ''
                       }`}
@@ -217,47 +241,26 @@ export default function Adeudos() {
                           </div>
                         </div>
                       </td>
+
                       <td className="px-6 py-4">
                         <div className="text-sm font-medium text-gray-900">
                           {a.nombre_material}
                         </div>
                       </td>
+
                       <td className="px-6 py-4 text-center">
                         <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
                           {a.cantidad}
                         </span>
                       </td>
+
                       <td className="px-6 py-4 text-center">
                         <span className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">
                           {a.unidad}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
-                        {a.fecha_entrega ? (
-                          isOverdue(a.fecha_entrega) ? (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800">
-                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                              </svg>
-                              Vencido
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                              <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                              </svg>
-                              Pendiente devolución
-                            </span>
-                          )
-                        ) : (
-                          <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                            <svg className="w-3 h-3 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M8 4a4 4 0 100 8 4 4 0 000-8zM2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8z" clipRule="evenodd" />
-                            </svg>
-                            Pendiente entrega
-                          </span>
-                        )}
-                      </td>
+
+                      {/* Columna de Estado eliminada */}
                     </tr>
                   ))}
                 </tbody>
