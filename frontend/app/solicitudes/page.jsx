@@ -304,36 +304,45 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-  /** Agrupa por solicitud_id y mapea estados al texto de UI */
-  function agrupar(rows, user, gruposMap) {
-    const by = {};
-    for (const item of rows) {
-      const key = item.solicitud_id;
-      const isDocenteReq = !item.nombre_alumno; // si no hay alumno, la hizo un docente
-      if (!by[key]) {
-        by[key] = {
-          id: key,
-          folio: item.folio || Math.random().toString(36).slice(2, 6).toUpperCase(),
-          nombre_alumno: item.nombre_alumno || '',
-          profesor: item.profesor || '',
-          fecha_solicitud: item.fecha_solicitud,
-          estado: mapEstado(item.estado, isDocenteReq, user?.rol),
-          isDocenteRequest: isDocenteReq,
-          grupo: isDocenteReq
-            ? ''
-            : (item.grupo_nombre || (item.grupo_id && gruposMap[item.grupo_id]) || ''),
-          items: []
-        };
-      }
-      by[key].items.push({
-        item_id: item.item_id,
-        nombre_material: (item.nombre_material || '').replace(/_/g, ' '),
-        cantidad: item.cantidad,
-        tipo: item.tipo
-      });
+
+/** Agrupa por solicitud_id y determina si es solicitud de docente de forma robusta */
+function agrupar(rows, user, gruposMap) {
+  const by = {};
+  for (const item of rows) {
+    const key = item.solicitud_id;
+
+    // ✅ Docente: considera "mías" si el creador soy yo (usuario_id)
+    // ✅ Para otros roles (almacén/alumno), cae al criterio original por nombre_alumno
+    const isDocenteReq =
+      (user?.rol === 'docente' && item.usuario_id === user.id) ||
+      (!item.nombre_alumno);
+
+    if (!by[key]) {
+      by[key] = {
+        id: key,
+        folio: item.folio || Math.random().toString(36).slice(2, 6).toUpperCase(),
+        nombre_alumno: item.nombre_alumno || '',
+        profesor: item.profesor || '',
+        fecha_solicitud: item.fecha_solicitud,
+        estado: mapEstado(item.estado, isDocenteReq, user?.rol),
+        isDocenteRequest: isDocenteReq,
+        // Si es solicitud de docente, NO mostrar grupo
+        grupo: isDocenteReq
+          ? ''
+          : (item.grupo_nombre || (item.grupo_id && gruposMap[item.grupo_id]) || ''),
+        items: []
+      };
     }
-    return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
+    by[key].items.push({
+      item_id: item.item_id,
+      nombre_material: (item.nombre_material || '').replace(/_/g, ' '),
+      cantidad: item.cantidad,
+      tipo: item.tipo
+    });
   }
+  return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
+}
+
 
   function mapEstado(estadoSQL, isDocenteReq, rol) {
     // estados en BD: pendiente, aprobada, entregado, rechazada, cancelado
