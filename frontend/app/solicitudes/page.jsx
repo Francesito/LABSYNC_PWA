@@ -15,9 +15,10 @@ const EstadoBadge = ({ estado }) => {
   const config = {
     'pendiente': { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '⏳' },
     'aprobación pendiente': { bg: 'bg-amber-100', text: 'text-amber-800', icon: '⏳' },
-    'aprobada': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '✓' },
+    'aprobacion pendiente': { bg: 'bg-amber-100', text: 'text-amber-800', icon: '⏳' }, // sin tilde
+    'aprobada': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '📦' },              // fallback
     'entrega pendiente': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '📦' },
-    'entregado': { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },
+    'entregado': { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },            // fallback
     'entregada': { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },
     'rechazada': { bg: 'bg-red-100', text: 'text-red-800', icon: '✗' },
     'cancelado': { bg: 'bg-gray-100', text: 'text-gray-800', icon: '❌' }
@@ -45,6 +46,41 @@ const SkeletonRow = () => (
   </tr>
 );
 
+const Th = ({ children }) => (
+  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+    {children}
+  </th>
+);
+const Td = ({ children, bold = false }) => (
+  <td className="px-6 py-4 whitespace-nowrap">
+    <div className={`text-sm ${bold ? 'font-semibold text-gray-900' : 'text-gray-900'}`}>
+      {children}
+    </div>
+  </td>
+);
+const Btn = ({ children, color, onClick, disabled }) => {
+  const palette = {
+    green: 'bg-green-600 hover:bg-green-700',
+    red: 'bg-red-600 hover:bg-red-700',
+    blue: 'bg-blue-600 hover:bg-blue-700',
+    gray: 'bg-gray-600 hover:bg-gray-700',
+    purple: 'bg-purple-600 hover:bg-purple-700'
+  }[color] || 'bg-slate-600 hover:bg-slate-700';
+  return (
+    <button
+      className={`${palette} text-white text-sm rounded-md px-3 py-1 disabled:opacity-60 disabled:cursor-not-allowed`}
+      onClick={onClick}
+      disabled={disabled}
+    >
+      {children}
+    </button>
+  );
+};
+
+function getUnidad(tipo) {
+  return { liquido: 'ml', solido: 'g' }[tipo] || 'u';
+}
+
 /** Tabla genérica configurable por columnas */
 function TablaSolicitudes({
   titulo,
@@ -53,10 +89,11 @@ function TablaSolicitudes({
   showSolicitante = true,
   showEncargado = false,
   showGrupo = false,
-  columnasFijas = {}, // { folio:true, materiales:true, fecha:true, estado:true, acciones:true }
+  columnasFijas = {},
   usuario,
   onAccion,
-  onPDF
+  onPDF,
+  procesandoId
 }) {
   const columnas = {
     folio: columnasFijas.folio ?? true,
@@ -112,7 +149,7 @@ function TablaSolicitudes({
                   {columnas.materiales && (
                     <td className="px-6 py-4">
                       <div className="space-y-1">
-                        {s.items.map((m) => (
+                        {(s.items || []).map((m) => (
                           <div key={m.item_id} className="text-sm flex items-center gap-2">
                             <span className="bg-gray-100 px-2 py-0.5 rounded text-xs font-medium">
                               {m.cantidad} {getUnidad(m.tipo)}
@@ -143,24 +180,27 @@ function TablaSolicitudes({
                             <Btn
                               color="green"
                               onClick={() => onAccion(s.id, 'aprobar', 'entrega pendiente')}
+                              disabled={procesandoId === s.id}
                             >
                               Aprobar
                             </Btn>
                             <Btn
                               color="red"
                               onClick={() => onAccion(s.id, 'rechazar', 'rechazada')}
+                              disabled={procesandoId === s.id}
                             >
                               Rechazar
                             </Btn>
                           </>
                         )}
 
-                        {/* Almacén: marcar entregada (solicitudes con entrega pendiente) */}
+                        {/* Almacén: marcar entregada (solo cuando está en entrega pendiente) */}
                         {usuario?.rol === 'almacen' && 
                          s.estado === 'entrega pendiente' && (
                           <Btn
                             color="blue"
                             onClick={() => onAccion(s.id, 'entregar', 'entregada')}
+                            disabled={procesandoId === s.id}
                           >
                             Entregar
                           </Btn>
@@ -172,12 +212,13 @@ function TablaSolicitudes({
                           <Btn
                             color="gray"
                             onClick={() => onAccion(s.id, 'cancelar', 'cancelado')}
+                            disabled={procesandoId === s.id}
                           >
                             Cancelar
                           </Btn>
                         )}
 
-                        <Btn color="purple" onClick={() => onPDF(s)}>
+                        <Btn color="purple" onClick={() => onPDF(s)} disabled={procesandoId === s.id}>
                           PDF
                         </Btn>
                       </div>
@@ -193,40 +234,6 @@ function TablaSolicitudes({
   );
 }
 
-const Th = ({ children }) => (
-  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-    {children}
-  </th>
-);
-const Td = ({ children, bold = false }) => (
-  <td className="px-6 py-4 whitespace-nowrap">
-    <div className={`text-sm ${bold ? 'font-semibold text-gray-900' : 'text-gray-900'}`}>
-      {children}
-    </div>
-  </td>
-);
-const Btn = ({ children, color, onClick }) => {
-  const palette = {
-    green: 'bg-green-600 hover:bg-green-700',
-    red: 'bg-red-600 hover:bg-red-700',
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    gray: 'bg-gray-600 hover:bg-gray-700',
-    purple: 'bg-purple-600 hover:bg-purple-700'
-  }[color] || 'bg-slate-600 hover:bg-slate-700';
-  return (
-    <button
-      className={`${palette} text-white text-sm rounded-md px-3 py-1`}
-      onClick={onClick}
-    >
-      {children}
-    </button>
-  );
-};
-
-function getUnidad(tipo) {
-  return { liquido: 'ml', solido: 'g' }[tipo] || 'u';
-}
-
 export default function SolicitudesPage() {
   const { usuario } = useAuth();
   const router = useRouter();
@@ -234,9 +241,9 @@ export default function SolicitudesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [grupos, setGrupos] = useState({});
-  const [alumnoData, setAlumnoData] = useState([]); // alumno: 1 tabla
+  const [alumnoData, setAlumnoData] = useState([]); // alumno
   const [docAprobar, setDocAprobar] = useState([]); // docente: tabla 1
-  const [docMias, setDocMias] = useState([]); // docente: tabla 2
+  const [docMias, setDocMias] = useState([]);       // docente: tabla 2
   const [almAlumnos, setAlmAlumnos] = useState([]); // almacén: tabla 1
   const [almDocentes, setAlmDocentes] = useState([]); // almacén: tabla 2
   const [procesando, setProcesando] = useState(null);
@@ -259,7 +266,7 @@ export default function SolicitudesPage() {
       try {
         setLoading(true);
 
-        // Cargar nombres de grupos (map)
+        // Cargar mapa de grupos
         try {
           const g = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/grupos`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -268,7 +275,7 @@ export default function SolicitudesPage() {
           setGrupos(map);
         } catch (_) {}
 
-        // Por rol, pegarle a endpoints dedicados
+        // Alumno
         if (usuario.rol === 'alumno') {
           const { data } = await axios.get(
             `${process.env.NEXT_PUBLIC_API_URL}/api/materials/usuario/solicitudes`,
@@ -277,6 +284,7 @@ export default function SolicitudesPage() {
           setAlumnoData(agrupar(data, usuario, grupos));
         }
 
+        // Docente
         if (usuario.rol === 'docente') {
           const [aprobarRes, miasRes] = await Promise.all([
             axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes/docente/aprobar`,
@@ -288,14 +296,19 @@ export default function SolicitudesPage() {
           setDocMias(agrupar(miasRes.data, usuario, grupos));
         }
 
+        // Almacén
         if (usuario.rol === 'almacen') {
           const { data } = await axios.get(
             `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes/almacen`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
+          // Agrupar y luego FILTRAR para mostrar solo aprobadas/entregadas
           const grouped = agrupar(data, usuario, grupos);
-          setAlmAlumnos(grouped.filter(s => !s.isDocenteRequest));
-          setAlmDocentes(grouped.filter(s => s.isDocenteRequest));
+          const soloAprobadasOEntregadas = grouped.filter(s =>
+            (s.rawEstado === 'aprobada') || (s.rawEstado === 'entregado')
+          );
+          setAlmAlumnos(soloAprobadasOEntregadas.filter(s => !s.isDocenteRequest));
+          setAlmDocentes(soloAprobadasOEntregadas.filter(s => s.isDocenteRequest));
         }
 
         setError('');
@@ -311,64 +324,64 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-/** Agrupa por solicitud_id y maneja estados correctamente */
-function agrupar(rows, user, gruposMap) {
-  const by = {};
-  for (const item of rows) {
-    const key = item.solicitud_id;
+  /** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL original para lógicas de filtro */
+  function agrupar(rows, user, gruposMap) {
+    const by = {};
+    for (const item of rows) {
+      const key = item.solicitud_id;
 
-    // ✅ Determinar si es solicitud de docente
-    const isDocenteReq =
-      (user?.rol === 'docente' && item.usuario_id === user.id) ||
-      (!item.nombre_alumno);
+      // Detectar solicitud de docente: si la creó un docente (su propio usuario) o no hay nombre_alumno
+      const isDocenteReq =
+        (user?.rol === 'docente' && item.usuario_id === user.id) ||
+        (!item.nombre_alumno);
 
-    if (!by[key]) {
-      by[key] = {
-        id: key,
-        folio: item.folio || Math.random().toString(36).slice(2, 6).toUpperCase(),
-        nombre_alumno: item.nombre_alumno || '',
-        profesor: item.profesor || '',
-        fecha_solicitud: item.fecha_solicitud,
-        estado: mapEstado(item.estado, isDocenteReq, user?.rol),
-        isDocenteRequest: isDocenteReq,
-        // Si es solicitud de docente, NO mostrar grupo
-        grupo: isDocenteReq
-          ? ''
-          : (item.grupo_nombre || (item.grupo_id && gruposMap[item.grupo_id]) || ''),
-        items: []
-      };
+      if (!by[key]) {
+        const rawEstado = (item.estado || '').toLowerCase().trim();
+        const estadoUI = mapEstado(rawEstado, isDocenteReq);
+
+        by[key] = {
+          id: key,
+          folio: item.folio || Math.random().toString(36).slice(2, 6).toUpperCase(),
+          nombre_alumno: item.nombre_alumno || '',
+          profesor: item.profesor || '',
+          fecha_solicitud: item.fecha_solicitud,
+          estado: estadoUI,     // estado mostrado en UI
+          rawEstado,            // estado original de BD (para filtros y lógica)
+          isDocenteRequest: isDocenteReq,
+          grupo: isDocenteReq
+            ? ''
+            : (item.grupo_nombre || (item.grupo_id && gruposMap[item.grupo_id]) || ''),
+          items: []
+        };
+      }
+      by[key].items.push({
+        item_id: item.item_id,
+        nombre_material: (item.nombre_material || '').replace(/_/g, ' '),
+        cantidad: item.cantidad,
+        tipo: item.tipo
+      });
     }
-    by[key].items.push({
-      item_id: item.item_id,
-      nombre_material: (item.nombre_material || '').replace(/_/g, ' '),
-      cantidad: item.cantidad,
-      tipo: item.tipo
-    });
+    return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
   }
-  return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
-}
 
-/** Mapea estados de BD a estados de UI correctamente */
-function mapEstado(estadoSQL, isDocenteReq, userRol) {
-  const e = (estadoSQL || '').toLowerCase().trim();
-  
-  // Mapeo directo de estados de BD
-  switch (e) {
-    case 'pendiente':
-      // Solo las solicitudes de alumno muestran "aprobación pendiente"
-      return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
-    case 'aprobada':
-      return 'entrega pendiente';
-    case 'entregado':
-      return 'entregada';
-    case 'rechazada':
-      return 'rechazada';
-    case 'cancelado':
-      return 'cancelado';
-    default:
-      return estadoSQL || 'pendiente';
+  /** Mapea estados de BD -> estados UI */
+  function mapEstado(estadoSQL, isDocenteReq) {
+    const e = (estadoSQL || '').toLowerCase().trim();
+    switch (e) {
+      case 'pendiente':
+        return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
+      case 'aprobada':
+        return 'entrega pendiente';
+      case 'entregado':
+        return 'entregada';
+      case 'rechazada':
+        return 'rechazada';
+      case 'cancelado':
+        return 'cancelado';
+      default:
+        return estadoSQL || 'pendiente';
+    }
   }
-}
 
   /** Acciones aprobar/rechazar/entregar/cancelar */
   const actualizarEstado = async (id, accion, nuevoEstadoUI) => {
@@ -382,20 +395,30 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Actualiza en los arrays correspondientes
-      const apply = (arrSetter) => arrSetter(prev => prev.map(s => s.id === id ? { ...s, estado: nuevoEstadoUI } : s));
+      // Helpers
+      const apply = (arrSetter) => arrSetter(prev => prev.map(s =>
+        s.id === id ? { ...s, estado: nuevoEstadoUI, rawEstado: toRawFromUI(nuevoEstadoUI) } : s
+      ));
       const drop = (arrSetter) => arrSetter(prev => prev.filter(s => s.id !== id));
 
+      // Alumno que cancela: se elimina del listado
       if (accion === 'cancelar' && usuario?.rol === 'alumno') {
-        // En alumno, se elimina del listado cuando cancela
         drop(setAlumnoData);
       } else {
-        // Para otras acciones, actualizar estado en todos los arrays
+        // Actualizar en todos los listados
         apply(setAlumnoData);
         apply(setDocAprobar);
         apply(setDocMias);
         apply(setAlmAlumnos);
         apply(setAlmDocentes);
+
+        // Si en almacén se entregó, quitar de “entrega pendiente” si decides ocultarlas
+        if (usuario?.rol === 'almacen' && accion === 'entregar') {
+          // Opcional: mantener en la tabla pero como "Entregada".
+          // Si quisieras ocultarla automáticamente de la tabla de “pendientes”, descomenta:
+          // setAlmAlumnos(prev => prev.filter(s => !(s.id === id && !s.isDocenteRequest)));
+          // setAlmDocentes(prev => prev.filter(s => !(s.id === id && s.isDocenteRequest)));
+        }
       }
     } catch (err) {
       console.error(err);
@@ -404,6 +427,15 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
       setProcesando(null);
     }
   };
+
+  // Mapea estado UI -> estado SQL para mantener rawEstado coherente al actualizar
+  function toRawFromUI(estadoUI) {
+    const e = (estadoUI || '').toLowerCase().trim();
+    if (e === 'entrega pendiente') return 'aprobada';
+    if (e === 'entregada') return 'entregado';
+    if (e === 'aprobación pendiente' || e === 'aprobacion pendiente') return 'pendiente';
+    return e; // rechazada, cancelado, pendiente, etc.
+  }
 
   /** PDF con layouts distintos */
   const descargarPDF = async (vale) => {
@@ -444,7 +476,7 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
     doc.setLineWidth(0.3);
     doc.line(marginLeft, 55, pageWidth - marginLeft, 55);
 
-    // Datos (formatos distintos)
+    // Datos
     let yPos = 65;
     const put = (label, value) => {
       doc.setFont('helvetica', 'bold');
@@ -459,10 +491,6 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
       year: 'numeric', month: 'long', day: 'numeric'
     });
 
-    // Alumno:
-    // Folio, Fecha, Solicitante, Encargado, Grupo
-    // Docente:
-    // Folio, Fecha, Solicitante
     put('Folio:', vale.folio);
     put('Fecha:', fechaBonita);
     if (vale.isDocenteRequest) {
@@ -477,7 +505,7 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
     doc.setLineWidth(0.3);
     doc.line(marginLeft, yPos + 4, pageWidth - marginLeft, yPos + 4);
 
-    const rows = vale.items.map(m => [
+    const rows = (vale.items || []).map(m => [
       `${m.cantidad} ${getUnidad(m.tipo)}`,
       m.nombre_material
     ]);
@@ -549,7 +577,7 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
         </div>
       )}
 
-      {/* ALUMNO: 1 tabla -> Folio, Solicitante, Materiales, Fecha, Grupo, Estado, Acciones */}
+      {/* ALUMNO */}
       {usuario?.rol === 'alumno' && (
         <TablaSolicitudes
           titulo="Mis solicitudes"
@@ -562,13 +590,13 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
           usuario={usuario}
           onAccion={actualizarEstado}
           onPDF={descargarPDF}
+          procesandoId={procesando}
         />
       )}
 
-      {/* DOCENTE: 2 tablas */}
+      {/* DOCENTE */}
       {usuario?.rol === 'docente' && (
         <>
-          {/* 1) Para aprobar (alumnos) -> Folio, Solicitante, Materiales, Fecha, Grupo, Estado, Acciones */}
           <TablaSolicitudes
             titulo="Solicitudes de alumnos para aprobar"
             data={docAprobar}
@@ -580,8 +608,8 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
             usuario={usuario}
             onAccion={actualizarEstado}
             onPDF={descargarPDF}
+            procesandoId={procesando}
           />
-          {/* 2) Mis solicitudes (docente) -> Folio, Materiales, Fecha, Estado, Acciones */}
           <TablaSolicitudes
             titulo="Mis solicitudes como docente"
             data={docMias}
@@ -593,14 +621,14 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
             usuario={usuario}
             onAccion={actualizarEstado}
             onPDF={descargarPDF}
+            procesandoId={procesando}
           />
         </>
       )}
 
-      {/* ALMACÉN: 2 tablas */}
+      {/* ALMACÉN */}
       {usuario?.rol === 'almacen' && (
         <>
-          {/* 1) Alumnos -> Folio, Solicitante, Encargado, Materiales, Fecha, Grupo, Estado, Acciones */}
           <TablaSolicitudes
             titulo="Solicitudes de alumnos"
             data={almAlumnos}
@@ -612,9 +640,9 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
             usuario={usuario}
             onAccion={actualizarEstado}
             onPDF={descargarPDF}
+            procesandoId={procesando}
           />
 
-          {/* 2) Docentes -> Folio, Solicitante, Materiales, Fecha, Estado, Acciones */}
           <TablaSolicitudes
             titulo="Solicitudes de docentes"
             data={almDocentes}
@@ -626,6 +654,7 @@ function mapEstado(estadoSQL, isDocenteReq, userRol) {
             usuario={usuario}
             onAccion={actualizarEstado}
             onPDF={descargarPDF}
+            procesandoId={procesando}
           />
         </>
       )}
