@@ -339,6 +339,19 @@ const obtenerDetalleSolicitud = async (req, res) => {
   const { id } = req.params;
   
   try {
+    // Primero verificar que la solicitud exista
+    const [existe] = await pool.query(
+      `SELECT s.id 
+       FROM Solicitud s 
+       WHERE s.id = ?`,
+      [id]
+    );
+
+    if (existe.length === 0) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    // Traer el detalle (usando LEFT JOIN para que no falle si aún no hay items)
     const [rows] = await pool.query(`
       SELECT 
         s.id AS solicitud_id,
@@ -368,17 +381,15 @@ const obtenerDetalleSolicitud = async (req, res) => {
         END AS cantidad_disponible
       FROM Solicitud s
       JOIN Usuario u ON s.usuario_id = u.id
-      JOIN SolicitudItem si ON s.id = si.solicitud_id
+      LEFT JOIN SolicitudItem si ON s.id = si.solicitud_id
       LEFT JOIN MaterialLiquido ml ON si.material_id = ml.id AND si.tipo = 'liquido'
       LEFT JOIN MaterialSolido ms ON si.material_id = ms.id AND si.tipo = 'solido'
       LEFT JOIN MaterialEquipo me ON si.material_id = me.id AND si.tipo = 'equipo'
       WHERE s.id = ?
+      ORDER BY si.id ASC
     `, [id]);
 
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Solicitud no encontrada' });
-    }
-
+    // Si no hay items, devolvemos al menos una fila con los datos de la solicitud (LEFT JOIN ya lo garantiza)
     res.json(rows);
   } catch (error) {
     console.error('Error al obtener detalle de solicitud:', error);
@@ -756,6 +767,19 @@ const obtenerSolicitudPorId = async (req, res) => {
       params.push(usuarioId);
     }
 
+    // Primero verificar que la solicitud exista (y pertenezca si es alumno)
+    const [existe] = await pool.query(
+      `SELECT s.id 
+       FROM Solicitud s 
+       ${whereClause}`,
+      params
+    );
+
+    if (existe.length === 0) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    // Traer el detalle (LEFT JOIN para no romper si no hay items)
     const [rows] = await pool.query(`
       SELECT 
         s.id AS solicitud_id,
@@ -780,16 +804,13 @@ const obtenerSolicitudPorId = async (req, res) => {
         END AS nombre_material
       FROM Solicitud s
       JOIN Usuario u ON s.usuario_id = u.id
-      JOIN SolicitudItem si ON s.id = si.solicitud_id
+      LEFT JOIN SolicitudItem si ON s.id = si.solicitud_id
       LEFT JOIN MaterialLiquido ml ON si.material_id = ml.id AND si.tipo = 'liquido'
       LEFT JOIN MaterialSolido ms ON si.material_id = ms.id AND si.tipo = 'solido'
       LEFT JOIN MaterialEquipo me ON si.material_id = me.id AND si.tipo = 'equipo'
       ${whereClause}
+      ORDER BY si.id ASC
     `, params);
-
-    if (rows.length === 0) {
-      return res.status(404).json({ error: 'Solicitud no encontrada' });
-    }
 
     res.json(rows);
   } catch (error) {
