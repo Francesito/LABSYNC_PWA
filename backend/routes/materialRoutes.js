@@ -305,14 +305,6 @@ router.get(
   materialController.getReporteMasSolicitados
 );
 
-// Reporte de eficiencia de entrega (almacén y admin)
-router.get(
-  '/reportes/eficiencia-entrega',
-  verificarToken,
-  verificarRol([3, 4]),
-  materialController.getReporteEficienciaEntrega
-);
-
 /**
  * ========================
  * RUTAS DE VALIDACIÓN Y SALUD
