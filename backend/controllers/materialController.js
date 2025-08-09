@@ -1944,7 +1944,6 @@ module.exports = {
   
   // Estadísticas y reportes
   getEstadisticas,
-  getEstadisticasCompletas,
   getHistorialMovimientos,
   getReporteUsoPeriodo,
   getReporteMasSolicitados,
