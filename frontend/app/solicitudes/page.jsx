@@ -13,13 +13,16 @@ const encabezadoUT = '/universidad.png';
 /** Badge de estado */
 const EstadoBadge = ({ estado }) => {
   const config = {
+    'pendiente': { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '⏳' },
     'aprobación pendiente': { bg: 'bg-amber-100', text: 'text-amber-800', icon: '⏳' },
+    'aprobada': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '✓' },
     'entrega pendiente': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '📦' },
+    'entregado': { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },
     'entregada': { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },
     'rechazada': { bg: 'bg-red-100', text: 'text-red-800', icon: '✗' },
     'cancelado': { bg: 'bg-gray-100', text: 'text-gray-800', icon: '❌' }
   };
-  const safe = (estado || '').toLowerCase();
+  const safe = (estado || '').toLowerCase().trim();
   const { bg, text, icon } = config[safe] || config.cancelado;
   return (
     <span className={`${bg} ${text} inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium`}>
@@ -132,8 +135,10 @@ function TablaSolicitudes({
                   {columnas.acciones && (
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {/* Docente: aprobar/rechazar solicitudes de alumnos */}
-                        {usuario?.rol === 'docente' && !s.isDocenteRequest && s.estado === 'aprobación pendiente' && (
+                        {/* Docente: aprobar/rechazar solicitudes de alumnos pendientes */}
+                        {usuario?.rol === 'docente' && 
+                         !s.isDocenteRequest && 
+                         (s.estado === 'aprobación pendiente' || s.estado === 'pendiente') && (
                           <>
                             <Btn
                               color="green"
@@ -150,8 +155,9 @@ function TablaSolicitudes({
                           </>
                         )}
 
-                        {/* Almacén: marcar entregada */}
-                        {usuario?.rol === 'almacen' && s.estado === 'entrega pendiente' && (
+                        {/* Almacén: marcar entregada (solicitudes aprobadas o con entrega pendiente) */}
+                        {usuario?.rol === 'almacen' && 
+                         (s.estado === 'entrega pendiente' || s.estado === 'aprobada') && (
                           <Btn
                             color="blue"
                             onClick={() => onAccion(s.id, 'entregar', 'entregada')}
@@ -161,7 +167,8 @@ function TablaSolicitudes({
                         )}
 
                         {/* Alumno: cancelar si está pendiente */}
-                        {usuario?.rol === 'alumno' && s.estado === 'aprobación pendiente' && (
+                        {usuario?.rol === 'alumno' && 
+                         (s.estado === 'aprobación pendiente' || s.estado === 'pendiente') && (
                           <Btn
                             color="gray"
                             onClick={() => onAccion(s.id, 'cancelar', 'cancelado')}
@@ -304,15 +311,13 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-
-/** Agrupa por solicitud_id y determina si es solicitud de docente de forma robusta */
+/** Agrupa por solicitud_id y maneja estados correctamente */
 function agrupar(rows, user, gruposMap) {
   const by = {};
   for (const item of rows) {
     const key = item.solicitud_id;
 
-    // ✅ Docente: considera "mías" si el creador soy yo (usuario_id)
-    // ✅ Para otros roles (almacén/alumno), cae al criterio original por nombre_alumno
+    // ✅ Determinar si es solicitud de docente
     const isDocenteReq =
       (user?.rol === 'docente' && item.usuario_id === user.id) ||
       (!item.nombre_alumno);
@@ -343,21 +348,27 @@ function agrupar(rows, user, gruposMap) {
   return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
 }
 
-
-function mapEstado(estadoSQL, isDocenteReq) {
+/** Mapea estados de BD a estados de UI correctamente */
+function mapEstado(estadoSQL, isDocenteReq, userRol) {
   const e = (estadoSQL || '').toLowerCase().trim();
-  // estados en BD: pendiente, aprobada, entregado, rechazada, cancelado
-  if (e === 'pendiente') {
-    // sólo las de alumno muestran "aprobación pendiente"
-    return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
+  
+  // Mapeo directo de estados de BD
+  switch (e) {
+    case 'pendiente':
+      // Solo las solicitudes de alumno muestran "aprobación pendiente"
+      return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
+    case 'aprobada':
+      return 'entrega pendiente';
+    case 'entregado':
+      return 'entregada';
+    case 'rechazada':
+      return 'rechazada';
+    case 'cancelado':
+      return 'cancelado';
+    default:
+      return estadoSQL || 'pendiente';
   }
-  if (e === 'aprobada') return 'entrega pendiente';
-  if (e === 'entregado') return 'entregada';
-  if (e === 'rechazada') return 'rechazada';
-  if (e === 'cancelado') return 'cancelado';
-  return estadoSQL || '';
 }
-
 
   /** Acciones aprobar/rechazar/entregar/cancelar */
   const actualizarEstado = async (id, accion, nuevoEstadoUI) => {
@@ -371,14 +382,15 @@ function mapEstado(estadoSQL, isDocenteReq) {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Actualiza en los 3 escenarios
+      // Actualiza en los arrays correspondientes
       const apply = (arrSetter) => arrSetter(prev => prev.map(s => s.id === id ? { ...s, estado: nuevoEstadoUI } : s));
       const drop = (arrSetter) => arrSetter(prev => prev.filter(s => s.id !== id));
 
-      if (accion === 'cancelar') {
-        // En alumno, se elimina del listado
+      if (accion === 'cancelar' && usuario?.rol === 'alumno') {
+        // En alumno, se elimina del listado cuando cancela
         drop(setAlumnoData);
       } else {
+        // Para otras acciones, actualizar estado en todos los arrays
         apply(setAlumnoData);
         apply(setDocAprobar);
         apply(setDocMias);
