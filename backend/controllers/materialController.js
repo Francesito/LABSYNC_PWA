@@ -524,10 +524,11 @@ const deliverSolicitud = async (req, res) => {
   const { id } = req.params;
   try {
     // 1) Verificar existencia y estado
-    const [[sol]] = await pool.query(
+    const [rows] = await pool.query(
       'SELECT usuario_id, estado FROM Solicitud WHERE id = ?',
       [id]
     );
+    const sol = rows[0];
     if (!sol) {
       return res.status(404).json({ error: 'Solicitud no encontrada' });
     }
@@ -580,6 +581,7 @@ const deliverSolicitud = async (req, res) => {
       .json({ error: 'Error al entregar solicitud: ' + err.message });
   }
 };
+
 
 /**
  * Cancelar solicitud
