@@ -69,6 +69,21 @@ router.get(
   materialController.getUserSolicitudes
 );
 
+// ✅ ADEUDOS (alumno y docente)
+router.get(
+  '/adeudos',
+  verificarToken,
+  verificarRol([1, 2]),
+  materialController.getAdeudosUsuario
+);
+
+router.get(
+  '/adeudos/entrega',
+  verificarToken,
+  verificarRol([1, 2]),
+  materialController.getAdeudosConFechaEntrega
+);
+
 /**
  * ========================
  * RUTAS PARA DOCENTES (ROL 2)
@@ -236,6 +251,14 @@ router.get(
   materialController.getDeliveredSolicitudes
 );
 
+router.get(
+  '/solicitudes/almacen',
+  verificarToken,
+  verificarRol([3, 4]),
+  solicitudController.obtenerSolicitudesAprobadasPendientes // 👈 REEMPLAZO
+);
+
+
 // Detalle de una solicitud entregada (almacenista - lectura)
 router.get(
   '/solicitudes/:id',
@@ -331,11 +354,5 @@ router.get(
 );
 
 
-router.get(
-  '/solicitudes/almacen',
-  verificarToken,
-  verificarRol([3, 4]),
-  solicitudController.obtenerSolicitudesAprobadasPendientes // 👈 REEMPLAZO
-);
 
 module.exports = router;
