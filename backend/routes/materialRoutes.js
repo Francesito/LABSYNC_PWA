@@ -289,28 +289,12 @@ router.delete(
   materialController.eliminarCategoria
 );
 
-// Obtener estadísticas completas (solo admin)
-router.get(
-  '/estadisticas/completas',
-  verificarToken,
-  requireAdmin,
-  materialController.getEstadisticasCompletas
-);
-
 // Obtener todos los usuarios con sus permisos (solo admin)
 router.get(
   '/usuarios-permisos',
   verificarToken,
   requireAdmin,
   materialController.getUsuariosConPermisos
-);
-
-// Resetear stock de todos los materiales (solo admin - emergencia)
-router.post(
-  '/resetear-stock',
-  verificarToken,
-  requireAdmin,
-  materialController.resetearTodoElStock
 );
 
 /**
