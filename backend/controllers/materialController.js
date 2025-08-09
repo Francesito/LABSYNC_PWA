@@ -1953,7 +1953,6 @@ module.exports = {
   
   // Sistema y administración
   getEstadoSistema,
-  resetearTodoElStock,
 
   verifyImage,
   getSolicitudesParaDocenteAprobar,
