@@ -13,18 +13,16 @@ const encabezadoUT = '/universidad.png';
 /** Badge de estado */
 const EstadoBadge = ({ estado }) => {
   const config = {
-    'pendiente': { bg: 'bg-yellow-100', text: 'text-yellow-800', icon: '⏳' },
     'aprobación pendiente': { bg: 'bg-amber-100', text: 'text-amber-800', icon: '⏳' },
-    'aprobacion pendiente': { bg: 'bg-amber-100', text: 'text-amber-800', icon: '⏳' }, // sin tilde
-    'aprobada': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '📦' },              // fallback
-    'entrega pendiente': { bg: 'bg-blue-100', text: 'text-blue-800', icon: '📦' },
-    'entregado': { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },            // fallback
-    'entregada': { bg: 'bg-green-100', text: 'text-green-800', icon: '✓' },
-    'rechazada': { bg: 'bg-red-100', text: 'text-red-800', icon: '✗' },
-    'cancelado': { bg: 'bg-gray-100', text: 'text-gray-800', icon: '❌' }
+    'aprobacion pendiente': { bg: 'bg-amber-100', text: 'text-amber-800', icon: '⏳' }, // fallback sin tilde
+    'entrega pendiente':    { bg: 'bg-blue-100',  text: 'text-blue-800',  icon: '📦' },
+    'entregada':            { bg: 'bg-green-100', text: 'text-green-800', icon: '✓'  },
+    'rechazada':            { bg: 'bg-red-100',   text: 'text-red-800',   icon: '✗'  },
+    'cancelado':            { bg: 'bg-gray-100',  text: 'text-gray-800',  icon: '❌' },
+    'pendiente':            { bg: 'bg-yellow-100',text: 'text-yellow-800',icon: '⏳' } // solo como último fallback
   };
   const safe = (estado || '').toLowerCase().trim();
-  const { bg, text, icon } = config[safe] || config.cancelado;
+  const { bg, text, icon } = config[safe] || config.pendiente;
   return (
     <span className={`${bg} ${text} inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium`}>
       <span>{icon}</span>
@@ -51,6 +49,7 @@ const Th = ({ children }) => (
     {children}
   </th>
 );
+
 const Td = ({ children, bold = false }) => (
   <td className="px-6 py-4 whitespace-nowrap">
     <div className={`text-sm ${bold ? 'font-semibold text-gray-900' : 'text-gray-900'}`}>
@@ -58,12 +57,13 @@ const Td = ({ children, bold = false }) => (
     </div>
   </td>
 );
+
 const Btn = ({ children, color, onClick, disabled }) => {
   const palette = {
-    green: 'bg-green-600 hover:bg-green-700',
-    red: 'bg-red-600 hover:bg-red-700',
-    blue: 'bg-blue-600 hover:bg-blue-700',
-    gray: 'bg-gray-600 hover:bg-gray-700',
+    green:  'bg-green-600 hover:bg-green-700',
+    red:    'bg-red-600 hover:bg-red-700',
+    blue:   'bg-blue-600 hover:bg-blue-700',
+    gray:   'bg-gray-600 hover:bg-gray-700',
     purple: 'bg-purple-600 hover:bg-purple-700'
   }[color] || 'bg-slate-600 hover:bg-slate-700';
   return (
@@ -140,12 +140,13 @@ function TablaSolicitudes({
               data.map((s) => (
                 <tr key={s.id} className="hover:bg-gray-50">
                   {columnas.folio && <Td bold>{s.folio}</Td>}
+
                   {columnas.solicitante && (
-                    <Td>
-                      {s.isDocenteRequest ? `${s.profesor} (Docente)` : s.nombre_alumno}
-                    </Td>
+                    <Td>{s.isDocenteRequest ? `${s.profesor} (Docente)` : s.nombre_alumno}</Td>
                   )}
+
                   {columnas.encargado && <Td>{s.profesor || ''}</Td>}
+
                   {columnas.materiales && (
                     <td className="px-6 py-4">
                       <div className="space-y-1">
@@ -160,65 +161,73 @@ function TablaSolicitudes({
                       </div>
                     </td>
                   )}
+
                   {columnas.fecha && (
                     <Td>{new Date(s.fecha_solicitud).toLocaleDateString('es-MX')}</Td>
                   )}
+
                   {columnas.grupo && <Td>{s.grupo || ''}</Td>}
+
                   {columnas.estado && (
                     <td className="px-6 py-4 whitespace-nowrap">
                       <EstadoBadge estado={s.estado} />
                     </td>
                   )}
+
                   {columnas.acciones && (
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div className="flex items-center gap-2">
-                        {/* Docente: aprobar/rechazar solicitudes de alumnos pendientes */}
-                        {usuario?.rol === 'docente' && 
-                         !s.isDocenteRequest && 
-                         (s.estado === 'aprobación pendiente' || s.estado === 'pendiente') && (
-                          <>
+                        {/* Docente: aprobar / rechazar */}
+                        {usuario?.rol === 'docente' &&
+                          !s.isDocenteRequest &&
+                          (s.estado === 'aprobación pendiente') && (
+                            <>
+                              <Btn
+                                color="green"
+                                onClick={() => onAccion(s.id, 'aprobar', 'entrega pendiente')}
+                                disabled={procesandoId === s.id}
+                              >
+                                Aprobar
+                              </Btn>
+                              <Btn
+                                color="red"
+                                onClick={() => onAccion(s.id, 'rechazar', 'rechazada')}
+                                disabled={procesandoId === s.id}
+                              >
+                                Rechazar
+                              </Btn>
+                            </>
+                          )}
+
+                        {/* Almacén: entregar cuando el estado REAL es aprobada (UI = entrega pendiente) */}
+                        {usuario?.rol === 'almacen' &&
+                          s.rawEstado === 'aprobada' && (
                             <Btn
-                              color="green"
-                              onClick={() => onAccion(s.id, 'aprobar', 'entrega pendiente')}
+                              color="blue"
+                              onClick={() => onAccion(s.id, 'entregar', 'entregada')}
                               disabled={procesandoId === s.id}
                             >
-                              Aprobar
+                              Entregar
                             </Btn>
+                          )}
+
+                        {/* Alumno: cancelar si está en aprobación pendiente */}
+                        {usuario?.rol === 'alumno' &&
+                          (s.estado === 'aprobación pendiente') && (
                             <Btn
-                              color="red"
-                              onClick={() => onAccion(s.id, 'rechazar', 'rechazada')}
+                              color="gray"
+                              onClick={() => onAccion(s.id, 'cancelar', 'cancelado')}
                               disabled={procesandoId === s.id}
                             >
-                              Rechazar
+                              Cancelar
                             </Btn>
-                          </>
-                        )}
+                          )}
 
-                        {/* Almacén: mostrar "Entregar" SOLO cuando la BD dice 'aprobada' (UI = entrega pendiente) */}
-                        {usuario?.rol === 'almacen' && 
-                         (s.rawEstado === 'aprobada' || s.estado === 'entrega pendiente') && (
-                          <Btn
-                            color="blue"
-                            onClick={() => onAccion(s.id, 'entregar', 'entregada')}
-                            disabled={procesandoId === s.id}
-                          >
-                            Entregar
-                          </Btn>
-                        )}
-
-                        {/* Alumno: cancelar si está pendiente */}
-                        {usuario?.rol === 'alumno' && 
-                         (s.estado === 'aprobación pendiente' || s.estado === 'pendiente') && (
-                          <Btn
-                            color="gray"
-                            onClick={() => onAccion(s.id, 'cancelar', 'cancelado')}
-                            disabled={procesandoId === s.id}
-                          >
-                            Cancelar
-                          </Btn>
-                        )}
-
-                        <Btn color="purple" onClick={() => onPDF(s)} disabled={procesandoId === s.id}>
+                        <Btn
+                          color="purple"
+                          onClick={() => onPDF(s)}
+                          disabled={procesandoId === s.id}
+                        >
                           PDF
                         </Btn>
                       </div>
@@ -266,7 +275,7 @@ export default function SolicitudesPage() {
       try {
         setLoading(true);
 
-        // Cargar mapa de grupos
+        // Grupos
         try {
           const g = await axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/grupos`, {
             headers: { Authorization: `Bearer ${token}` }
@@ -281,7 +290,7 @@ export default function SolicitudesPage() {
             `${process.env.NEXT_PUBLIC_API_URL}/api/materials/usuario/solicitudes`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          setAlumnoData(agrupar(data, usuario, grupos));
+          setAlumnoData(agrupar(data, 'alumno', grupos));
         }
 
         // Docente
@@ -292,17 +301,17 @@ export default function SolicitudesPage() {
             axios.get(`${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes/docente/mias`,
               { headers: { Authorization: `Bearer ${token}` } })
           ]);
-          setDocAprobar(agrupar(aprobarRes.data, usuario, grupos));
-          setDocMias(agrupar(miasRes.data, usuario, grupos));
+          setDocAprobar(agrupar(aprobarRes.data, 'docente', grupos));
+          setDocMias(agrupar(miasRes.data, 'docente', grupos));
         }
 
-        // Almacén (SIN filtrar en cliente)
+        // Almacén (sin ocultar nada; mapeo especial por rol)
         if (usuario.rol === 'almacen') {
           const { data } = await axios.get(
             `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes/almacen`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          const grouped = agrupar(data, usuario, grupos);
+          const grouped = agrupar(data, 'almacen', grupos);
           setAlmAlumnos(grouped.filter(s => !s.isDocenteRequest));
           setAlmDocentes(grouped.filter(s => s.isDocenteRequest));
         }
@@ -320,18 +329,17 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-  /** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL en rawEstado */
-  function agrupar(rows, user, gruposMap) {
+  /** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL en rawEstado.
+   *  Aplica un mapeo de estados **especial** cuando el rol que visualiza es 'almacen'. */
+  function agrupar(rows, rolVista, gruposMap) {
     const by = {};
     for (const item of rows) {
       const key = item.solicitud_id;
-
-      // Docente request si no hay nombre_alumno (así lo marcas en tu backend) 
-      const isDocenteReq = !item.nombre_alumno;
+      const isDocenteReq = !item.nombre_alumno; // tus docentes no tienen nombre_alumno
 
       if (!by[key]) {
-        const rawEstado = (item.estado || '').toLowerCase().trim();
-        const estadoUI = mapEstado(rawEstado, isDocenteReq);
+        const rawEstado = String(item.estado || '').toLowerCase().trim();
+        const estadoUI = mapEstadoPorRol(rawEstado, isDocenteReq, rolVista);
 
         by[key] = {
           id: key,
@@ -339,8 +347,8 @@ export default function SolicitudesPage() {
           nombre_alumno: item.nombre_alumno || '',
           profesor: item.profesor || '',
           fecha_solicitud: item.fecha_solicitud,
-          estado: estadoUI,     // para UI
-          rawEstado,            // original BD
+          estado: estadoUI,     // mostrado en UI
+          rawEstado,            // estado “de BD” para lógica de botones
           isDocenteRequest: isDocenteReq,
           grupo: isDocenteReq
             ? ''
@@ -348,6 +356,7 @@ export default function SolicitudesPage() {
           items: []
         };
       }
+
       by[key].items.push({
         item_id: item.item_id,
         nombre_material: (item.nombre_material || '').replace(/_/g, ' '),
@@ -358,9 +367,21 @@ export default function SolicitudesPage() {
     return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
   }
 
-  /** Mapea estados de BD -> UI */
-  function mapEstado(estadoSQL, isDocenteReq) {
+  /** Mapeo de estados con sensibilidad al rol que visualiza */
+  function mapEstadoPorRol(estadoSQL, isDocenteReq, rolVista) {
     const e = (estadoSQL || '').toLowerCase().trim();
+
+    // Vista de ALMACÉN: reglas claras de negocio que pediste
+    if (rolVista === 'almacen') {
+      if (e === 'aprobada')  return 'entrega pendiente';
+      if (e === 'pendiente') return 'aprobación pendiente';
+      if (e === 'entregado') return 'entregada';
+      if (e === 'rechazada') return 'rechazada';
+      if (e === 'cancelado') return 'cancelado';
+      return 'aprobación pendiente';
+    }
+
+    // Otras vistas: reglas previas
     switch (e) {
       case 'pendiente':
         return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
@@ -373,7 +394,7 @@ export default function SolicitudesPage() {
       case 'cancelado':
         return 'cancelado';
       default:
-        return estadoSQL || 'pendiente';
+        return 'pendiente';
     }
   }
 
@@ -389,13 +410,17 @@ export default function SolicitudesPage() {
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
-      // Helpers
-      const apply = (arrSetter) => arrSetter(prev => prev.map(s =>
-        s.id === id ? { ...s, estado: nuevoEstadoUI, rawEstado: toRawFromUI(nuevoEstadoUI) } : s
-      ));
+      // Helpers para in-place update
+      const apply = (arrSetter) => arrSetter(prev => prev.map(s => {
+        if (s.id !== id) return s;
+        const ui = nuevoEstadoUI;
+        const raw = uiToRaw(ui);
+        return { ...s, estado: ui, rawEstado: raw };
+      }));
+
       const drop = (arrSetter) => arrSetter(prev => prev.filter(s => s.id !== id));
 
-      if (accion === 'cancelar' && usuario?.rol === 'alumno') {
+      if (accion === 'cancelar') {
         drop(setAlumnoData);
       } else {
         apply(setAlumnoData);
@@ -412,13 +437,15 @@ export default function SolicitudesPage() {
     }
   };
 
-  // Mapea estado UI -> estado SQL para mantener rawEstado coherente
-  function toRawFromUI(estadoUI) {
+  // Mapea estado UI -> estado SQL crudo
+  function uiToRaw(estadoUI) {
     const e = (estadoUI || '').toLowerCase().trim();
-    if (e === 'entrega pendiente') return 'aprobada';
-    if (e === 'entregada') return 'entregado';
+    if (e === 'entrega pendiente')        return 'aprobada';
     if (e === 'aprobación pendiente' || e === 'aprobacion pendiente') return 'pendiente';
-    return e; // rechazada, cancelado, pendiente, etc.
+    if (e === 'entregada')                return 'entregado';
+    if (e === 'rechazada')                return 'rechazada';
+    if (e === 'cancelado')                return 'cancelado';
+    return e;
   }
 
   /** PDF */
@@ -443,12 +470,14 @@ export default function SolicitudesPage() {
     const primary = [0, 102, 51];
     const secondary = [100, 100, 100];
 
+    // Fondo + marco
     doc.setFillColor(245, 245, 245);
     doc.rect(10, 10, pageWidth - 20, pageHeight - 20, 'F');
     doc.setDrawColor(...primary);
     doc.setLineWidth(0.5);
     doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
+    // Encabezado
     doc.addImage(logoImg, 'PNG', marginLeft, 12, 30, 30);
     doc.addImage(encabezadoImg, 'PNG', marginLeft + 35, 12, pageWidth - 75, 25);
     doc.setFontSize(18);
@@ -458,6 +487,7 @@ export default function SolicitudesPage() {
     doc.setLineWidth(0.3);
     doc.line(marginLeft, 55, pageWidth - marginLeft, 55);
 
+    // Datos
     let yPos = 65;
     const put = (label, value) => {
       doc.setFont('helvetica', 'bold');
@@ -482,6 +512,7 @@ export default function SolicitudesPage() {
       put('Grupo:', vale.grupo || '');
     }
 
+    // Tabla de materiales
     doc.setLineWidth(0.3);
     doc.line(marginLeft, yPos + 4, pageWidth - marginLeft, yPos + 4);
 
@@ -500,6 +531,7 @@ export default function SolicitudesPage() {
       margin: { left: margin, right: margin }
     });
 
+    // Pie
     doc.setFontSize(8);
     doc.setTextColor(...secondary);
     doc.setFont('helvetica', 'normal');
@@ -568,7 +600,7 @@ export default function SolicitudesPage() {
           columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
           usuario={usuario}
           onAccion={actualizarEstado}
-          onPDF={descarGarPDF}
+          onPDF={descargarPDF}
           procesandoId={procesando}
         />
       )}
@@ -586,7 +618,7 @@ export default function SolicitudesPage() {
             columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
             usuario={usuario}
             onAccion={actualizarEstado}
-            onPDF={descarGarPDF}
+            onPDF={descargarPDF}
             procesandoId={procesando}
           />
           <TablaSolicitudes
@@ -599,7 +631,7 @@ export default function SolicitudesPage() {
             columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
             usuario={usuario}
             onAccion={actualizarEstado}
-            onPDF={descarGarPDF}
+            onPDF={descargarPDF}
             procesandoId={procesando}
           />
         </>
@@ -639,24 +671,4 @@ export default function SolicitudesPage() {
       )}
     </div>
   );
-}
-
-/** ===== helpers fuera del componente principal ===== */
-
-function mapEstado(estadoSQL, isDocenteReq) {
-  const e = (estadoSQL || '').toLowerCase().trim();
-  switch (e) {
-    case 'pendiente':
-      return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
-    case 'aprobada':
-      return 'entrega pendiente';
-    case 'entregado':
-      return 'entregada';
-    case 'rechazada':
-      return 'rechazada';
-    case 'cancelado':
-      return 'cancelado';
-    default:
-      return estadoSQL || 'pendiente';
-  }
 }
