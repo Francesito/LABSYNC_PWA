@@ -305,18 +305,6 @@ router.get(
   materialController.getReporteMasSolicitados
 );
 
-/**
- * ========================
- * RUTAS DE VALIDACIÓN Y SALUD
- * ========================
- */
-// Verificar integridad de datos (admin)
-router.get(
-  '/validar-integridad',
-  verificarToken,
-  requireAdmin,
-  materialController.validarIntegridadDatos
-);
 
 // Obtener estado del sistema de materiales (admin)
 router.get(
