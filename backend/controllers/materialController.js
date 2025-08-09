@@ -1006,15 +1006,62 @@ const getDeliveredSolicitudes = async (req, res) => {
   }
 };
 
-/** Obtener detalle de una solicitud entregada */
+// Detalle de solicitud ENTREGADA (y fallback para evitar que /solicitudes/almacen caiga aquí por el orden de rutas)
 const getSolicitudDetalle = async (req, res) => {
   logRequest(`getSolicitudDetalle - ID=${req.params.id}`);
   try {
-    const { id } = req.params;
+    const rawId = req.params.id;
 
-    // 1) Cabecera: folio, alumno, profesor, grupo y fecha_entrega (tomada del primer adeudo)
+    // 🔧 Fallback: si la ruta /solicitudes/almacen está detrás de /solicitudes/:id,
+    // "almacen" cae aquí como :id. En ese caso devolvemos el listado de almacén.
+    if (!/^\d+$/.test(rawId)) {
+      if (rawId === 'almacen') {
+        // Reutilizamos la misma consulta que usa el listado de almacén
+        const token = req.headers.authorization?.split(' ')[1];
+        if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+        const { rol_id } = jwt.verify(token, process.env.JWT_SECRET);
+        if (rol_id !== 3 && rol_id !== 4) {
+          return res.status(403).json({ error: 'Solo almacenistas o admin' });
+        }
+
+        const queryListado = `
+          SELECT 
+            s.id AS id,
+            s.id AS solicitud_id,
+            s.usuario_id,
+            s.fecha_solicitud,
+            s.estado,
+            s.nombre_alumno,
+            s.profesor,
+            s.folio,
+            si.id  AS item_id,
+            si.material_id,
+            si.tipo,
+            si.cantidad,
+            COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+            g.nombre AS grupo_nombre
+          FROM Solicitud s
+          JOIN SolicitudItem si ON s.id = si.solicitud_id
+          LEFT JOIN MaterialLiquido ml       ON si.tipo = 'liquido'     AND si.material_id = ml.id
+          LEFT JOIN MaterialSolido  ms       ON si.tipo = 'solido'      AND si.material_id = ms.id
+          LEFT JOIN MaterialEquipo  me       ON si.tipo = 'equipo'      AND si.material_id = me.id
+          LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
+          LEFT JOIN Grupo g ON s.grupo_id = g.id
+          ORDER BY s.fecha_solicitud DESC
+        `;
+        const [rows] = await pool.query(queryListado);
+        return res.json(rows);
+      }
+      return res.status(400).json({ error: 'ID de solicitud inválido' });
+    }
+
+    const id = parseInt(rawId, 10);
+
+    // 1) Cabecera: folio, alumno, profesor, grupo y fecha_entrega (del primer adeudo)
     const [solRows] = await pool.query(
       `SELECT 
+         s.id AS id,
          s.id AS solicitud_id,
          s.folio,
          s.nombre_alumno,
@@ -1023,7 +1070,7 @@ const getSolicitudDetalle = async (req, res) => {
          g.nombre AS grupo_nombre
        FROM Solicitud s
        LEFT JOIN Adeudo a ON a.solicitud_id = s.id
-       LEFT JOIN Grupo g ON s.grupo_id = g.id
+       LEFT JOIN Grupo g  ON s.grupo_id = g.id
        WHERE s.id = ?
        GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre`,
       [id]
@@ -1041,16 +1088,17 @@ const getSolicitudDetalle = async (req, res) => {
          a.cantidad_pendiente AS cantidad,
          COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material
        FROM Adeudo a
-       LEFT JOIN MaterialLiquido ml ON a.tipo = 'liquido' AND a.material_id = ml.id
-       LEFT JOIN MaterialSolido  ms ON a.tipo = 'solido'  AND a.material_id = ms.id
-       LEFT JOIN MaterialEquipo  me ON a.tipo = 'equipo'  AND a.material_id = me.id
+       LEFT JOIN MaterialLiquido ml       ON a.tipo = 'liquido'     AND a.material_id = ml.id
+       LEFT JOIN MaterialSolido  ms       ON a.tipo = 'solido'      AND a.material_id = ms.id
+       LEFT JOIN MaterialEquipo  me       ON a.tipo = 'equipo'      AND a.material_id = me.id
        LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
       WHERE a.solicitud_id = ? AND a.cantidad_pendiente > 0`,
       [id]
     );
 
     // 3) Respuesta unificada
-    res.json({
+    return res.json({
+      id: sol.id,
       solicitud_id: sol.solicitud_id,
       folio: sol.folio,
       nombre_alumno: sol.nombre_alumno,
@@ -1067,9 +1115,10 @@ const getSolicitudDetalle = async (req, res) => {
     });
   } catch (err) {
     console.error('[Error] getSolicitudDetalle:', err);
-    res.status(500).json({ error: 'Error al obtener detalle de solicitud: ' + err.message });
+    return res.status(500).json({ error: 'Error al obtener detalle de solicitud: ' + err.message });
   }
 };
+
 
 // ========================================
 // FUNCIONES FALTANTES PARA materialController.js
@@ -1847,8 +1896,7 @@ const getSolicitudesDocentePropias = async (req, res) => {
 };
 
 
-// Almacén/Admin: ver todas (el frontend separa alumnos vs docentes)
-// Almacén/Admin: ver solicitudes (con alias id = s.id)
+// Almacén/Admin: ver todas las solicitudes (con alias id = s.id)
 const getSolicitudesParaAlmacen = async (req, res) => {
   logRequest('getSolicitudesParaAlmacen');
   const token = req.headers.authorization?.split(' ')[1];
@@ -1860,10 +1908,9 @@ const getSolicitudesParaAlmacen = async (req, res) => {
       return res.status(403).json({ error: 'Solo almacenistas o admin' });
     }
 
-    // Importante: exponer "id" (no solo "solicitud_id") para que el frontend use el correcto
     const query = `
       SELECT 
-        s.id AS id,                    -- <- alias esperado por el frontend
+        s.id AS id,  -- alias esperado por el frontend
         s.id AS solicitud_id,
         s.usuario_id,
         s.fecha_solicitud,
@@ -1879,9 +1926,9 @@ const getSolicitudesParaAlmacen = async (req, res) => {
         g.nombre AS grupo_nombre
       FROM Solicitud s
       JOIN SolicitudItem si ON s.id = si.solicitud_id
-      LEFT JOIN MaterialLiquido ml    ON si.tipo = 'liquido'     AND si.material_id = ml.id
-      LEFT JOIN MaterialSolido  ms    ON si.tipo = 'solido'      AND si.material_id = ms.id
-      LEFT JOIN MaterialEquipo  me    ON si.tipo = 'equipo'      AND si.material_id = me.id
+      LEFT JOIN MaterialLiquido ml       ON si.tipo = 'liquido'     AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido  ms       ON si.tipo = 'solido'      AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo  me       ON si.tipo = 'equipo'      AND si.material_id = me.id
       LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
       LEFT JOIN Grupo g ON s.grupo_id = g.id
       ORDER BY s.fecha_solicitud DESC
