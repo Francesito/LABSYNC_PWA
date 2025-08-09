@@ -2028,6 +2028,7 @@ const verifyImage = async (req, res) => {
 };
 
 // Docente: ver solicitudes de alumnos que debe aprobar (solo 'pendiente' asignadas a él)
+// (con alias id = s.id para consistencia con el frontend)
 const getSolicitudesParaDocenteAprobar = async (req, res) => {
   logRequest('getSolicitudesParaDocenteAprobar');
   const token = req.headers.authorization?.split(' ')[1];
@@ -2037,13 +2038,34 @@ const getSolicitudesParaDocenteAprobar = async (req, res) => {
     const { id: docente_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
     if (rol_id !== 2 && rol_id !== 4) return res.status(403).json({ error: 'Solo docentes o admin' });
 
-    const query = SELECT_SOLICITUDES_CON_NOMBRE.replace(
-      '/*AND_CONDITION*/',
-      `AND s.estado = 'pendiente' AND s.docente_id = ?`
-    ) + ' ORDER BY s.fecha_solicitud DESC';
+    const query = `
+      SELECT 
+        s.id AS id,                    -- <- alias esperado
+        s.id AS solicitud_id,
+        s.usuario_id,
+        s.fecha_solicitud,
+        s.estado,
+        s.nombre_alumno,
+        s.profesor,
+        s.folio,
+        si.id  AS item_id,
+        si.material_id,
+        si.tipo,
+        si.cantidad,
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+        g.nombre AS grupo_nombre
+      FROM Solicitud s
+      JOIN SolicitudItem si ON s.id = si.solicitud_id
+      LEFT JOIN MaterialLiquido ml    ON si.tipo = 'liquido'     AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido  ms    ON si.tipo = 'solido'      AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo  me    ON si.tipo = 'equipo'      AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
+      LEFT JOIN Grupo g ON s.grupo_id = g.id
+      WHERE s.estado = 'pendiente' AND s.docente_id = ?
+      ORDER BY s.fecha_solicitud DESC
+    `;
 
     const [rows] = await pool.query(query, [docente_id]);
-    // Solo solicitudes de alumnos (tienen nombre_alumno)
     const soloAlumnos = rows.filter(r => !!r.nombre_alumno);
     res.json(soloAlumnos);
   } catch (error) {
@@ -2052,7 +2074,9 @@ const getSolicitudesParaDocenteAprobar = async (req, res) => {
   }
 };
 
+
 // Docente: ver sus propias solicitudes (las que él creó)
+// Docente: ver sus propias solicitudes creadas (con alias id = s.id)
 const getSolicitudesDocentePropias = async (req, res) => {
   logRequest('getSolicitudesDocentePropias');
   const token = req.headers.authorization?.split(' ')[1];
@@ -2062,13 +2086,34 @@ const getSolicitudesDocentePropias = async (req, res) => {
     const { id: docente_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
     if (rol_id !== 2 && rol_id !== 4) return res.status(403).json({ error: 'Solo docentes o admin' });
 
-    const query = SELECT_SOLICITUDES_CON_NOMBRE.replace(
-      '/*AND_CONDITION*/',
-      `AND s.usuario_id = ?`
-    ) + ' ORDER BY s.fecha_solicitud DESC';
+    const query = `
+      SELECT 
+        s.id AS id,                    -- <- alias esperado
+        s.id AS solicitud_id,
+        s.usuario_id,
+        s.fecha_solicitud,
+        s.estado,
+        s.nombre_alumno,
+        s.profesor,
+        s.folio,
+        si.id  AS item_id,
+        si.material_id,
+        si.tipo,
+        si.cantidad,
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+        g.nombre AS grupo_nombre
+      FROM Solicitud s
+      JOIN SolicitudItem si ON s.id = si.solicitud_id
+      LEFT JOIN MaterialLiquido ml    ON si.tipo = 'liquido'     AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido  ms    ON si.tipo = 'solido'      AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo  me    ON si.tipo = 'equipo'      AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
+      LEFT JOIN Grupo g ON s.grupo_id = g.id
+      WHERE s.usuario_id = ?
+      ORDER BY s.fecha_solicitud DESC
+    `;
 
     const [rows] = await pool.query(query, [docente_id]);
-    // Propias del docente => sin nombre_alumno
     const propiasDocente = rows.filter(r => !r.nombre_alumno);
     res.json(propiasDocente);
   } catch (error) {
@@ -2077,7 +2122,9 @@ const getSolicitudesDocentePropias = async (req, res) => {
   }
 };
 
+
 // Almacén/Admin: ver todas (el frontend separa alumnos vs docentes)
+// Almacén/Admin: ver solicitudes (con alias id = s.id)
 const getSolicitudesParaAlmacen = async (req, res) => {
   logRequest('getSolicitudesParaAlmacen');
   const token = req.headers.authorization?.split(' ')[1];
@@ -2089,7 +2136,33 @@ const getSolicitudesParaAlmacen = async (req, res) => {
       return res.status(403).json({ error: 'Solo almacenistas o admin' });
     }
 
-    const query = SELECT_SOLICITUDES_CON_NOMBRE.replace('/*AND_CONDITION*/', '') + ' ORDER BY s.fecha_solicitud DESC';
+    // Importante: exponer "id" (no solo "solicitud_id") para que el frontend use el correcto
+    const query = `
+      SELECT 
+        s.id AS id,                    -- <- alias esperado por el frontend
+        s.id AS solicitud_id,
+        s.usuario_id,
+        s.fecha_solicitud,
+        s.estado,
+        s.nombre_alumno,
+        s.profesor,
+        s.folio,
+        si.id  AS item_id,
+        si.material_id,
+        si.tipo,
+        si.cantidad,
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+        g.nombre AS grupo_nombre
+      FROM Solicitud s
+      JOIN SolicitudItem si ON s.id = si.solicitud_id
+      LEFT JOIN MaterialLiquido ml    ON si.tipo = 'liquido'     AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido  ms    ON si.tipo = 'solido'      AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo  me    ON si.tipo = 'equipo'      AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
+      LEFT JOIN Grupo g ON s.grupo_id = g.id
+      ORDER BY s.fecha_solicitud DESC
+    `;
+
     const [rows] = await pool.query(query);
     res.json(rows);
   } catch (error) {
@@ -2097,6 +2170,7 @@ const getSolicitudesParaAlmacen = async (req, res) => {
     res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
   }
 };
+
 
 module.exports = {
   // Catálogo de materiales por tipo
