@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { obtenerAdeudos, obtenerAdeudosConFechaEntrega } from '../../lib/api';
-import axios from 'axios';
 
 // Iconos SVG
 const FileTextIcon = () => (
@@ -44,33 +43,22 @@ const LoadingSpinner = () => (
 );
 
 /* ===========================
-   Helpers de normalización
+   Normalización mínima
+   (mapea exactamente lo que
+   devuelve el backend)
    =========================== */
-function unidadFromTipo(tipo) {
-  const t = (tipo || '').toLowerCase();
-  if (t === 'liquido') return 'ml';
-  if (t === 'solido') return 'g';
-  return 'u'; // equipo / laboratorio / fallback
-}
-
 function normalizarAdeudo(a) {
   return {
-    solicitud_id: a.solicitud_id ?? a.id_solicitud ?? a.solicitud ?? a.solicitudId,
-    solicitud_item_id:
-      a.solicitud_item_id ?? a.item_id ?? a.id_item ?? a.itemId ?? `${a.solicitud_id || ''}-${a.material_id || ''}`,
-    material_id: a.material_id ?? a.id_material ?? a.materialId ?? null,
-    tipo: a.tipo ?? a.clase ?? a.category ?? null,
-    folio: a.folio ?? a.solicitud_folio ?? a.codigo ?? '—',
-    nombre_material: a.nombre_material ?? a.material_nombre ?? a.nombre ?? a.descripcion ?? '(Sin nombre)',
-    cantidad: a.cantidad_pendiente ?? a.cantidad ?? a.qty ?? 0,
-    unidad: a.unidad ?? unidadFromTipo(a.tipo),
-    fecha_entrega: a.fecha_entrega ?? a.fecha ?? null,
+    solicitud_id: a.solicitud_id,
+    solicitud_item_id: a.solicitud_item_id,
+    material_id: a.material_id,
+    tipo: a.tipo,
+    folio: a.folio || '—',
+    nombre_material: a.nombre_material || '(Sin nombre)',
+    cantidad: a.cantidad ?? a.cantidad_pendiente ?? 0,
+    unidad: a.unidad || 'u',
+    fecha_entrega: a.fecha_entrega || null,
   };
-}
-
-function normalizarListaAdeudos(lista) {
-  if (!Array.isArray(lista)) return [];
-  return lista.map(normalizarAdeudo);
 }
 
 export default function Adeudos() {
@@ -81,7 +69,7 @@ export default function Adeudos() {
   const router = useRouter();
 
   useEffect(() => {
-    if (usuario === null) return; // Espera a auth
+    if (usuario === null) return;
 
     if (!usuario) {
       router.push('/login');
@@ -98,72 +86,17 @@ export default function Adeudos() {
       try {
         setLoading(true);
 
-        // 1) Traer adeudos (intenta endpoint con fecha y si no, el básico)
+        // Primero intenta con fecha_entrega; si no existe el endpoint, usa el básico
         let data;
         try {
           data = await obtenerAdeudosConFechaEntrega();
-        } catch (_) {
+        } catch {
           data = await obtenerAdeudos();
         }
 
-        // 2) Normalizar
-        const base = normalizarListaAdeudos(data);
-
-        setAdeudos(base);
+        const lista = Array.isArray(data) ? data.map(normalizarAdeudo) : [];
+        setAdeudos(lista);
         setError('');
-
-        // 3) Rellenar nombres faltantes consultando /api/materials/:id?tipo=...
-        const faltan = base.filter(
-          (a) =>
-            (!a.nombre_material || a.nombre_material === '(Sin nombre)') &&
-            a.material_id &&
-            a.tipo
-        );
-
-        if (faltan.length > 0) {
-          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
-          const uniquePairs = Array.from(
-            new Set(faltan.map((x) => `${x.material_id}|${x.tipo}`))
-          ).map((key) => {
-            const [material_id, tipo] = key.split('|');
-            return { material_id, tipo };
-          });
-
-          const nombreCache = {};
-
-          await Promise.all(
-            uniquePairs.map(async ({ material_id, tipo }) => {
-              try {
-                const { data: mat } = await axios.get(
-                  `${process.env.NEXT_PUBLIC_API_URL}/api/materials/${material_id}?tipo=${encodeURIComponent(
-                    tipo
-                  )}`,
-                  token ? { headers: { Authorization: `Bearer ${token}` } } : {}
-                );
-                if (mat && mat.nombre) {
-                  nombreCache[`${material_id}|${tipo}`] = mat.nombre;
-                }
-              } catch (e) {
-                // sin drama: si falla, deja "(Sin nombre)"
-              }
-            })
-          );
-
-          if (Object.keys(nombreCache).length > 0) {
-            setAdeudos((prev) =>
-              prev.map((a) => {
-                if (!a.nombre_material || a.nombre_material === '(Sin nombre)') {
-                  const key = `${a.material_id}|${a.tipo}`;
-                  const nom = nombreCache[key];
-                  if (nom) {
-                    return { ...a, nombre_material: nom };
-                  }
-                }
-                return a;
-              })
-            );
-          }
-        }
       } catch (err) {
         console.error('Error al cargar adeudos:', err);
         setError('No se pudo cargar adeudos');
@@ -277,7 +210,7 @@ export default function Adeudos() {
                     <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Unidad
                     </th>
-                    {/* Estado: removido */}
+                    {/* Estado removido */}
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -317,8 +250,6 @@ export default function Adeudos() {
                           {a.unidad}
                         </span>
                       </td>
-
-                      {/* Columna de Estado eliminada */}
                     </tr>
                   ))}
                 </tbody>
