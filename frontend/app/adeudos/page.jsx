@@ -55,12 +55,14 @@ function unidadFromTipo(tipo) {
 function normalizarAdeudo(a) {
   return {
     solicitud_id: a.solicitud_id ?? a.id_solicitud ?? a.solicitud ?? a.solicitudId,
-    solicitud_item_id: a.solicitud_item_id ?? a.item_id ?? a.id_item ?? a.itemId ?? `${a.solicitud_id || ''}-${a.material_id || ''}`,
+    solicitud_item_id:
+      a.solicitud_item_id ?? a.item_id ?? a.id_item ?? a.itemId ?? `${a.solicitud_id || ''}-${a.material_id || ''}`,
     folio: a.folio ?? a.solicitud_folio ?? a.codigo ?? '—',
     nombre_material: a.nombre_material ?? a.material_nombre ?? a.nombre ?? a.descripcion ?? '(Sin nombre)',
     cantidad: a.cantidad_pendiente ?? a.cantidad ?? a.qty ?? 0,
     unidad: a.unidad ?? unidadFromTipo(a.tipo),
-    fecha_entrega: a.fecha_entrega ?? a.fecha || null,
+    // evitar mezclar ?? con ||: usar solo ?? en cascada
+    fecha_entrega: a.fecha_entrega ?? a.fecha ?? null,
   };
 }
 
