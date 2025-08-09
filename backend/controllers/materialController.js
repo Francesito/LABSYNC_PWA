@@ -1947,7 +1947,6 @@ module.exports = {
   getHistorialMovimientos,
   getReporteMasSolicitados,
   obtenerDocentesParaSolicitud,
-  getReporteEficienciaEntrega,
   
   // Usuarios y permisos
   getUsuariosConPermisos,
