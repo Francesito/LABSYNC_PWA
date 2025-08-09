@@ -363,9 +363,28 @@ router.get(
   materialController.getEstadoSistema
 );
 
-/**
- * ========================================
- * EXPORT
- * ========================================
- */
+// Solicitudes de alumnos que el docente debe aprobar
+router.get(
+  '/solicitudes/docente/aprobar',
+  verificarToken,
+  verificarRol([2, 4]),
+  materialController.getSolicitudesParaDocenteAprobar
+);
+
+// Solicitudes creadas por el propio docente
+router.get(
+  '/solicitudes/docente/mias',
+  verificarToken,
+  verificarRol([2, 4]),
+  materialController.getSolicitudesDocentePropias
+);
+
+
+router.get(
+  '/solicitudes/almacen',
+  verificarToken,
+  verificarRol([3, 4]),
+  materialController.getSolicitudesParaAlmacen
+);
+
 module.exports = router;
