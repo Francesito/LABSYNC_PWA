@@ -226,8 +226,6 @@ const getAllSolicitudes = async (req, res) => {
   }
 };
 
-/** Crear solicitud (alumno/docente) con folio */
-/** Crear solicitud (alumno/docente) con folio y selección de docente */
 /** Crear solicitud (alumno/docente) con folio, grupo y selección de docente */
 const crearSolicitudes = async (req, res) => {
   logRequest('crearSolicitudes');
@@ -282,11 +280,16 @@ const crearSolicitudes = async (req, res) => {
       profesor = docente[0]?.nombre || profesor;
     }
 
+    // 🟢 DIFERENCIA CLAVE:
+    // - Alumno: nombre_alumno = nombre del alumno
+    // - Docente: nombre_alumno = NULL (para distinguir solicitudes de docente)
+    const nombre_alumno = (rol_id === 1) ? user[0].nombre : null;
+
     const [result] = await pool.query(
       `INSERT INTO Solicitud
          (usuario_id, fecha_solicitud, motivo, estado, docente_id, nombre_alumno, profesor, folio, grupo_id)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_seleccionado_id, user[0].nombre, profesor, folio, grupo_id]
+      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_seleccionado_id, nombre_alumno, profesor, folio, grupo_id]
     );
     const solicitudId = result.insertId;
 
@@ -296,6 +299,7 @@ const crearSolicitudes = async (req, res) => {
         `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?,?,?,?)`,
         [solicitudId, material_id, tipo, cantidad]
       );
+      // Solo alumnos descuentan stock al crear (como ya tenías)
       if (rol_id === 1) {
         const meta = detectTableAndField(tipo);
         if (meta) {
@@ -319,6 +323,7 @@ const crearSolicitudes = async (req, res) => {
     res.status(500).json({ error: 'Error al registrar solicitud: ' + err.message });
   }
 };
+
 
 /**
  * ========================================
