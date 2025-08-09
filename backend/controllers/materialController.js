@@ -2025,11 +2025,77 @@ const verifyImage = async (req, res) => {
   }
 };
 
-/**
- * ========================================
- * EXPORTS
- * ========================================
- */
+// Docente: ver solicitudes de alumnos que debe aprobar (solo 'pendiente' asignadas a él)
+const getSolicitudesParaDocenteAprobar = async (req, res) => {
+  logRequest('getSolicitudesParaDocenteAprobar');
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+  try {
+    const { id: docente_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
+    if (rol_id !== 2 && rol_id !== 4) return res.status(403).json({ error: 'Solo docentes o admin' });
+
+    const query = SELECT_SOLICITUDES_CON_NOMBRE.replace(
+      '/*AND_CONDITION*/',
+      `AND s.estado = 'pendiente' AND s.docente_id = ?`
+    ) + ' ORDER BY s.fecha_solicitud DESC';
+
+    const [rows] = await pool.query(query, [docente_id]);
+    // Solo solicitudes de alumnos (tienen nombre_alumno)
+    const soloAlumnos = rows.filter(r => !!r.nombre_alumno);
+    res.json(soloAlumnos);
+  } catch (error) {
+    console.error('[Error] getSolicitudesParaDocenteAprobar:', error);
+    res.status(500).json({ error: 'Error al obtener solicitudes para aprobar: ' + error.message });
+  }
+};
+
+// Docente: ver sus propias solicitudes (las que él creó)
+const getSolicitudesDocentePropias = async (req, res) => {
+  logRequest('getSolicitudesDocentePropias');
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+  try {
+    const { id: docente_id, rol_id } = jwt.verify(token, process.env.JWT_SECRET);
+    if (rol_id !== 2 && rol_id !== 4) return res.status(403).json({ error: 'Solo docentes o admin' });
+
+    const query = SELECT_SOLICITUDES_CON_NOMBRE.replace(
+      '/*AND_CONDITION*/',
+      `AND s.usuario_id = ?`
+    ) + ' ORDER BY s.fecha_solicitud DESC';
+
+    const [rows] = await pool.query(query, [docente_id]);
+    // Propias del docente => sin nombre_alumno
+    const propiasDocente = rows.filter(r => !r.nombre_alumno);
+    res.json(propiasDocente);
+  } catch (error) {
+    console.error('[Error] getSolicitudesDocentePropias:', error);
+    res.status(500).json({ error: 'Error al obtener solicitudes del docente: ' + error.message });
+  }
+};
+
+// Almacén/Admin: ver todas (el frontend separa alumnos vs docentes)
+const getSolicitudesParaAlmacen = async (req, res) => {
+  logRequest('getSolicitudesParaAlmacen');
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+  try {
+    const { rol_id } = jwt.verify(token, process.env.JWT_SECRET);
+    if (rol_id !== 3 && rol_id !== 4) {
+      return res.status(403).json({ error: 'Solo almacenistas o admin' });
+    }
+
+    const query = SELECT_SOLICITUDES_CON_NOMBRE.replace('/*AND_CONDITION*/', '') + ' ORDER BY s.fecha_solicitud DESC';
+    const [rows] = await pool.query(query);
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getSolicitudesParaAlmacen:', error);
+    res.status(500).json({ error: 'Error al obtener solicitudes: ' + error.message });
+  }
+};
+
 module.exports = {
   // Catálogo de materiales por tipo
   getLiquidos,
@@ -2094,4 +2160,7 @@ module.exports = {
   resetearTodoElStock,
 
   verifyImage,
+  getSolicitudesParaDocenteAprobar,
+  getSolicitudesDocentePropias,
+  getSolicitudesParaAlmacen
 };
