@@ -4,7 +4,7 @@ const express = require('express');
 const router = express.Router();
 const materialController = require('../controllers/materialController');
 const { upload, handleUploadError } = require('../middleware/uploadMiddleware');
-
+const solicitudController = require('../controllers/solicitudController');
 const { 
   verificarToken, 
   verificarRol, 
@@ -384,7 +384,7 @@ router.get(
   '/solicitudes/almacen',
   verificarToken,
   verificarRol([3, 4]),
-  materialController.getSolicitudesParaAlmacen
+  solicitudController.obtenerSolicitudesAprobadasPendientes // 👈 REEMPLAZO
 );
 
 module.exports = router;
