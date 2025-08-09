@@ -297,19 +297,6 @@ router.get(
   materialController.getUsuariosConPermisos
 );
 
-/**
- * ========================
- * RUTAS DE REPORTES Y ESTADÍSTICAS
- * ========================
- */
-// Reporte de uso de materiales por período (docentes y admin)
-router.get(
-  '/reportes/uso-periodo',
-  verificarToken,
-  verificarRol([2, 4]),
-  materialController.getReporteUsoPeriodo
-);
-
 // Reporte de materiales más solicitados (docentes y admin)
 router.get(
   '/reportes/mas-solicitados',
