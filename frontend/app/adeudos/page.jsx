@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
 import { obtenerAdeudos, obtenerAdeudosConFechaEntrega } from '../../lib/api';
+import axios from 'axios';
 
 // Iconos SVG
 const FileTextIcon = () => (
@@ -57,11 +58,12 @@ function normalizarAdeudo(a) {
     solicitud_id: a.solicitud_id ?? a.id_solicitud ?? a.solicitud ?? a.solicitudId,
     solicitud_item_id:
       a.solicitud_item_id ?? a.item_id ?? a.id_item ?? a.itemId ?? `${a.solicitud_id || ''}-${a.material_id || ''}`,
+    material_id: a.material_id ?? a.id_material ?? a.materialId ?? null,
+    tipo: a.tipo ?? a.clase ?? a.category ?? null,
     folio: a.folio ?? a.solicitud_folio ?? a.codigo ?? '—',
     nombre_material: a.nombre_material ?? a.material_nombre ?? a.nombre ?? a.descripcion ?? '(Sin nombre)',
     cantidad: a.cantidad_pendiente ?? a.cantidad ?? a.qty ?? 0,
     unidad: a.unidad ?? unidadFromTipo(a.tipo),
-    // evitar mezclar ?? con ||: usar solo ?? en cascada
     fecha_entrega: a.fecha_entrega ?? a.fecha ?? null,
   };
 }
@@ -79,7 +81,7 @@ export default function Adeudos() {
   const router = useRouter();
 
   useEffect(() => {
-    if (usuario === null) return; // Espera a que cargue auth
+    if (usuario === null) return; // Espera a auth
 
     if (!usuario) {
       router.push('/login');
@@ -95,19 +97,73 @@ export default function Adeudos() {
     const loadAdeudos = async () => {
       try {
         setLoading(true);
-        
-        // Intentamos primero obtener adeudos con fecha de entrega
+
+        // 1) Traer adeudos (intenta endpoint con fecha y si no, el básico)
         let data;
         try {
           data = await obtenerAdeudosConFechaEntrega();
         } catch (_) {
-          // Si falla, usamos el método básico
           data = await obtenerAdeudos();
         }
-        
-        // Normaliza para garantizar claves esperadas
-        setAdeudos(normalizarListaAdeudos(data));
+
+        // 2) Normalizar
+        const base = normalizarListaAdeudos(data);
+
+        setAdeudos(base);
         setError('');
+
+        // 3) Rellenar nombres faltantes consultando /api/materials/:id?tipo=...
+        const faltan = base.filter(
+          (a) =>
+            (!a.nombre_material || a.nombre_material === '(Sin nombre)') &&
+            a.material_id &&
+            a.tipo
+        );
+
+        if (faltan.length > 0) {
+          const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+          const uniquePairs = Array.from(
+            new Set(faltan.map((x) => `${x.material_id}|${x.tipo}`))
+          ).map((key) => {
+            const [material_id, tipo] = key.split('|');
+            return { material_id, tipo };
+          });
+
+          const nombreCache = {};
+
+          await Promise.all(
+            uniquePairs.map(async ({ material_id, tipo }) => {
+              try {
+                const { data: mat } = await axios.get(
+                  `${process.env.NEXT_PUBLIC_API_URL}/api/materials/${material_id}?tipo=${encodeURIComponent(
+                    tipo
+                  )}`,
+                  token ? { headers: { Authorization: `Bearer ${token}` } } : {}
+                );
+                if (mat && mat.nombre) {
+                  nombreCache[`${material_id}|${tipo}`] = mat.nombre;
+                }
+              } catch (e) {
+                // sin drama: si falla, deja "(Sin nombre)"
+              }
+            })
+          );
+
+          if (Object.keys(nombreCache).length > 0) {
+            setAdeudos((prev) =>
+              prev.map((a) => {
+                if (!a.nombre_material || a.nombre_material === '(Sin nombre)') {
+                  const key = `${a.material_id}|${a.tipo}`;
+                  const nom = nombreCache[key];
+                  if (nom) {
+                    return { ...a, nombre_material: nom };
+                  }
+                }
+                return a;
+              })
+            );
+          }
+        }
       } catch (err) {
         console.error('Error al cargar adeudos:', err);
         setError('No se pudo cargar adeudos');
