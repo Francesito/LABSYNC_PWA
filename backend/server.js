@@ -9,6 +9,8 @@ const authRoutes = require('./routes/authRoutes');
 const materialRoutes = require('./routes/materialRoutes');
 const messageRoutes = require('./routes/messageRoutes');
 const solicitudRoutes = require('./routes/solicitudRoutes');
+const { obtenerGrupos } = require('./controllers/authController'); 
+
 
 // Importar nueva ruta de administrador
 const adminRoutes = require('./routes/adminRoutes');
