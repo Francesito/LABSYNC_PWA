@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import axios from 'axios';
 import jsPDF from 'jspdf';
@@ -194,9 +194,9 @@ function TablaSolicitudes({
                           </>
                         )}
 
-                        {/* Almacén: marcar entregada (solo cuando está en entrega pendiente) */}
+                        {/* Almacén: mostrar "Entregar" SOLO cuando la BD dice 'aprobada' (UI = entrega pendiente) */}
                         {usuario?.rol === 'almacen' && 
-                         s.estado === 'entrega pendiente' && (
+                         (s.rawEstado === 'aprobada' || s.estado === 'entrega pendiente') && (
                           <Btn
                             color="blue"
                             onClick={() => onAccion(s.id, 'entregar', 'entregada')}
@@ -296,19 +296,15 @@ export default function SolicitudesPage() {
           setDocMias(agrupar(miasRes.data, usuario, grupos));
         }
 
-        // Almacén
+        // Almacén (SIN filtrar en cliente)
         if (usuario.rol === 'almacen') {
           const { data } = await axios.get(
             `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes/almacen`,
             { headers: { Authorization: `Bearer ${token}` } }
           );
-          // Agrupar y luego FILTRAR para mostrar solo aprobadas/entregadas
           const grouped = agrupar(data, usuario, grupos);
-          const soloAprobadasOEntregadas = grouped.filter(s =>
-            (s.rawEstado === 'aprobada') || (s.rawEstado === 'entregado')
-          );
-          setAlmAlumnos(soloAprobadasOEntregadas.filter(s => !s.isDocenteRequest));
-          setAlmDocentes(soloAprobadasOEntregadas.filter(s => s.isDocenteRequest));
+          setAlmAlumnos(grouped.filter(s => !s.isDocenteRequest));
+          setAlmDocentes(grouped.filter(s => s.isDocenteRequest));
         }
 
         setError('');
@@ -324,16 +320,14 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-  /** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL original para lógicas de filtro */
+  /** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL en rawEstado */
   function agrupar(rows, user, gruposMap) {
     const by = {};
     for (const item of rows) {
       const key = item.solicitud_id;
 
-      // Detectar solicitud de docente: si la creó un docente (su propio usuario) o no hay nombre_alumno
-      const isDocenteReq =
-        (user?.rol === 'docente' && item.usuario_id === user.id) ||
-        (!item.nombre_alumno);
+      // Docente request si no hay nombre_alumno (así lo marcas en tu backend) 
+      const isDocenteReq = !item.nombre_alumno;
 
       if (!by[key]) {
         const rawEstado = (item.estado || '').toLowerCase().trim();
@@ -345,8 +339,8 @@ export default function SolicitudesPage() {
           nombre_alumno: item.nombre_alumno || '',
           profesor: item.profesor || '',
           fecha_solicitud: item.fecha_solicitud,
-          estado: estadoUI,     // estado mostrado en UI
-          rawEstado,            // estado original de BD (para filtros y lógica)
+          estado: estadoUI,     // para UI
+          rawEstado,            // original BD
           isDocenteRequest: isDocenteReq,
           grupo: isDocenteReq
             ? ''
@@ -364,7 +358,7 @@ export default function SolicitudesPage() {
     return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
   }
 
-  /** Mapea estados de BD -> estados UI */
+  /** Mapea estados de BD -> UI */
   function mapEstado(estadoSQL, isDocenteReq) {
     const e = (estadoSQL || '').toLowerCase().trim();
     switch (e) {
@@ -401,24 +395,14 @@ export default function SolicitudesPage() {
       ));
       const drop = (arrSetter) => arrSetter(prev => prev.filter(s => s.id !== id));
 
-      // Alumno que cancela: se elimina del listado
       if (accion === 'cancelar' && usuario?.rol === 'alumno') {
         drop(setAlumnoData);
       } else {
-        // Actualizar en todos los listados
         apply(setAlumnoData);
         apply(setDocAprobar);
         apply(setDocMias);
         apply(setAlmAlumnos);
         apply(setAlmDocentes);
-
-        // Si en almacén se entregó, quitar de “entrega pendiente” si decides ocultarlas
-        if (usuario?.rol === 'almacen' && accion === 'entregar') {
-          // Opcional: mantener en la tabla pero como "Entregada".
-          // Si quisieras ocultarla automáticamente de la tabla de “pendientes”, descomenta:
-          // setAlmAlumnos(prev => prev.filter(s => !(s.id === id && !s.isDocenteRequest)));
-          // setAlmDocentes(prev => prev.filter(s => !(s.id === id && s.isDocenteRequest)));
-        }
       }
     } catch (err) {
       console.error(err);
@@ -428,7 +412,7 @@ export default function SolicitudesPage() {
     }
   };
 
-  // Mapea estado UI -> estado SQL para mantener rawEstado coherente al actualizar
+  // Mapea estado UI -> estado SQL para mantener rawEstado coherente
   function toRawFromUI(estadoUI) {
     const e = (estadoUI || '').toLowerCase().trim();
     if (e === 'entrega pendiente') return 'aprobada';
@@ -437,7 +421,7 @@ export default function SolicitudesPage() {
     return e; // rechazada, cancelado, pendiente, etc.
   }
 
-  /** PDF con layouts distintos */
+  /** PDF */
   const descargarPDF = async (vale) => {
     const doc = new jsPDF();
     const toBase64 = async (url) => {
@@ -459,14 +443,12 @@ export default function SolicitudesPage() {
     const primary = [0, 102, 51];
     const secondary = [100, 100, 100];
 
-    // Fondo + marco
     doc.setFillColor(245, 245, 245);
     doc.rect(10, 10, pageWidth - 20, pageHeight - 20, 'F');
     doc.setDrawColor(...primary);
     doc.setLineWidth(0.5);
     doc.rect(10, 10, pageWidth - 20, pageHeight - 20);
 
-    // Encabezado
     doc.addImage(logoImg, 'PNG', marginLeft, 12, 30, 30);
     doc.addImage(encabezadoImg, 'PNG', marginLeft + 35, 12, pageWidth - 75, 25);
     doc.setFontSize(18);
@@ -476,7 +458,6 @@ export default function SolicitudesPage() {
     doc.setLineWidth(0.3);
     doc.line(marginLeft, 55, pageWidth - marginLeft, 55);
 
-    // Datos
     let yPos = 65;
     const put = (label, value) => {
       doc.setFont('helvetica', 'bold');
@@ -501,7 +482,6 @@ export default function SolicitudesPage() {
       put('Grupo:', vale.grupo || '');
     }
 
-    // Tabla de materiales
     doc.setLineWidth(0.3);
     doc.line(marginLeft, yPos + 4, pageWidth - marginLeft, yPos + 4);
 
@@ -520,7 +500,6 @@ export default function SolicitudesPage() {
       margin: { left: margin, right: margin }
     });
 
-    // Pie
     doc.setFontSize(8);
     doc.setTextColor(...secondary);
     doc.setFont('helvetica', 'normal');
@@ -589,7 +568,7 @@ export default function SolicitudesPage() {
           columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
           usuario={usuario}
           onAccion={actualizarEstado}
-          onPDF={descargarPDF}
+          onPDF={descarGarPDF}
           procesandoId={procesando}
         />
       )}
@@ -607,7 +586,7 @@ export default function SolicitudesPage() {
             columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
             usuario={usuario}
             onAccion={actualizarEstado}
-            onPDF={descargarPDF}
+            onPDF={descarGarPDF}
             procesandoId={procesando}
           />
           <TablaSolicitudes
@@ -620,7 +599,7 @@ export default function SolicitudesPage() {
             columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
             usuario={usuario}
             onAccion={actualizarEstado}
-            onPDF={descargarPDF}
+            onPDF={descarGarPDF}
             procesandoId={procesando}
           />
         </>
@@ -660,4 +639,24 @@ export default function SolicitudesPage() {
       )}
     </div>
   );
+}
+
+/** ===== helpers fuera del componente principal ===== */
+
+function mapEstado(estadoSQL, isDocenteReq) {
+  const e = (estadoSQL || '').toLowerCase().trim();
+  switch (e) {
+    case 'pendiente':
+      return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
+    case 'aprobada':
+      return 'entrega pendiente';
+    case 'entregado':
+      return 'entregada';
+    case 'rechazada':
+      return 'rechazada';
+    case 'cancelado':
+      return 'cancelado';
+    default:
+      return estadoSQL || 'pendiente';
+  }
 }
