@@ -177,6 +177,8 @@ const startMessageCleanupJob = () => {
   }, 12 * 60 * 60 * 1000); // Cada 12 horas
 };
 
+app.get('/api/grupos', obtenerGrupos);
+
 // ==================== MANEJO DE ERRORES 404 ====================
 app.use('*', (req, res) => {
   res.status(404).json({
