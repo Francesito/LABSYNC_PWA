@@ -155,9 +155,9 @@ function TablaSolicitudes({
                           </>
                         )}
 
-                        {/* Almacén: marcar entregada (solicitudes aprobadas o con entrega pendiente) */}
+                        {/* Almacén: marcar entregada (solicitudes con entrega pendiente) */}
                         {usuario?.rol === 'almacen' && 
-                         (s.estado === 'entrega pendiente' || s.estado === 'aprobada') && (
+                         s.estado === 'entrega pendiente' && (
                           <Btn
                             color="blue"
                             onClick={() => onAccion(s.id, 'entregar', 'entregada')}
