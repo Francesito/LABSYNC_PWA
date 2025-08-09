@@ -1948,6 +1948,98 @@ const getSolicitudesParaAlmacen = async (req, res) => {
 };
 
 
+/** 
+ * Adeudos del usuario (alumno o docente) con nombre del material y unidad
+ * GET /api/materials/adeudos
+ */
+const getAdeudosUsuario = async (req, res) => {
+  logRequest('getAdeudosUsuario');
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+  try {
+    const { id: usuario_id } = jwt.verify(token, process.env.JWT_SECRET);
+
+    const [rows] = await pool.query(`
+      SELECT
+        a.id,
+        a.solicitud_id,
+        a.solicitud_item_id,
+        a.usuario_id,
+        s.folio,
+        a.material_id,
+        a.tipo,
+        a.cantidad_pendiente AS cantidad,
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+        CASE a.tipo 
+          WHEN 'liquido' THEN 'ml'
+          WHEN 'solido'  THEN 'g'
+          ELSE 'u'
+        END AS unidad
+      FROM Adeudo a
+      JOIN Solicitud s ON s.id = a.solicitud_id
+      LEFT JOIN MaterialLiquido     ml   ON a.tipo = 'liquido'     AND a.material_id = ml.id
+      LEFT JOIN MaterialSolido      ms   ON a.tipo = 'solido'      AND a.material_id = ms.id
+      LEFT JOIN MaterialEquipo      me   ON a.tipo = 'equipo'      AND a.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
+      WHERE a.usuario_id = ? AND a.cantidad_pendiente > 0
+      ORDER BY s.fecha_solicitud DESC, a.id DESC
+    `, [usuario_id]);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getAdeudosUsuario:', error);
+    res.status(500).json({ error: 'Error al obtener adeudos: ' + error.message });
+  }
+};
+
+/**
+ * Adeudos del usuario incluyendo fecha_entrega (para marcar vencidos en UI)
+ * GET /api/materials/adeudos/entrega
+ */
+const getAdeudosConFechaEntrega = async (req, res) => {
+  logRequest('getAdeudosConFechaEntrega');
+  const token = req.headers.authorization?.split(' ')[1];
+  if (!token) return res.status(401).json({ error: 'Token requerido' });
+
+  try {
+    const { id: usuario_id } = jwt.verify(token, process.env.JWT_SECRET);
+
+    const [rows] = await pool.query(`
+      SELECT
+        a.id,
+        a.solicitud_id,
+        a.solicitud_item_id,
+        a.usuario_id,
+        s.folio,
+        a.material_id,
+        a.tipo,
+        a.cantidad_pendiente AS cantidad,
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+        CASE a.tipo 
+          WHEN 'liquido' THEN 'ml'
+          WHEN 'solido'  THEN 'g'
+          ELSE 'u'
+        END AS unidad,
+        a.fecha_entrega
+      FROM Adeudo a
+      JOIN Solicitud s ON s.id = a.solicitud_id
+      LEFT JOIN MaterialLiquido     ml   ON a.tipo = 'liquido'     AND a.material_id = ml.id
+      LEFT JOIN MaterialSolido      ms   ON a.tipo = 'solido'      AND a.material_id = ms.id
+      LEFT JOIN MaterialEquipo      me   ON a.tipo = 'equipo'      AND a.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
+      WHERE a.usuario_id = ? AND a.cantidad_pendiente > 0
+      ORDER BY s.fecha_solicitud DESC, a.id DESC
+    `, [usuario_id]);
+
+    res.json(rows);
+  } catch (error) {
+    console.error('[Error] getAdeudosConFechaEntrega:', error);
+    res.status(500).json({ error: 'Error al obtener adeudos con fecha: ' + error.message });
+  }
+};
+
+
 module.exports = {
   // Catálogo de materiales por tipo
   getLiquidos,
@@ -2009,5 +2101,8 @@ module.exports = {
   verifyImage,
   getSolicitudesParaDocenteAprobar,
   getSolicitudesDocentePropias,
-  getSolicitudesParaAlmacen
+  getSolicitudesParaAlmacen,
+
+  getAdeudosUsuario,
+  getAdeudosConFechaEntrega
 };
