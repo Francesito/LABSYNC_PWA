@@ -344,13 +344,20 @@ function agrupar(rows, user, gruposMap) {
 }
 
 
-  function mapEstado(estadoSQL, isDocenteReq, rol) {
-    // estados en BD: pendiente, aprobada, entregado, rechazada, cancelado
-    if (estadoSQL === 'pendiente' && !isDocenteReq) return 'aprobación pendiente';
-    if (estadoSQL === 'aprobada') return 'entrega pendiente';
-    if (estadoSQL === 'entregado') return 'entregada';
-    return estadoSQL;
+function mapEstado(estadoSQL, isDocenteReq) {
+  const e = (estadoSQL || '').toLowerCase().trim();
+  // estados en BD: pendiente, aprobada, entregado, rechazada, cancelado
+  if (e === 'pendiente') {
+    // sólo las de alumno muestran "aprobación pendiente"
+    return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
   }
+  if (e === 'aprobada') return 'entrega pendiente';
+  if (e === 'entregado') return 'entregada';
+  if (e === 'rechazada') return 'rechazada';
+  if (e === 'cancelado') return 'cancelado';
+  return estadoSQL || '';
+}
+
 
   /** Acciones aprobar/rechazar/entregar/cancelar */
   const actualizarEstado = async (id, accion, nuevoEstadoUI) => {
