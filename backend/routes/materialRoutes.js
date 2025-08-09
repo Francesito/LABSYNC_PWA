@@ -36,7 +36,6 @@ router.get('/tipo/equipos', verificarToken, materialController.getEquipos);
 router.get('/tipo/laboratorio', verificarToken, materialController.getLaboratorio);
 router.get('/categorias', verificarToken, materialController.getCategorias);
 router.get('/verify-image', verificarToken, materialController.verifyImage);
-router.get('/:id', verificarToken, materialController.getMaterialById);
 
 /**
  * ========================
@@ -255,7 +254,7 @@ router.get(
   '/solicitudes/almacen',
   verificarToken,
   verificarRol([3, 4]),
-  solicitudController.obtenerSolicitudesAprobadasPendientes // 👈 REEMPLAZO
+  solicitudController.obtenerSolicitudesAprobadasPendientes
 );
 
 
@@ -353,6 +352,7 @@ router.get(
   materialController.getSolicitudesDocentePropias
 );
 
+router.get('/:id', verificarToken, materialController.getMaterialById);
 
 
 module.exports = router;
