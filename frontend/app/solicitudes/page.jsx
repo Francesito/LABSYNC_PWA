@@ -19,7 +19,7 @@ const EstadoBadge = ({ estado }) => {
     'entregada':            { bg: 'bg-green-100', text: 'text-green-800', icon: '✓'  },
     'rechazada':            { bg: 'bg-red-100',   text: 'text-red-800',   icon: '✗'  },
     'cancelado':            { bg: 'bg-gray-100',  text: 'text-gray-800',  icon: '❌' },
-    'pendiente':            { bg: 'bg-yellow-100',text: 'text-yellow-800',icon: '⏳' } // solo como último fallback
+    'pendiente':            { bg: 'bg-yellow-100',text: 'text-yellow-800',icon: '⏳' } // fallback
   };
   const safe = (estado || '').toLowerCase().trim();
   const { bg, text, icon } = config[safe] || config.pendiente;
@@ -199,9 +199,9 @@ function TablaSolicitudes({
                             </>
                           )}
 
-                        {/* Almacén: entregar cuando el estado REAL es aprobada (UI = entrega pendiente) */}
+                        {/* Almacén: Entregar cuando UI = entrega pendiente */}
                         {usuario?.rol === 'almacen' &&
-                          s.rawEstado === 'aprobada' && (
+                          s.estado === 'entrega pendiente' && (
                             <Btn
                               color="blue"
                               onClick={() => onAccion(s.id, 'entregar', 'entregada')}
@@ -305,7 +305,7 @@ export default function SolicitudesPage() {
           setDocMias(agrupar(miasRes.data, 'docente', grupos));
         }
 
-        // Almacén (sin ocultar nada; mapeo especial por rol)
+        // Almacén (sin filtrar en cliente; solo mapeo de estado especial)
         if (usuario.rol === 'almacen') {
           const { data } = await axios.get(
             `${process.env.NEXT_PUBLIC_API_URL}/api/materials/solicitudes/almacen`,
@@ -330,12 +330,12 @@ export default function SolicitudesPage() {
   }, [usuario]);
 
   /** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL en rawEstado.
-   *  Aplica un mapeo de estados **especial** cuando el rol que visualiza es 'almacen'. */
+   *  Para ALMACÉN, todo lo que no sea entregado/rechazado/cancelado se muestra como "entrega pendiente". */
   function agrupar(rows, rolVista, gruposMap) {
     const by = {};
     for (const item of rows) {
       const key = item.solicitud_id;
-      const isDocenteReq = !item.nombre_alumno; // tus docentes no tienen nombre_alumno
+      const isDocenteReq = !item.nombre_alumno; // tus solicitudes de docente no traen nombre_alumno
 
       if (!by[key]) {
         const rawEstado = String(item.estado || '').toLowerCase().trim();
@@ -348,7 +348,7 @@ export default function SolicitudesPage() {
           profesor: item.profesor || '',
           fecha_solicitud: item.fecha_solicitud,
           estado: estadoUI,     // mostrado en UI
-          rawEstado,            // estado “de BD” para lógica de botones
+          rawEstado,            // estado “de BD” para lógica si la necesitas
           isDocenteRequest: isDocenteReq,
           grupo: isDocenteReq
             ? ''
@@ -371,17 +371,16 @@ export default function SolicitudesPage() {
   function mapEstadoPorRol(estadoSQL, isDocenteReq, rolVista) {
     const e = (estadoSQL || '').toLowerCase().trim();
 
-    // Vista de ALMACÉN: reglas claras de negocio que pediste
+    // Vista de ALMACÉN: regla estricta para evitar "aprobación pendiente" allí
     if (rolVista === 'almacen') {
-      if (e === 'aprobada')  return 'entrega pendiente';
-      if (e === 'pendiente') return 'aprobación pendiente';
       if (e === 'entregado') return 'entregada';
       if (e === 'rechazada') return 'rechazada';
       if (e === 'cancelado') return 'cancelado';
-      return 'aprobación pendiente';
+      // Cualquier otro (incluido 'aprobada' y un posible 'pendiente') se ve como entrega pendiente
+      return 'entrega pendiente';
     }
 
-    // Otras vistas: reglas previas
+    // Otras vistas (alumno/docente)
     switch (e) {
       case 'pendiente':
         return isDocenteReq ? 'pendiente' : 'aprobación pendiente';
