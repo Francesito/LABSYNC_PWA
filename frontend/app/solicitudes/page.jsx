@@ -329,14 +329,13 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-/** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL en rawEstado.
- *  Para ALMACÉN, todo lo que no sea entregado/rechazado/cancelado se muestra como "entrega pendiente". */
+  /** Agrupa por solicitud y mapea estados UI; para ALMACÉN lo no entregado/rechazado/cancelado = "entrega pendiente". */
 function agrupar(rows, rolVista, gruposMap) {
   const by = {};
   for (const item of rows) {
-    // 🔧 FIX: usar id como respaldo si no viene solicitud_id
+    // ✅ FIX 1: usar `id` como respaldo si no viene `solicitud_id`
     const key = item.solicitud_id ?? item.id;
-    if (!key) continue; // si por alguna razón no viene ninguno, saltar fila
+    if (!key) continue;
 
     const isDocenteReq = !item.nombre_alumno; // solicitudes de docente no traen nombre_alumno
 
@@ -360,19 +359,21 @@ function agrupar(rows, rolVista, gruposMap) {
       };
     }
 
-    // 🔧 Asegurar nombre legible (sin guiones bajos) y que siempre se agregue el item
+    // ✅ FIX 2: tomar el nombre desde varios alias y limpiar guiones bajos
+    const nombreMaterial = String(
+      item.nombre_material ?? item.nombreMaterial ?? item.nombre ?? ''
+    ).replace(/_/g, ' ').trim();
+
     by[key].items.push({
       item_id: item.item_id ?? item.solicitud_item_id ?? `${key}-itm-${by[key].items.length + 1}`,
-      nombre_material: String(item.nombre_material || item.nombreMaterial || item.nombre || '')
-        .replace(/_/g, ' '),
+      nombre_material: nombreMaterial || '(Sin nombre)',
       cantidad: item.cantidad ?? item.cantidad_pedida ?? 0,
       tipo: item.tipo
     });
   }
-  return Object.values(by).sort(
-    (a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)
-  );
+  return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
 }
+
 
 
   /** Mapeo de estados con sensibilidad al rol que visualiza */
