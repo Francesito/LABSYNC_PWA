@@ -357,6 +357,8 @@ function agrupar(rows, rolVista, gruposMap) {
         items: []
       };
     }
+
+    
 const nombreMaterialRaw =
   item?.nombre_material ??
   item?.nombreMaterial ??
@@ -365,6 +367,12 @@ const nombreMaterialRaw =
   item?.material ??            // ← a veces solo "material"
   item?.nombre ??              // ← último recurso si el backend lo nombra así
   '';
+
+    
+if (!nombreMaterialRaw) {
+  // Debug temporal para ver qué trae esa fila del endpoint "para aprobar"
+  console.debug('Fila sin nombre_material:', item);
+}
 
 const nombreMaterial = String(nombreMaterialRaw).replace(/_/g, ' ').trim();
 
