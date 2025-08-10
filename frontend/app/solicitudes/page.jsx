@@ -330,6 +330,7 @@ export default function SolicitudesPage() {
   }, [usuario]);
 
   /** Agrupa por solicitud y mapea estados UI; para ALMACÉN lo no entregado/rechazado/cancelado = "entrega pendiente". */
+/** Agrupa por solicitud y mapea estados UI; para ALMACÉN lo no entregado/rechazado/cancelado = "entrega pendiente". */
 function agrupar(rows, rolVista, gruposMap) {
   const by = {};
   for (const item of rows) {
@@ -371,7 +372,9 @@ function agrupar(rows, rolVista, gruposMap) {
       tipo: item.tipo
     });
   }
-  return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
+  return Object.values(by).sort(
+    (a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)
+  );
 }
 
 
