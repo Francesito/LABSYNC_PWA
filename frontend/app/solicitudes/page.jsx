@@ -329,12 +329,10 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-  /** Agrupa por solicitud y mapea estados UI; para ALMACÉN lo no entregado/rechazado/cancelado = "entrega pendiente". */
 /** Agrupa por solicitud y mapea estados UI; para ALMACÉN lo no entregado/rechazado/cancelado = "entrega pendiente". */
 function agrupar(rows, rolVista, gruposMap) {
   const by = {};
   for (const item of rows) {
-    // ✅ FIX 1: usar `id` como respaldo si no viene `solicitud_id`
     const key = item.solicitud_id ?? item.id;
     if (!key) continue;
 
@@ -359,8 +357,6 @@ function agrupar(rows, rolVista, gruposMap) {
         items: []
       };
     }
-
-    // ✅ FIX 2: tomar el nombre desde varios alias y limpiar guiones bajos
     const nombreMaterial = String(
       item.nombre_material ?? item.nombreMaterial ?? item.nombre ?? ''
     ).replace(/_/g, ' ').trim();
@@ -376,6 +372,7 @@ function agrupar(rows, rolVista, gruposMap) {
     (a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)
   );
 }
+
 
 
 
