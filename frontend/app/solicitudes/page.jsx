@@ -357,16 +357,23 @@ function agrupar(rows, rolVista, gruposMap) {
         items: []
       };
     }
-    const nombreMaterial = String(
-      item.nombre_material ?? item.nombreMaterial ?? item.nombre ?? ''
-    ).replace(/_/g, ' ').trim();
+const nombreMaterialRaw =
+  item?.nombre_material ??
+  item?.nombreMaterial ??
+  item?.material_nombre ??     // ← alias común en otros endpoints
+  item?.materialNombre ??      // ← camelCase
+  item?.material ??            // ← a veces solo "material"
+  item?.nombre ??              // ← último recurso si el backend lo nombra así
+  '';
 
-    by[key].items.push({
-      item_id: item.item_id ?? item.solicitud_item_id ?? `${key}-itm-${by[key].items.length + 1}`,
-      nombre_material: nombreMaterial || '(Sin nombre)',
-      cantidad: item.cantidad ?? item.cantidad_pedida ?? 0,
-      tipo: item.tipo
-    });
+const nombreMaterial = String(nombreMaterialRaw).replace(/_/g, ' ').trim();
+
+by[key].items.push({
+  item_id: item.item_id ?? item.solicitud_item_id ?? `${key}-itm-${by[key].items.length + 1}`,
+  nombre_material: nombreMaterial || '(Sin nombre)',
+  cantidad: item.cantidad ?? item.cantidad_pedida ?? 0,
+  tipo: item.tipo
+});
   }
   return Object.values(by).sort(
     (a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)
