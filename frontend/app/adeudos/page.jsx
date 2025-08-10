@@ -48,13 +48,24 @@ const LoadingSpinner = () => (
    devuelve el backend)
    =========================== */
 function normalizarAdeudo(a) {
+  // cubrir posibles nombres según cómo lo envíe el backend
+  const rawNombre =
+    a.nombre_material ??
+    a.nombreMaterial ??
+    a.material_nombre ??
+    a.materialNombre ??
+    a.nombre ??
+    '';
+
+  const nombrePlano = String(rawNombre || '').trim().replace(/_/g, ' ');
+
   return {
     solicitud_id: a.solicitud_id,
     solicitud_item_id: a.solicitud_item_id,
     material_id: a.material_id,
     tipo: a.tipo,
     folio: a.folio || '—',
-    nombre_material: a.nombre_material || '(Sin nombre)',
+    nombre_material: nombrePlano || '(Sin nombre)',
     cantidad: a.cantidad ?? a.cantidad_pendiente ?? 0,
     unidad: a.unidad || 'u',
     fecha_entrega: a.fecha_entrega || null,
