@@ -40,22 +40,21 @@ export async function rechazarSolicitud(id) {
 export async function obtenerAdeudos() {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No hay token de autenticación');
-  
+
+  // Primero intenta el endpoint que ya incluye fecha_entrega
   try {
-    // Primero intentamos obtener adeudos con fecha de entrega
     const { data } = await API.get(
-      '/adeudos/usuario/detallado',
+      '/materials/adeudos/entrega',
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    return data;
-  } catch (error) {
-    // Si el endpoint detallado no existe, usamos el original
-    console.warn('Endpoint detallado no disponible, usando endpoint básico');
+    return data; // ← incluye nombre_material y fecha_entrega
+  } catch (e) {
+    // Fallback al básico
     const { data } = await API.get(
-      '/adeudos/usuario',
+      '/materials/adeudos',
       { headers: { Authorization: `Bearer ${token}` } }
     );
-    return data;
+    return data; // ← incluye nombre_material
   }
 }
 
@@ -87,79 +86,13 @@ export async function obtenerFechaEntregaPrestamo(solicitudId) {
 export async function obtenerAdeudosConFechaEntrega() {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No hay token de autenticación');
-  
-  try {
-    // Intentamos obtener los adeudos básicos
-    const { data: adeudos } = await API.get(
-      '/adeudos/usuario',
-      { headers: { Authorization: `Bearer ${token}` } }
-    );
-    
-    console.log('Adeudos básicos obtenidos:', adeudos); // Debug
-    
-    // Si no hay adeudos, retornamos array vacío
-    if (!adeudos || adeudos.length === 0) {
-      return [];
-    }
-    
-    // Para cada adeudo, obtenemos los detalles de la solicitud para obtener la fecha de entrega
-    const adeudosConFecha = await Promise.all(
-      adeudos.map(async (adeudo) => {
-        try {
-          console.log(`Obteniendo detalle para solicitud ${adeudo.solicitud_id}`); // Debug
-          
-          const { data: detalleSolicitud } = await API.get(
-            `/materials/solicitudes/${adeudo.solicitud_id}`,
-            { headers: { Authorization: `Bearer ${token}` } }
-          );
-          
-          console.log(`Detalle solicitud ${adeudo.solicitud_id}:`, detalleSolicitud); // Debug
-          
-          // Buscar la fecha de entrega en diferentes campos posibles
-          let fechaEntrega = null;
-          
-          if (detalleSolicitud.fecha_entrega) {
-            fechaEntrega = detalleSolicitud.fecha_entrega;
-          } else if (detalleSolicitud.updated_at && detalleSolicitud.estado === 'entregado') {
-            fechaEntrega = detalleSolicitud.updated_at;
-          } else if (detalleSolicitud.fecha_aprobacion && detalleSolicitud.estado === 'entregado') {
-            fechaEntrega = detalleSolicitud.fecha_aprobacion;
-          }
-          
-          // También verificar si hay fecha en el objeto adeudo
-          if (!fechaEntrega && adeudo.fecha_entrega) {
-            fechaEntrega = adeudo.fecha_entrega;
-          }
-          
-          // Si aún no tenemos fecha, intentar desde préstamos
-          if (!fechaEntrega) {
-            fechaEntrega = await obtenerFechaEntregaPrestamo(adeudo.solicitud_id);
-          }
-          
-          console.log(`Fecha entrega encontrada para ${adeudo.solicitud_id}: ${fechaEntrega}`); // Debug
-          
-          return {
-            ...adeudo,
-            fecha_entrega: fechaEntrega,
-            estado_solicitud: detalleSolicitud.estado
-          };
-        } catch (error) {
-          console.warn(`No se pudo obtener detalle para solicitud ${adeudo.solicitud_id}:`, error);
-          return {
-            ...adeudo,
-            fecha_entrega: null,
-            estado_solicitud: 'desconocido'
-          };
-        }
-      })
-    );
-    
-    console.log('Adeudos con fecha final:', adeudosConFecha); // Debug
-    return adeudosConFecha;
-  } catch (error) {
-    console.error('Error obteniendo adeudos con fecha de entrega:', error);
-    throw error;
-  }
+
+  // Usa directamente el endpoint correcto del backend
+  const { data } = await API.get(
+    '/materials/adeudos/entrega',
+    { headers: { Authorization: `Bearer ${token}` } }
+  );
+  return data; // ← ya viene nombre_material + fecha_entrega desde el backend
 }
 
 // --- Préstamos entregados (almacenista) ---
