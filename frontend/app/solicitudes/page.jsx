@@ -329,43 +329,51 @@ export default function SolicitudesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [usuario]);
 
-  /** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL en rawEstado.
-   *  Para ALMACÉN, todo lo que no sea entregado/rechazado/cancelado se muestra como "entrega pendiente". */
-  function agrupar(rows, rolVista, gruposMap) {
-    const by = {};
-    for (const item of rows) {
-      const key = item.solicitud_id;
-      const isDocenteReq = !item.nombre_alumno; // tus solicitudes de docente no traen nombre_alumno
+/** Agrupa por solicitud_id y mapea estados UI; guarda estado SQL en rawEstado.
+ *  Para ALMACÉN, todo lo que no sea entregado/rechazado/cancelado se muestra como "entrega pendiente". */
+function agrupar(rows, rolVista, gruposMap) {
+  const by = {};
+  for (const item of rows) {
+    // 🔧 FIX: usar id como respaldo si no viene solicitud_id
+    const key = item.solicitud_id ?? item.id;
+    if (!key) continue; // si por alguna razón no viene ninguno, saltar fila
 
-      if (!by[key]) {
-        const rawEstado = String(item.estado || '').toLowerCase().trim();
-        const estadoUI = mapEstadoPorRol(rawEstado, isDocenteReq, rolVista);
+    const isDocenteReq = !item.nombre_alumno; // solicitudes de docente no traen nombre_alumno
 
-        by[key] = {
-          id: key,
-          folio: item.folio || Math.random().toString(36).slice(2, 6).toUpperCase(),
-          nombre_alumno: item.nombre_alumno || '',
-          profesor: item.profesor || '',
-          fecha_solicitud: item.fecha_solicitud,
-          estado: estadoUI,     // mostrado en UI
-          rawEstado,            // estado “de BD” para lógica si la necesitas
-          isDocenteRequest: isDocenteReq,
-          grupo: isDocenteReq
-            ? ''
-            : (item.grupo_nombre || (item.grupo_id && gruposMap[item.grupo_id]) || ''),
-          items: []
-        };
-      }
+    if (!by[key]) {
+      const rawEstado = String(item.estado || '').toLowerCase().trim();
+      const estadoUI = mapEstadoPorRol(rawEstado, isDocenteReq, rolVista);
 
-      by[key].items.push({
-        item_id: item.item_id,
-        nombre_material: (item.nombre_material || '').replace(/_/g, ' '),
-        cantidad: item.cantidad,
-        tipo: item.tipo
-      });
+      by[key] = {
+        id: key,
+        folio: item.folio || Math.random().toString(36).slice(2, 6).toUpperCase(),
+        nombre_alumno: item.nombre_alumno || '',
+        profesor: item.profesor || '',
+        fecha_solicitud: item.fecha_solicitud,
+        estado: estadoUI,
+        rawEstado,
+        isDocenteRequest: isDocenteReq,
+        grupo: isDocenteReq
+          ? ''
+          : (item.grupo_nombre || (item.grupo_id && gruposMap[item.grupo_id]) || ''),
+        items: []
+      };
     }
-    return Object.values(by).sort((a, b) => (new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)));
+
+    // 🔧 Asegurar nombre legible (sin guiones bajos) y que siempre se agregue el item
+    by[key].items.push({
+      item_id: item.item_id ?? item.solicitud_item_id ?? `${key}-itm-${by[key].items.length + 1}`,
+      nombre_material: String(item.nombre_material || item.nombreMaterial || item.nombre || '')
+        .replace(/_/g, ' '),
+      cantidad: item.cantidad ?? item.cantidad_pedida ?? 0,
+      tipo: item.tipo
+    });
   }
+  return Object.values(by).sort(
+    (a, b) => new Date(b.fecha_solicitud) - new Date(a.fecha_solicitud)
+  );
+}
+
 
   /** Mapeo de estados con sensibilidad al rol que visualiza */
   function mapEstadoPorRol(estadoSQL, isDocenteReq, rolVista) {
