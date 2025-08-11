@@ -339,22 +339,42 @@ const forgotPassword = async (req, res) => {
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
      const resetUrl = `${frontendUrl}/reset-password/${token}`;
-    const resetHtml = `
-      <div style="font-family:sans-serif;text-align:center">
-        <h2>Restablece tu contraseña</h2>
-        <p>Has solicitado cambiar tu contraseña. Presiona el botón para continuar.</p>
-       <a href="${resetUrl}" 
-   style="display:inline-block;
-          padding:10px 20px;
-          background-color:#000080;
-          color:#ffffff;
-          text-decoration:none;
-          border-radius:5px;">
-  Restablecer Contraseña
-</a>
-        <p style="margin-top:16px">Si no solicitaste este cambio, puedes ignorar este correo.</p>
-      </div>
-    `;
+const resetHtml = `
+  <div style="font-family:Arial, sans-serif; background-color:#f4f6f8; padding:30px; text-align:center;">
+    <div style="max-width:500px; margin:auto; background:#ffffff; border-radius:8px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+      
+      <h2 style="color:#000080; margin-bottom:20px;">Restablecer tu contraseña</h2>
+      
+      <p style="color:#333333; font-size:16px; line-height:1.5; margin-bottom:30px;">
+        Hemos recibido una solicitud para cambiar tu contraseña.  
+        Haz clic en el botón de abajo para continuar con el proceso.
+      </p>
+      
+      <a href="${resetUrl}" 
+         style="display:inline-block;
+                padding:14px 28px;
+                background-color:#000080;
+                color:#ffffff;
+                font-size:16px;
+                font-weight:bold;
+                text-decoration:none;
+                border-radius:6px;">
+        Restablecer Contraseña
+      </a>
+      
+      <p style="color:#555555; font-size:14px; margin-top:30px; line-height:1.5;">
+        Si no solicitaste este cambio, puedes ignorar este mensaje.
+      </p>
+
+      <p style="color:#333333; font-size:14px; margin-top:40px; text-align:right; font-style:italic;">
+        Equipo LabSync
+      </p>
+      
+      <hr style="margin:30px 0; border:none; border-top:1px solid #e0e0e0;">
+    </div>
+  </div>
+`;
+
     await sendEmail(
       correo_institucional,
       'Restablece tu contraseña.',
