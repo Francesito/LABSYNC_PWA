@@ -99,24 +99,22 @@ router.post('/crear-usuario', async (req, res) => {
     // Enviar correo con enlace para establecer contraseña
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
-      const emailContent = `
-        Hola ${nombre},
-        
-        Se ha creado una cuenta para ti en el sistema LabSync.
-        
-        Para establecer tu contraseña, haz clic en el siguiente enlace:
-        ${frontendUrl}/reset-password/${resetToken}
-        
-        Este enlace expirará en 24 horas.
-        
-        Saludos,
-        Equipo LabSync
+     const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
+      const emailText = `Establece tu contraseña: ${resetUrl}`;
+      const emailHtml = `
+        <div style="font-family:sans-serif;text-align:center">
+          <h2>Bienvenido a LabSync</h2>
+          <p>Se ha creado una cuenta para ti. Haz clic en el botón para establecer tu contraseña.</p>
+          <a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background-color:#4F46E5;color:#ffffff;text-decoration:none;border-radius:5px;">Establecer Contraseña</a>
+          <p style="margin-top:16px">Este enlace expirará en 24 horas.</p>
+        </div>
       `;
 
       await sendEmail(
         correo_institucional,
         'Cuenta creada - Establece tu contraseña',
-        emailContent
+        emailText,
+        emailHtml
       );
       console.log('Correo enviado exitosamente');
     } catch (emailError) {
