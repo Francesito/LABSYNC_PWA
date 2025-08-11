@@ -102,8 +102,8 @@ export default function Catalog() {
       setDocentes(response.data);
       if (userPermissions.rol === 'docente') {
         setSelectedDocenteId(usuario.id.toString());
-      } else if (response.data.length > 0) {
-        setSelectedDocenteId(response.data[0].id.toString());
+      } else{
+        setSelectedDocenteId('');
       }
     } catch (error) {
       console.error('Error al cargar docentes:', error);
@@ -498,7 +498,7 @@ export default function Catalog() {
       setSelectedCart([]);
       setShowRequestModal(false);
       setSelectedDocenteId(
-        userPermissions.rol === 'docente' ? usuario.id.toString() : docentes[0]?.id?.toString() || ''
+       userPermissions.rol === 'docente' ? usuario.id.toString() : ''
       );
       router.push('/solicitudes');
     } catch (err) {
@@ -2041,18 +2041,19 @@ export default function Catalog() {
                 {userPermissions.rol !== 'docente' && (
                   <div className="mb-3 mt-4">
                     <label className="form-label">Selecciona el docente encargado *</label>
-                    <select
-                      className="form-control"
-                      value={selectedDocenteId}
-                      onChange={(e) => setSelectedDocenteId(e.target.value)}
-                      required
-                    >
-                      {docentes.map((docente) => (
-                        <option key={docente.id} value={docente.id}>
-                          {formatName(docente.nombre)}
-                        </option>
-                      ))}
-                    </select>
+                 <select
+  className="form-control"
+  value={selectedDocenteId}
+  onChange={(e) => setSelectedDocenteId(e.target.value)}
+  required
+>
+  <option value="" disabled>-- Selecciona un docente --</option>
+  {docentes.map((docente) => (
+    <option key={docente.id} value={docente.id}>
+      {formatName(docente.nombre)}
+    </option>
+  ))}
+</select>
                   </div>
                 )}
                 {userPermissions.rol === 'docente' && (
