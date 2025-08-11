@@ -203,6 +203,7 @@ const obtenerSolicitudesAprobadasPendientes = async (req, res) => {
         s.fecha_solicitud,
         s.motivo,
         s.folio,
+        s.estado,                               -- ✅ incluye estado (el front lo usa)
         u.nombre AS nombre_usuario,
         u.correo_institucional,
         g.nombre AS grupo_nombre,
@@ -210,25 +211,24 @@ const obtenerSolicitudesAprobadasPendientes = async (req, res) => {
         si.material_id,
         si.cantidad,
         si.tipo,
-        CASE 
-          WHEN si.tipo = 'liquido' THEN ml.nombre
-          WHEN si.tipo = 'solido' THEN ms.nombre
-          WHEN si.tipo = 'equipo' THEN me.nombre
-        END AS nombre_material,
-        CASE 
-          WHEN si.tipo = 'liquido' THEN ml.cantidad_disponible_ml
-          WHEN si.tipo = 'solido' THEN ms.cantidad_disponible_g
-          WHEN si.tipo = 'equipo' THEN me.cantidad_disponible_u
-        END AS cantidad_disponible
+        -- ✅ nombre del material para cualquiera de los 4 tipos
+        COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
+        -- ✅ disponibilidad según el tipo
+        COALESCE(ml.cantidad_disponible_ml, ms.cantidad_disponible_g, me.cantidad_disponible_u, mlab.cantidad_disponible) AS cantidad_disponible
       FROM Solicitud s
-      JOIN Usuario u ON s.usuario_id = u.id
-      LEFT JOIN Grupo g ON u.grupo_id = g.id
-      JOIN SolicitudItem si ON s.id = si.solicitud_id
-      LEFT JOIN MaterialLiquido ml ON si.material_id = ml.id AND si.tipo = 'liquido'
-      LEFT JOIN MaterialSolido ms ON si.material_id = ms.id AND si.tipo = 'solido'
-      LEFT JOIN MaterialEquipo me ON si.material_id = me.id AND si.tipo = 'equipo'
+      JOIN Usuario u             ON s.usuario_id = u.id
+      LEFT JOIN Grupo g          ON u.grupo_id = g.id
+      JOIN SolicitudItem si      ON s.id = si.solicitud_id
+      LEFT JOIN MaterialLiquido ml
+        ON TRIM(LOWER(si.tipo)) = 'liquido'     AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido ms
+        ON TRIM(LOWER(si.tipo)) = 'solido'      AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo me
+        ON TRIM(LOWER(si.tipo)) = 'equipo'      AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab
+        ON TRIM(LOWER(si.tipo)) = 'laboratorio' AND si.material_id = mlab.id
       WHERE s.estado = 'aprobada'
-      ORDER BY s.fecha_solicitud ASC
+      ORDER BY s.fecha_solicitud DESC
     `);
 
     res.json(rows);
@@ -237,6 +237,7 @@ const obtenerSolicitudesAprobadasPendientes = async (req, res) => {
     res.status(500).json({ error: 'Error al obtener solicitudes' });
   }
 };
+
 
 const obtenerSolicitudes = async (req, res) => {
   try {
