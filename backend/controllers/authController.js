@@ -71,14 +71,22 @@ const registrarUsuario = async (req, res) => {
       <div style="font-family:sans-serif;text-align:center">
         <h2>Verifica tu cuenta</h2>
         <p>Bienvenido a LabSync. Haz clic en el botón para activar tu cuenta.</p>
-        <a href="${verifyUrl}" style="display:inline-block;padding:10px 20px;background-color:#4F46E5;color:#ffffff;text-decoration:none;border-radius:5px;">Verificar Cuenta</a>
+      <a href="${verifyUrl}" 
+   style="display:inline-block;
+          padding:10px 20px;
+          background-color:#000080;
+          color:#ffffff;
+          text-decoration:none;
+          border-radius:5px;">
+  Verificar Cuenta
+</a>
         <p style="margin-top:16px">Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
       </div>
     `;
     await sendEmail(
       correo_institucional,
-      'Verifica tu cuenta para poder acceder a las funcionalidades que el Equipo de LabSync, Tiene para ti.',
-     `Verifica tu cuenta: ${verifyUrl}`,
+      'Verifica tu cuenta',
+     `${verifyUrl}`,
       verifyHtml
     );
 
@@ -335,14 +343,22 @@ const forgotPassword = async (req, res) => {
       <div style="font-family:sans-serif;text-align:center">
         <h2>Restablece tu contraseña</h2>
         <p>Has solicitado cambiar tu contraseña. Presiona el botón para continuar.</p>
-        <a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background-color:#4F46E5;color:#ffffff;text-decoration:none;border-radius:5px;">Restablecer Contraseña</a>
+       <a href="${resetUrl}" 
+   style="display:inline-block;
+          padding:10px 20px;
+          background-color:#000080;
+          color:#ffffff;
+          text-decoration:none;
+          border-radius:5px;">
+  Restablecer Contraseña
+</a>
         <p style="margin-top:16px">Si no solicitaste este cambio, puedes ignorar este correo.</p>
       </div>
     `;
     await sendEmail(
       correo_institucional,
-      'Haz click en el boton de abajo y sigue las indicaciones para Restablecer tu contraseña.',
-      `Restablece tu contraseña: ${resetUrl}`,
+      'Restablece tu contraseña.',
+      ` ${resetUrl}`,
       resetHtml
     );
 
