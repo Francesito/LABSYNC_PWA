@@ -100,15 +100,46 @@ router.post('/crear-usuario', async (req, res) => {
     try {
       const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
      const resetUrl = `${frontendUrl}/reset-password/${resetToken}`;
-      const emailText = `Establece tu contraseña: ${resetUrl}`;
-      const emailHtml = `
-        <div style="font-family:sans-serif;text-align:center">
-          <h2>Bienvenido a LabSync</h2>
-          <p>Se ha creado una cuenta para ti. Haz clic en el botón para establecer tu contraseña.</p>
-          <a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background-color:#4F46E5;color:#ffffff;text-decoration:none;border-radius:5px;">Establecer Contraseña</a>
-          <p style="margin-top:16px">Este enlace expirará en 24 horas.</p>
-        </div>
-      `;
+      const emailText = `Cuenta creada - Establece tu contraseña: ${resetUrl}`;
+      const cleanName = nombre.replace(/\b(Almacen|Docente|Administrador)\b/gi, '').trim();
+  const emailHtml = `
+  <div style="font-family:Arial, sans-serif; background-color:#f4f6f8; padding:30px;">
+    <div style="max-width:500px; margin:auto; background:#ffffff; border-radius:8px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
+
+      <p style="color:#333333; font-size:16px; line-height:1.5; white-space:pre-line;">
+        Hola ${cleanName},
+        
+        Se ha creado una cuenta para ti en el sistema LabSync.
+        
+        Para establecer tu contraseña, haz clic en el botón de abajo:
+      </p>
+
+      <div style="text-align:center; margin:30px 0;">
+        <a href="${resetUrl}" 
+           style="display:inline-block;
+                  padding:14px 28px;
+                  background-color:#000080;
+                  color:#ffffff;
+                  font-size:16px;
+                  font-weight:bold;
+                  text-decoration:none;
+                  border-radius:6px;">
+          Establecer Contraseña
+        </a>
+      </div>
+
+      <p style="color:#333333; font-size:16px; line-height:1.5;">
+        Este enlace expirará en 24 horas.
+      </p>
+
+      <p style="color:#333333; font-size:14px; margin-top:40px; text-align:right; font-style:italic;">
+        Saludos,<br>
+        Equipo LabSync
+      </p>
+    </div>
+  </div>
+`;
+
 
       await sendEmail(
         correo_institucional,
