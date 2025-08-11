@@ -67,14 +67,13 @@ const registrarUsuario = async (req, res) => {
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
     const verifyUrl = `${frontendUrl}/verificar/${token}`;
-const cleanName = nombre.replace(/\b(Almacen|Docente|Administrador)\b/gi, '').trim();
 
 const verifyHtml = `
   <div style="font-family:Arial, sans-serif; background-color:#f4f6f8; padding:30px;">
     <div style="max-width:500px; margin:auto; background:#ffffff; border-radius:8px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
 
       <p style="color:#333333; font-size:16px; line-height:1.5; white-space:pre-line;">
-        Hola ${cleanName},
+        Hola
         
         Bienvenido a LabSync. Haz clic en el botón de abajo para activar tu cuenta:
       </p>
@@ -361,14 +360,13 @@ const forgotPassword = async (req, res) => {
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
      const resetUrl = `${frontendUrl}/reset-password/${token}`;
-const cleanName = nombre.replace(/\b(Almacen|Docente|Administrador)\b/gi, '').trim();
 
 const resetHtml = `
   <div style="font-family:Arial, sans-serif; background-color:#f4f6f8; padding:30px;">
     <div style="max-width:500px; margin:auto; background:#ffffff; border-radius:8px; padding:30px; box-shadow:0 2px 8px rgba(0,0,0,0.1);">
 
       <p style="color:#333333; font-size:16px; line-height:1.5; white-space:pre-line;">
-        Hola ${cleanName},
+        Hola
         
         Hemos recibido una solicitud para cambiar tu contraseña.
         
