@@ -612,21 +612,21 @@ by[key].items.push({
       )}
 
       {/* ALUMNO */}
-      {usuario?.rol === 'alumno' && (
-        <TablaSolicitudes
-          titulo="Mis solicitudes"
-          data={alumnoData}
-          loading={loading}
-          showSolicitante
-          showEncargado={false}
-          showGrupo
-          columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
-          usuario={usuario}
-          onAccion={actualizarEstado}
-          onPDF={descargarPDF}
-          procesandoId={procesando}
-        />
-      )}
+  {usuario?.rol === 'alumno' && (
+  <TablaSolicitudes
+    titulo="Mis solicitudes"
+    data={alumnoData}
+    loading={loading}
+    showSolicitante
+    showEncargado={false}
+    showGrupo={false} 
+    columnasFijas={{ folio: true, materiales: true, fecha: true, estado: true, acciones: true }}
+    usuario={usuario}
+    onAccion={actualizarEstado}
+    onPDF={descargarPDF}
+    procesandoId={procesando}
+  />
+)}
 
       {/* DOCENTE */}
       {usuario?.rol === 'docente' && (
