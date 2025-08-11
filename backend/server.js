@@ -122,7 +122,6 @@ const initializePermisosTable = async () => {
       SELECT id, 0, 0 
       FROM Usuario 
       WHERE rol_id = 3 
-      ON DUPLICATE KEY UPDATE acceso_chat = 0, modificar_stock = 0;
     `);
 
     // Eliminar permisos de administradores
