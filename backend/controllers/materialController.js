@@ -64,18 +64,15 @@ const SELECT_SOLICITUDES_CON_NOMBRE = `
     g.nombre        AS grupo_nombre
   FROM Solicitud s
   JOIN SolicitudItem si ON s.id = si.solicitud_id
-LEFT JOIN MaterialLiquido ml
-  ON TRIM(LOWER(si.tipo)) = 'liquido'     AND si.material_id = ml.id
-LEFT JOIN MaterialSolido ms
-  ON TRIM(LOWER(si.tipo)) = 'solido'      AND si.material_id = ms.id
-LEFT JOIN MaterialEquipo me
-  ON TRIM(LOWER(si.tipo)) = 'equipo'      AND si.material_id = me.id
-LEFT JOIN MaterialLaboratorio mlab
-  ON TRIM(LOWER(si.tipo)) = 'laboratorio' AND si.material_id = mlab.id
+  LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
+  LEFT JOIN MaterialSolido ms ON si.tipo = 'solido' AND si.material_id = ms.id
+  LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo' AND si.material_id = me.id
+  LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
   LEFT JOIN Grupo g ON s.grupo_id = g.id
   WHERE 1=1
   /*AND_CONDITION*/
 `;
+
 
 /**
  * ========================================
@@ -1021,11 +1018,9 @@ const getSolicitudDetalle = async (req, res) => {
   try {
     const rawId = req.params.id;
 
-    // 🔧 Fallback: si la ruta /solicitudes/almacen está detrás de /solicitudes/:id,
-    // "almacen" cae aquí como :id. En ese caso devolvemos el listado de almacén.
+    // Fallback para /solicitudes/almacen
     if (!/^\d+$/.test(rawId)) {
       if (rawId === 'almacen') {
-        // Reutilizamos la misma consulta que usa el listado de almacén
         const token = req.headers.authorization?.split(' ')[1];
         if (!token) return res.status(401).json({ error: 'Token requerido' });
 
@@ -1052,16 +1047,10 @@ const getSolicitudDetalle = async (req, res) => {
             g.nombre AS grupo_nombre
           FROM Solicitud s
           JOIN SolicitudItem si ON s.id = si.solicitud_id
-  LEFT JOIN MaterialLiquido ml
-  ON TRIM(LOWER(a.tipo)) = 'liquido'     AND a.material_id = ml.id
-LEFT JOIN MaterialSolido ms
-  ON TRIM(LOWER(a.tipo)) = 'solido'      AND a.material_id = ms.id
-LEFT JOIN MaterialEquipo me
-  ON TRIM(LOWER(a.tipo)) = 'equipo'      AND a.material_id = me.id
-LEFT JOIN MaterialLaboratorio mlab
-  ON TRIM(LOWER(a.tipo)) = 'laboratorio' AND a.material_id = mlab.id
-
-
+          LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
+          LEFT JOIN MaterialSolido ms ON si.tipo = 'solido' AND si.material_id = ms.id
+          LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo' AND si.material_id = me.id
+          LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
           LEFT JOIN Grupo g ON s.grupo_id = g.id
           ORDER BY s.fecha_solicitud DESC
         `;
@@ -1073,7 +1062,7 @@ LEFT JOIN MaterialLaboratorio mlab
 
     const id = parseInt(rawId, 10);
 
-    // 1) Cabecera: folio, alumno, profesor, grupo y fecha_entrega (del primer adeudo)
+    // 1) Cabecera de la solicitud
     const [solRows] = await pool.query(
       `SELECT 
          s.id AS id,
@@ -1095,7 +1084,7 @@ LEFT JOIN MaterialLaboratorio mlab
     }
     const sol = solRows[0];
 
-    // 2) Ítems: solo los que aún tienen adeudo (cantidad_pendiente > 0)
+    // 2) Ítems con adeudo pendiente
     const [items] = await pool.query(
       `SELECT
          a.solicitud_item_id AS item_id,
@@ -1103,9 +1092,9 @@ LEFT JOIN MaterialLaboratorio mlab
          a.cantidad_pendiente AS cantidad,
          COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material
        FROM Adeudo a
-       LEFT JOIN MaterialLiquido ml       ON a.tipo = 'liquido'     AND a.material_id = ml.id
-       LEFT JOIN MaterialSolido  ms       ON a.tipo = 'solido'      AND a.material_id = ms.id
-       LEFT JOIN MaterialEquipo  me       ON a.tipo = 'equipo'      AND a.material_id = me.id
+       LEFT JOIN MaterialLiquido ml ON a.tipo = 'liquido' AND a.material_id = ml.id
+       LEFT JOIN MaterialSolido ms ON a.tipo = 'solido' AND a.material_id = ms.id
+       LEFT JOIN MaterialEquipo me ON a.tipo = 'equipo' AND a.material_id = me.id
        LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
       WHERE a.solicitud_id = ? AND a.cantidad_pendiente > 0`,
       [id]
@@ -1828,7 +1817,7 @@ const getSolicitudesParaDocenteAprobar = async (req, res) => {
 
     const query = `
       SELECT 
-        s.id AS id,                    -- <- alias esperado
+        s.id AS id,
         s.id AS solicitud_id,
         s.usuario_id,
         s.fecha_solicitud,
@@ -1844,14 +1833,10 @@ const getSolicitudesParaDocenteAprobar = async (req, res) => {
         g.nombre AS grupo_nombre
       FROM Solicitud s
       JOIN SolicitudItem si ON s.id = si.solicitud_id
-LEFT JOIN MaterialLiquido ml
-  ON TRIM(LOWER(si.tipo)) = 'liquido'     AND si.material_id = ml.id
-LEFT JOIN MaterialSolido ms
-  ON TRIM(LOWER(si.tipo)) = 'solido'      AND si.material_id = ms.id
-LEFT JOIN MaterialEquipo me
-  ON TRIM(LOWER(si.tipo)) = 'equipo'      AND si.material_id = me.id
-LEFT JOIN MaterialLaboratorio mlab
-  ON TRIM(LOWER(si.tipo)) = 'laboratorio' AND si.material_id = mlab.id
+      LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido ms ON si.tipo = 'solido' AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo' AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
       LEFT JOIN Grupo g ON s.grupo_id = g.id
       WHERE s.estado = 'pendiente' AND s.docente_id = ?
       ORDER BY s.fecha_solicitud DESC
@@ -1880,7 +1865,7 @@ const getSolicitudesDocentePropias = async (req, res) => {
 
     const query = `
       SELECT 
-        s.id AS id,                    -- <- alias esperado
+        s.id AS id,
         s.id AS solicitud_id,
         s.usuario_id,
         s.fecha_solicitud,
@@ -1896,15 +1881,10 @@ const getSolicitudesDocentePropias = async (req, res) => {
         g.nombre AS grupo_nombre
       FROM Solicitud s
       JOIN SolicitudItem si ON s.id = si.solicitud_id
-   LEFT JOIN MaterialLiquido ml
-  ON TRIM(LOWER(si.tipo)) = 'liquido'     AND si.material_id = ml.id
-LEFT JOIN MaterialSolido ms
-  ON TRIM(LOWER(si.tipo)) = 'solido'      AND si.material_id = ms.id
-LEFT JOIN MaterialEquipo me
-  ON TRIM(LOWER(si.tipo)) = 'equipo'      AND si.material_id = me.id
-LEFT JOIN MaterialLaboratorio mlab
-  ON TRIM(LOWER(si.tipo)) = 'laboratorio' AND si.material_id = mlab.id
-
+      LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido ms ON si.tipo = 'solido' AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo' AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
       LEFT JOIN Grupo g ON s.grupo_id = g.id
       WHERE s.usuario_id = ?
       ORDER BY s.fecha_solicitud DESC
@@ -1934,7 +1914,7 @@ const getSolicitudesParaAlmacen = async (req, res) => {
 
     const query = `
       SELECT 
-        s.id AS id,  -- alias esperado por el frontend
+        s.id AS id,
         s.id AS solicitud_id,
         s.usuario_id,
         s.fecha_solicitud,
@@ -1950,15 +1930,10 @@ const getSolicitudesParaAlmacen = async (req, res) => {
         g.nombre AS grupo_nombre
       FROM Solicitud s
       JOIN SolicitudItem si ON s.id = si.solicitud_id
- LEFT JOIN MaterialLiquido ml
-  ON TRIM(LOWER(si.tipo)) = 'liquido'     AND si.material_id = ml.id
-LEFT JOIN MaterialSolido ms
-  ON TRIM(LOWER(si.tipo)) = 'solido'      AND si.material_id = ms.id
-LEFT JOIN MaterialEquipo me
-  ON TRIM(LOWER(si.tipo)) = 'equipo'      AND si.material_id = me.id
-LEFT JOIN MaterialLaboratorio mlab
-  ON TRIM(LOWER(si.tipo)) = 'laboratorio' AND si.material_id = mlab.id
-
+      LEFT JOIN MaterialLiquido ml ON si.tipo = 'liquido' AND si.material_id = ml.id
+      LEFT JOIN MaterialSolido ms ON si.tipo = 'solido' AND si.material_id = ms.id
+      LEFT JOIN MaterialEquipo me ON si.tipo = 'equipo' AND si.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON si.tipo = 'laboratorio' AND si.material_id = mlab.id
       LEFT JOIN Grupo g ON s.grupo_id = g.id
       ORDER BY s.fecha_solicitud DESC
     `;
@@ -2002,15 +1977,10 @@ const getAdeudosUsuario = async (req, res) => {
         END AS unidad
       FROM Adeudo a
       JOIN Solicitud s ON s.id = a.solicitud_id
-LEFT JOIN MaterialLiquido ml
-  ON TRIM(LOWER(si.tipo)) = 'liquido'     AND si.material_id = ml.id
-LEFT JOIN MaterialSolido ms
-  ON TRIM(LOWER(si.tipo)) = 'solido'      AND si.material_id = ms.id
-LEFT JOIN MaterialEquipo me
-  ON TRIM(LOWER(si.tipo)) = 'equipo'      AND si.material_id = me.id
-LEFT JOIN MaterialLaboratorio mlab
-  ON TRIM(LOWER(si.tipo)) = 'laboratorio' AND si.material_id = mlab.id
-
+      LEFT JOIN MaterialLiquido ml ON a.tipo = 'liquido' AND a.material_id = ml.id
+      LEFT JOIN MaterialSolido ms ON a.tipo = 'solido' AND a.material_id = ms.id
+      LEFT JOIN MaterialEquipo me ON a.tipo = 'equipo' AND a.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
       WHERE a.usuario_id = ? AND a.cantidad_pendiente > 0
       ORDER BY s.fecha_solicitud DESC, a.id DESC
     `, [usuario_id]);
@@ -2021,6 +1991,7 @@ LEFT JOIN MaterialLaboratorio mlab
     res.status(500).json({ error: 'Error al obtener adeudos: ' + error.message });
   }
 };
+
 
 /**
  * Adeudos del usuario incluyendo fecha_entrega (para marcar vencidos en UI)
@@ -2053,15 +2024,10 @@ const getAdeudosConFechaEntrega = async (req, res) => {
         a.fecha_entrega
       FROM Adeudo a
       JOIN Solicitud s ON s.id = a.solicitud_id
-    LEFT JOIN MaterialLiquido ml
-  ON TRIM(LOWER(si.tipo)) = 'liquido'     AND si.material_id = ml.id
-LEFT JOIN MaterialSolido ms
-  ON TRIM(LOWER(si.tipo)) = 'solido'      AND si.material_id = ms.id
-LEFT JOIN MaterialEquipo me
-  ON TRIM(LOWER(si.tipo)) = 'equipo'      AND si.material_id = me.id
-LEFT JOIN MaterialLaboratorio mlab
-  ON TRIM(LOWER(si.tipo)) = 'laboratorio' AND si.material_id = mlab.id
-
+      LEFT JOIN MaterialLiquido ml ON a.tipo = 'liquido' AND a.material_id = ml.id
+      LEFT JOIN MaterialSolido ms ON a.tipo = 'solido' AND a.material_id = ms.id
+      LEFT JOIN MaterialEquipo me ON a.tipo = 'equipo' AND a.material_id = me.id
+      LEFT JOIN MaterialLaboratorio mlab ON a.tipo = 'laboratorio' AND a.material_id = mlab.id
       WHERE a.usuario_id = ? AND a.cantidad_pendiente > 0
       ORDER BY s.fecha_solicitud DESC, a.id DESC
     `, [usuario_id]);
