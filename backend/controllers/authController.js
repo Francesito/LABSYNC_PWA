@@ -66,10 +66,20 @@ const registrarUsuario = async (req, res) => {
     );
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
+    const verifyUrl = `${frontendUrl}/verificar/${token}`;
+    const verifyHtml = `
+      <div style="font-family:sans-serif;text-align:center">
+        <h2>Verifica tu cuenta</h2>
+        <p>Bienvenido a LabSync. Haz clic en el botón para activar tu cuenta.</p>
+        <a href="${verifyUrl}" style="display:inline-block;padding:10px 20px;background-color:#4F46E5;color:#ffffff;text-decoration:none;border-radius:5px;">Verificar Cuenta</a>
+        <p style="margin-top:16px">Si no creaste esta cuenta, puedes ignorar este mensaje.</p>
+      </div>
+    `;
     await sendEmail(
       correo_institucional,
-      'Verifica tu cuenta',
-      `Haz clic aquí para verificar: ${frontendUrl}/verificar/${token}`
+      'Verifica tu cuenta para poder acceder a las funcionalidades que el Equipo de LabSync, Tiene para ti.',
+     `Verifica tu cuenta: ${verifyUrl}`,
+      verifyHtml
     );
 
     res.status(201).json({ mensaje: 'Usuario registrado. Verifica tu correo.' });
@@ -320,10 +330,20 @@ const forgotPassword = async (req, res) => {
     );
 
     const frontendUrl = process.env.FRONTEND_URL || 'https://labsync-frontend.onrender.com';
+     const resetUrl = `${frontendUrl}/reset-password/${token}`;
+    const resetHtml = `
+      <div style="font-family:sans-serif;text-align:center">
+        <h2>Restablece tu contraseña</h2>
+        <p>Has solicitado cambiar tu contraseña. Presiona el botón para continuar.</p>
+        <a href="${resetUrl}" style="display:inline-block;padding:10px 20px;background-color:#4F46E5;color:#ffffff;text-decoration:none;border-radius:5px;">Restablecer Contraseña</a>
+        <p style="margin-top:16px">Si no solicitaste este cambio, puedes ignorar este correo.</p>
+      </div>
+    `;
     await sendEmail(
       correo_institucional,
-      'Restablece tu contraseña',
-      `Haz clic aquí para restablecer tu contraseña: ${frontendUrl}/reset-password/${token}`
+      'Haz click en el boton de abajo y sigue las indicaciones para Restablecer tu contraseña.',
+      `Restablece tu contraseña: ${resetUrl}`,
+      resetHtml
     );
 
     res.json({ mensaje: 'Enlace de restablecimiento enviado a tu correo.' });
