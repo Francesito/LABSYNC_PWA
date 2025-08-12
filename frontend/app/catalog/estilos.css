@@ -286,7 +286,7 @@
   font-size: 0.875rem;
   transition: all 0.2s ease;
   cursor: pointer;
-  width: 100%;
+  width: auto; 
 }
 
 .btn-adjust:hover {
