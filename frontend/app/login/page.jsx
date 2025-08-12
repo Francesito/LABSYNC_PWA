@@ -9,6 +9,7 @@ export default function Login() {
   const [contrasena, setContrasena] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [redirecting, setRedirecting] = useState(false);
   const router = useRouter();
 
   const handleSubmit = async (e) => {
@@ -20,11 +21,16 @@ export default function Login() {
       });
       localStorage.setItem('token', response.data.token);
       localStorage.setItem('nombre', response.data.nombre);
-      router.push('/catalog');
+      setRedirecting(true);
+      router.replace('/catalog');
     } catch (err) {
       setError(err.response?.data?.error || 'Error al iniciar sesión');
     }
   };
+
+   if (redirecting) {
+    return <div className="min-vh-100 bg-white"></div>;
+  }
 
   return (
     <div className="min-vh-100 d-flex font-sans position-relative" style={{
