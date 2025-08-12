@@ -74,7 +74,9 @@ function normalizarAdeudo(a) {
 
 const parseDate = (str) => {
   if (!str) return null;
-  const date = new Date(str);
+  // normalizar a YYYY-MM-DD para evitar desfase por zona horaria
+  const [y, m, d] = str.split('T')[0].split('-');
+  const date = new Date(Number(y), Number(m) - 1, Number(d));
   return isNaN(date) ? null : date;
 };
 
