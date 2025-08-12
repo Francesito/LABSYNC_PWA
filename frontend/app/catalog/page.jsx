@@ -1239,71 +1239,71 @@ export default function Catalog() {
       )}
 
       {showAdjustModal && materialToAdjust && (
-        <div className="modal-overlay">
-          <div className="modal-content-custom">
-            <div className="modal-header-custom">
-              <h5 className="modal-title">Ajustar Inventario: {formatName(materialToAdjust.nombre)}</h5>
-              <button
-                className="btn-close btn-close-white"
-                onClick={() => setShowAdjustModal(false)}
-              ></button>
-            </div>
-            <div className="modal-body p-4">
-              {error && <div className="alert-custom mb-3">{error}</div>}
-              {!canModifyStock() && (
-                <div className="alert-custom mb-3">
-                  ⚠️ No tienes permisos para modificar el stock. Esta funcionalidad está restringida.
-                </div>
-              )}
-              <div className="mb-3">
-                <label className="form-label">
-                  Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
-                </label>
-                <input
-                  type="number"
-                  className="form-control mt-2"
-                  value={adjustAmount}
-                  onChange={(e) => setAdjustAmount(e.target.value)}
-                  placeholder="Añade o quita stock"
-                  disabled={!canModifyStock()}
-                />
-              </div>
-            </div>
-            <div className="modal-footer-custom">
-              <button
-                className="btn-secondary-custom"
-                onClick={() => setShowAdjustModal(false)}
-              >
-                Cancelar
-              </button>
-              {(() => {
-                const delta = parseInt(adjustAmount, 10);
-                const newStock =
-                  materialToAdjust && !isNaN(delta) ? materialToAdjust.cantidad + delta : null;
-                const disableGuardar =
-                  adjustAmount === '' || isNaN(delta) || newStock < 0 || !canModifyStock();
-
-                return (
-                  <button
-                    className="btn-adjust"
-                    onClick={handleAdjustSubmit}
-                    disabled={disableGuardar}
-                  >
-                    Guardar
-                  </button>
-                );
-              })()}
-              <button
-                className="btn-remove mt-2"
-                onClick={handleDeleteMaterial}
-                style={{ background: '#ef4444', width: '100%', marginTop: '0.5rem' }}
-              >
-                Eliminar Material
-              </button>
-            </div>
+  <div className="modal-overlay">
+    <div className="modal-content-custom">
+      <div className="modal-header-custom">
+        <h5 className="modal-title">Ajustar Inventario: {formatName(materialToAdjust.nombre)}</h5>
+        <button
+          className="btn-close btn-close-white"
+          onClick={() => setShowAdjustModal(false)}
+        ></button>
+      </div>
+      <div className="modal-body p-4">
+        {error && <div className="alert-custom mb-3">{error}</div>}
+        {!canModifyStock() && (
+          <div className="alert-custom mb-3">
+            ⚠️ No tienes permisos para modificar el stock. Esta funcionalidad está restringida.
           </div>
+        )}
+        <div className="mb-3">
+          <label className="form-label">
+            Stock actual: {materialToAdjust.cantidad} {getUnidad(materialToAdjust.tipo)}
+          </label>
+          <input
+            type="number"
+            className="form-control mt-2"
+            value={adjustAmount}
+            onChange={(e) => setAdjustAmount(e.target.value)}
+            placeholder="Añade o quita stock"
+            disabled={!canModifyStock()}
+          />
         </div>
-      )}
+      </div>
+      <div className="modal-footer-custom">
+        <button
+          className="btn-secondary-custom"
+          onClick={() => setShowAdjustModal(false)}
+        >
+          Cancelar
+        </button>
+        {(() => {
+          const delta = parseInt(adjustAmount, 10);
+          const newStock =
+            materialToAdjust && !isNaN(delta) ? materialToAdjust.cantidad + delta : null;
+          const disableGuardar =
+            adjustAmount === '' || isNaN(delta) || newStock < 0 || !canModifyStock();
+
+          return (
+            <button
+              className="btn-adjust"
+              onClick={handleAdjustSubmit}
+              disabled={disableGuardar}
+            >
+              Guardar
+            </button>
+          );
+        })()}
+        <button
+          className="btn-remove mt-2"
+          onClick={handleDeleteMaterial}
+          style={{ background: '#ef4444', marginTop: '0.5rem' }}
+        >
+          Eliminar Material
+        </button>
+      </div>
+    </div>
+  </div>
+)}
 
       {showDetailModal && selectedMaterial && (
         <div className="modal-overlay">
