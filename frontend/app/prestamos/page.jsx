@@ -60,8 +60,8 @@ const loadPrestamos = async () => {
             solicitud_id: item.solicitud_id,
             folio: item.folio,
             nombre_alumno: item.nombre_alumno,
-            profesor: item.profesor,
-            fecha_entrega: item.fecha_entrega,
+             profesor: item.profesor,
+            fecha_devolucion: item.fecha_devolucion,
           };
         }
         return acc;
@@ -177,7 +177,7 @@ const handleSave = async () => {
 {/* Cards Grid */}
 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
   {filtered.map((sol, index) => {
-    const overdue = isOverdue(sol.fecha_entrega);
+    const overdue = isOverdue(sol.fecha_devolucion);
     const nombre = sol.nombre_alumno || sol.profesor;
 
     return (
@@ -205,18 +205,13 @@ const handleSave = async () => {
             <div className="text-2xl font-bold text-slate-800">
               {sol.folio}
             </div>
-
             <div className="flex items-center space-x-2 text-slate-600">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
               <span className="text-sm">{nombre}</span>
             </div>
-
-            <div className="text-sm text-slate-600">
-              Devolver: {formatDate(sol.fecha_entrega)}
-            </div>
-
+           <div className="text-sm text-slate-600">Devolver: {formatDate(sol.fecha_devolucion)}</div>
             {overdue && (
               <div className="text-xs text-red-600 font-semibold">Vencido</div>
             )}
@@ -295,7 +290,7 @@ const handleSave = async () => {
                     <div>
                       <span className="block text-xs text-slate-500 uppercase font-medium">Fecha Entrega</span>
                       <span className="block font-bold text-lg text-slate-800">
-                        {formatDate(detalle.fecha_entrega)}
+                         {formatDate(detalle.fecha_devolucion)}
                       </span>
                     </div>
                   </div>
