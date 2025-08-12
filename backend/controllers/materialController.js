@@ -231,11 +231,22 @@ const getAllSolicitudes = async (req, res) => {
 const crearSolicitudes = async (req, res) => {
   logRequest('crearSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
-  const { materiales, motivo, fecha_solicitud, aprobar_automatico, docente_id } = req.body;
+const {
+    materiales,
+    motivo,
+    fecha_solicitud,
+    fecha_recoleccion,
+    fecha_devolucion,
+    aprobar_automatico,
+    docente_id
+  } = req.body;
 
   if (!token) return res.status(401).json({ error: 'Token requerido' });
   if (!Array.isArray(materiales) || materiales.length === 0) {
     return res.status(400).json({ error: 'Se requiere al menos un material' });
+  }
+  if (!fecha_recoleccion || !fecha_devolucion) {
+    return res.status(400).json({ error: 'Fechas de recolección y entrega requeridas' });
   }
 
   try {
@@ -288,9 +299,21 @@ const crearSolicitudes = async (req, res) => {
 
     const [result] = await pool.query(
       `INSERT INTO Solicitud
-         (usuario_id, fecha_solicitud, motivo, estado, docente_id, nombre_alumno, profesor, folio, grupo_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [usuario_id, fecha_solicitud, motivo, estadoInicial, docente_seleccionado_id, nombre_alumno, profesor, folio, grupo_id]
+   (usuario_id, fecha_solicitud, motivo, estado, docente_id, nombre_alumno, profesor, folio, grupo_id, fecha_recoleccion, fecha_devolucion)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        usuario_id,
+        fecha_solicitud,
+        motivo,
+        estadoInicial,
+        docente_seleccionado_id,
+        nombre_alumno,
+        profesor,
+        folio,
+        grupo_id,
+        fecha_recoleccion,
+        fecha_devolucion
+      ]
     );
     const solicitudId = result.insertId;
 
@@ -493,6 +516,38 @@ const approveSolicitud = async (req, res) => {
   }
 
   try {
+    const [items] = await pool.query(
+      'SELECT material_id, tipo, cantidad FROM SolicitudItem WHERE solicitud_id = ?',
+      [id]
+    );
+
+    if (items.length === 0) {
+      return res.status(404).json({ error: 'Solicitud no encontrada' });
+    }
+
+    // Verificar stock disponible
+    for (const it of items) {
+      const meta = detectTableAndField(it.tipo);
+      if (!meta) continue;
+      const [row] = await pool.query(
+        `SELECT ${meta.field} AS disponible FROM ${meta.table} WHERE id = ?`,
+        [it.material_id]
+      );
+      if (!row.length || row[0].disponible < it.cantidad) {
+        return res.status(400).json({ error: `Stock insuficiente para material ${it.material_id}` });
+      }
+    }
+
+    // Descontar stock
+    for (const it of items) {
+      const meta = detectTableAndField(it.tipo);
+      if (!meta) continue;
+      await pool.query(
+        `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} - ? WHERE id = ?`,
+        [it.cantidad, it.material_id]
+      );
+    }
+    
     const [result] = await pool.query(
       "UPDATE Solicitud SET estado = 'aprobada' WHERE id = ?",
       [id]
