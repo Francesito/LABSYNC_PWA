@@ -11,8 +11,8 @@ import {
 
 const parseDate = (str) => {
   if (!str) return null;
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  const date = new Date(str);
+  return isNaN(date) ? null : date;
 };
 
 const formatDate = (str) => {
