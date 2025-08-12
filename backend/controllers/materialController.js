@@ -323,16 +323,7 @@ const {
         `INSERT INTO SolicitudItem (solicitud_id, material_id, tipo, cantidad) VALUES (?,?,?,?)`,
         [solicitudId, material_id, tipo, cantidad]
       );
-      // Solo alumnos descuentan stock al crear (como ya tenías)
-      if (rol_id === 1) {
-        const meta = detectTableAndField(tipo);
-        if (meta) {
-          await pool.query(
-            `UPDATE ${meta.table} SET ${meta.field} = ${meta.field} - ? WHERE id = ?`,
-            [cantidad, material_id]
-          );
-        }
-      }
+      
     }
 
     res.status(201).json({ 
@@ -586,7 +577,7 @@ const deliverSolicitud = async (req, res) => {
   try {
     // 1) Verificar existencia y estado
     const [rows] = await pool.query(
-      'SELECT usuario_id, estado FROM Solicitud WHERE id = ?',
+     'SELECT usuario_id, estado, fecha_devolucion FROM Solicitud WHERE id = ?',
       [id]
     );
     const sol = rows[0];
@@ -611,7 +602,7 @@ const deliverSolicitud = async (req, res) => {
       [id]
     );
 
-    // 4) Insertar un registro de adeudo por cada ítem, con fecha_entrega = NOW()
+    // 4) Insertar un registro de adeudo por cada ítem, usando la fecha_devolucion como fecha límite
     for (const it of items) {
       await pool.query(
         `INSERT INTO Adeudo
@@ -622,14 +613,15 @@ const deliverSolicitud = async (req, res) => {
             tipo,
             cantidad_pendiente,
             fecha_entrega)
-         VALUES (?, ?, ?, ?, ?, ?, NOW())`,
+        VALUES (?, ?, ?, ?, ?, ?, ?)`,
         [
           id,
           it.solicitud_item_id,
           sol.usuario_id,
           it.material_id,
           it.tipo,
-          it.cantidad
+       it.cantidad,
+           sol.fecha_devolucion
         ]
       );
     }
@@ -676,24 +668,8 @@ const cancelSolicitud = async (req, res) => {
         return res.status(400).json({ error: 'Solo solicitudes pendientes pueden cancelarse' });
       }
 
-      // 2) Restaurar stock de cada ítem
-      const [items] = await pool.query(
-        'SELECT material_id, tipo, cantidad FROM SolicitudItem WHERE solicitud_id = ?',
-        [id]
-      );
-      for (const it of items) {
-        const meta = detectTableAndField(it.tipo);
-        if (meta) {
-          await pool.query(
-            `UPDATE ${meta.table} 
-               SET ${meta.field} = ${meta.field} + ? 
-             WHERE id = ?`,
-            [it.cantidad, it.material_id]
-          );
-        }
-      }
     }
-    // 3) Eliminar o marcar según rol
+    // 2) Eliminar o marcar según rol
     if (rol_id === 1) {
       // Si es alumno, borramos ítems y solicitud para que desaparezca del listado
       await pool.query('DELETE FROM SolicitudItem WHERE solicitud_id = ?', [id]);
@@ -1051,13 +1027,13 @@ const getDeliveredSolicitudes = async (req, res) => {
         s.folio,
         s.nombre_alumno,
         s.profesor,
-        MIN(a.fecha_entrega) AS fecha_entrega,
+       COALESCE(MIN(a.fecha_entrega), s.fecha_devolucion) AS fecha_entrega,
         g.nombre AS grupo_nombre
       FROM Solicitud s
       JOIN Adeudo a ON a.solicitud_id = s.id
       LEFT JOIN Grupo g ON s.grupo_id = g.id
       WHERE s.estado = 'entregado'
-      GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre
+       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre, s.fecha_devolucion
       ORDER BY fecha_entrega DESC
     `);
     res.json(rows);
@@ -2079,12 +2055,12 @@ const getAdeudosConFechaEntrega = async (req, res) => {
         a.tipo,
         a.cantidad_pendiente AS cantidad,
         COALESCE(ml.nombre, ms.nombre, me.nombre, mlab.nombre) AS nombre_material,
-        CASE a.tipo 
+         CASE a.tipo
           WHEN 'liquido' THEN 'ml'
           WHEN 'solido'  THEN 'g'
           ELSE 'u'
         END AS unidad,
-        a.fecha_entrega
+         COALESCE(a.fecha_entrega, s.fecha_devolucion) AS fecha_entrega
       FROM Adeudo a
       JOIN Solicitud s ON s.id = a.solicitud_id
   LEFT JOIN MaterialLiquido ml
