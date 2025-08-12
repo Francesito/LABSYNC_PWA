@@ -1276,30 +1276,31 @@ export default function Catalog() {
         >
           Cancelar
         </button>
-        {(() => {
-          const delta = parseInt(adjustAmount, 10);
-          const newStock =
-            materialToAdjust && !isNaN(delta) ? materialToAdjust.cantidad + delta : null;
-          const disableGuardar =
-            adjustAmount === '' || isNaN(delta) || newStock < 0 || !canModifyStock();
+    {(() => {
+  const delta = parseInt(adjustAmount, 10);
+  const newStock =
+    materialToAdjust && !isNaN(delta) ? materialToAdjust.cantidad + delta : null;
+  const disableGuardar =
+    adjustAmount === '' || isNaN(delta) || newStock < 0 || !canModifyStock();
 
-          return (
-            <button
-              className="btn-adjust"
-              onClick={handleAdjustSubmit}
-              disabled={disableGuardar}
-            >
-              Guardar
-            </button>
-          );
-        })()}
-        <button
-          className="btn-remove mt-2"
-          onClick={handleDeleteMaterial}
-          style={{ background: '#ef4444', marginTop: '0.5rem' }}
-        >
-          Eliminar Material
-        </button>
+  return (
+    <button
+      className="btn-adjust"
+      onClick={handleAdjustSubmit}
+      disabled={disableGuardar}
+      style={{ width: 'auto', padding: '0.625rem 1.25rem' }}
+    >
+      Guardar
+    </button>
+  );
+})()}
+<button
+  className="btn-remove mt-2"
+  onClick={handleDeleteMaterial}
+  style={{ background: '#ef4444', marginTop: '0.5rem' }}
+>
+  Eliminar Material
+</button>
       </div>
     </div>
   </div>
