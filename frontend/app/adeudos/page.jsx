@@ -74,8 +74,8 @@ function normalizarAdeudo(a) {
 
 const parseDate = (str) => {
   if (!str) return null;
-  const [y, m, d] = str.split('-').map(Number);
-  return new Date(y, m - 1, d);
+  const date = new Date(str);
+  return isNaN(date) ? null : date;
 };
 
 const formatDate = (str) => {
@@ -131,11 +131,11 @@ export default function Adeudos() {
   }, [usuario, router]);
 
   const isOverdue = (dateString) => {
-   const dueDate = parseDate(dateString);
+ const dueDate = parseDate(dateString);
     if (!dueDate) return false;
     const today = new Date();
      // Comparar solo fecha, sin hora
-    return dueDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+   return dueDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
   };
 
   if (loading) {
