@@ -221,7 +221,9 @@ export default function Adeudos() {
                     <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Unidad
                     </th>
-                    {/* Estado removido */}
+                     <th className="px-6 py-4 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Fecha de entrega
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
@@ -259,6 +261,17 @@ export default function Adeudos() {
                       <td className="px-6 py-4 text-center">
                         <span className="text-sm text-gray-700 bg-gray-100 px-2 py-1 rounded">
                           {a.unidad}
+                        </span>
+                      </td>
+                        <td className="px-6 py-4 text-center">
+                        <span
+                          className={`text-sm font-medium ${
+                            isOverdue(a.fecha_entrega) ? 'text-red-600' : 'text-gray-700'
+                          }`}
+                        >
+                          {a.fecha_entrega
+                            ? new Date(a.fecha_entrega).toLocaleDateString()
+                            : 'Sin fecha'}
                         </span>
                       </td>
                     </tr>
