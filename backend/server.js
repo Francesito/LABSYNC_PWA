@@ -16,7 +16,7 @@ const { obtenerGrupos } = require('./controllers/authController');
 const adminRoutes = require('./routes/adminRoutes');
 
 const pool = require('./config/db');
-const { eliminarSolicitudesViejas } = require('./controllers/solicitudController');
+const { eliminarSolicitudesViejas, cancelarSolicitudesVencidas } = require('./controllers/solicitudController');
 
 const app = express();
 
@@ -157,6 +157,14 @@ const startSolicitudCleanupJob = () => {
   }, 24 * 60 * 60 * 1000); // Cada 24 horas
 };
 
+// Cancelar solicitudes cuya fecha de recolección ya pasó
+const startSolicitudAutoCancelJob = () => {
+  setInterval(async () => {
+    console.log('⏰ Revisando solicitudes vencidas...');
+    await cancelarSolicitudesVencidas();
+  }, 60 * 60 * 1000); // Cada hora
+};
+
 // ✅ NUEVO: CRONJOB para limpiar mensajes antiguos
 const startMessageCleanupJob = () => {
   setInterval(async () => {
@@ -246,6 +254,7 @@ app.listen(PORT, '0.0.0.0', async () => {
   console.log('⏰ Iniciando trabajos programados...');
   startSolicitudCleanupJob();
   startMessageCleanupJob();
+  startSolicitudAutoCancelJob();
   
   console.log('✅ Sistema LabSync inicializado');
   console.log('🔐 Funcionalidades de permisos:');
