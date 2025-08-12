@@ -10,6 +10,8 @@
   padding: 1.5rem;
   margin-left: 16rem;
   transition: margin-left 0.3s ease;
+  max-width: none;
+  width: 100%;
 }
 
 .main-card {
@@ -941,19 +943,11 @@
 /* Extra Large screens (1400px and up) */
 @media (min-width: 1400px) {
   .catalog-container {
-    max-width: 1600px;
     margin-left: auto;
     margin-right: auto;
     padding-left: 18rem;
-  }
-
-  .material-grid {
-    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    gap: 1.25rem;
-  }
-
-  .cart-container {
-    width: 420px;
+    max-width: none;
+    width: 100%;
   }
 }
 
@@ -966,6 +960,10 @@
   .cart-container {
     width: 360px;
   }
+  .catalog-container {
+    max-width: none;
+    width: 100%;
+  }
 }
 
 /* Medium to Large screens (992px to 1199px) */
@@ -973,6 +971,8 @@
   .catalog-container {
     margin-left: 14rem;
     padding: 1.25rem;
+    max-width: none;
+    width: 100%;
   }
 
   .d-flex.gap-4 {
@@ -998,6 +998,8 @@
   .catalog-container {
     margin-left: 0;
     padding: 1rem;
+    max-width: none;
+    width: 100%;
   }
 
   .d-flex.gap-4 {
@@ -1066,6 +1068,8 @@
   .catalog-container {
     margin-left: 0;
     padding: 0.875rem;
+    max-width: none;
+    width: 100%;
   }
 
   .header-section {
@@ -1158,6 +1162,8 @@
   .catalog-container {
     margin-left: 0;
     padding: 0.75rem;
+    max-width: none;
+    width: 100%;
   }
 
   .header-section {
