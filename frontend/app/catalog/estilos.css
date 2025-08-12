@@ -1495,3 +1495,39 @@
   }
   */
 }
+
+.footer-actions {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr; /* izquierda | centro | derecha */
+  align-items: center;
+  gap: 0.875rem;
+  width: 100%;
+}
+
+/* Columnas */
+.footer-col-left { justify-self: start; }
+.footer-col-center { justify-self: center; }
+.footer-col-right { justify-self: end; }
+
+/* Botones con anchos controlados */
+.btn-w-sm { width: 140px; max-width: 100%; }
+.btn-w-md { width: 160px; max-width: 100%; }
+
+/* Botón peligro/eliminar (no uses .btn-remove porque es cuadrado y chico) */
+.btn-danger {
+  background: #ef4444;
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-weight: 600;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-danger:hover { background: #dc2626; transform: translateY(-1px); }
+
+/* Asegura que el footer no empuje ni desborde */
+.modal-footer-custom {
+  overflow: hidden;
+}
