@@ -68,7 +68,7 @@ function normalizarAdeudo(a) {
     nombre_material: nombrePlano || '(Sin nombre)',
     cantidad: a.cantidad ?? a.cantidad_pendiente ?? 0,
     unidad: a.unidad || 'u',
-    fecha_entrega: a.fecha_entrega || null,
+     fecha_devolucion: a.fecha_devolucion || a.fecha_entrega || null,
   };
 }
 
@@ -108,7 +108,7 @@ export default function Adeudos() {
       try {
         setLoading(true);
 
-        // Primero intenta con fecha_entrega; si no existe el endpoint, usa el básico
+       // Primero intenta con fecha_devolucion; si no existe el endpoint, usa el básico
         let data;
         try {
           data = await obtenerAdeudosConFechaEntrega();
@@ -243,7 +243,7 @@ export default function Adeudos() {
                     <tr
                       key={`${a.solicitud_id}-${a.solicitud_item_id}-${index}`}
                       className={`hover:bg-gray-50 transition-colors duration-200 animate-slideIn ${
-                        isOverdue(a.fecha_entrega) ? 'bg-red-50' : ''
+                        isOverdue(a.fecha_devolucion) ? 'bg-red-50' : ''
                       }`}
                       style={{ animationDelay: `${index * 100}ms` }}
                     >
@@ -275,15 +275,13 @@ export default function Adeudos() {
                           {a.unidad}
                         </span>
                       </td>
-                        <td className="px-6 py-4 text-center">
+                       <td className="px-6 py-4 text-center">
                         <span
                           className={`text-sm font-medium ${
-                            isOverdue(a.fecha_entrega) ? 'text-red-600' : 'text-gray-700'
+                            isOverdue(a.fecha_devolucion) ? 'text-red-600' : 'text-gray-700'
                           }`}
                         >
-                          {a.fecha_entrega
-                            ? new Date(a.fecha_entrega).toLocaleDateString()
-                            : 'Sin fecha'}
+                          {formatDate(a.fecha_devolucion)}
                         </span>
                       </td>
                     </tr>
