@@ -231,7 +231,7 @@ const getAllSolicitudes = async (req, res) => {
 const crearSolicitudes = async (req, res) => {
   logRequest('crearSolicitudes');
   const token = req.headers.authorization?.split(' ')[1];
-const {
+  const {
     materiales,
     motivo,
     fecha_solicitud,
@@ -1027,14 +1027,14 @@ const getDeliveredSolicitudes = async (req, res) => {
         s.folio,
         s.nombre_alumno,
         s.profesor,
-       COALESCE(MIN(a.fecha_entrega), s.fecha_devolucion) AS fecha_entrega,
+       s.fecha_devolucion AS fecha_devolucion,
         g.nombre AS grupo_nombre
       FROM Solicitud s
       JOIN Adeudo a ON a.solicitud_id = s.id
       LEFT JOIN Grupo g ON s.grupo_id = g.id
       WHERE s.estado = 'entregado'
        GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre, s.fecha_devolucion
-      ORDER BY fecha_entrega DESC
+      ORDER BY fecha_devolucion DESC
     `);
     res.json(rows);
   } catch (error) {
@@ -1105,13 +1105,13 @@ LEFT JOIN MaterialLaboratorio mlab
          s.folio,
          s.nombre_alumno,
          s.profesor,
-         MIN(a.fecha_entrega) AS fecha_entrega,
+          s.fecha_devolucion AS fecha_devolucion,
          g.nombre AS grupo_nombre
        FROM Solicitud s
        LEFT JOIN Adeudo a ON a.solicitud_id = s.id
        LEFT JOIN Grupo g  ON s.grupo_id = g.id
        WHERE s.id = ?
-       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre`,
+       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre, s.fecha_devolucion`,
       [id]
     );
     if (!solRows.length) {
@@ -1142,7 +1142,7 @@ LEFT JOIN MaterialLaboratorio mlab
       folio: sol.folio,
       nombre_alumno: sol.nombre_alumno,
       profesor: sol.profesor,
-      fecha_entrega: sol.fecha_entrega,
+    fecha_devolucion: sol.fecha_devolucion,
       grupo: sol.grupo_nombre || 'No especificado',
       items: items.map(i => ({
         item_id: i.item_id,
@@ -2033,7 +2033,7 @@ LEFT JOIN MaterialLaboratorio mlab
 
 
 /**
- * Adeudos del usuario incluyendo fecha_entrega (para marcar vencidos en UI)
+ * Adeudos del usuario incluyendo fecha_devolucion (para marcar vencidos en UI)
  * GET /api/materials/adeudos/entrega
  */
 const getAdeudosConFechaEntrega = async (req, res) => {
@@ -2060,7 +2060,7 @@ const getAdeudosConFechaEntrega = async (req, res) => {
           WHEN 'solido'  THEN 'g'
           ELSE 'u'
         END AS unidad,
-         COALESCE(a.fecha_entrega, s.fecha_devolucion) AS fecha_entrega
+        COALESCE(a.fecha_entrega, s.fecha_devolucion) AS fecha_devolucion
       FROM Adeudo a
       JOIN Solicitud s ON s.id = a.solicitud_id
   LEFT JOIN MaterialLiquido ml
