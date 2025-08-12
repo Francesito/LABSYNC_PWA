@@ -27,6 +27,10 @@ export default function Catalog() {
   const [lowStockMaterials, setLowStockMaterials] = useState([]);
   const [docentes, setDocentes] = useState([]);
   const [selectedDocenteId, setSelectedDocenteId] = useState('');
+  const [pickupDate, setPickupDate] = useState('');
+  const [returnDate, setReturnDate] = useState('');
+  const [minPickupDate, setMinPickupDate] = useState('');
+  const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newMaterial, setNewMaterial] = useState({
     tipoGeneral: 'Reactivo',
@@ -52,6 +56,31 @@ export default function Catalog() {
 
   const LOW_STOCK_THRESHOLD = 50;
   const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tu-cloud-name';
+
+   const getFormattedDate = (d) => d.toISOString().split('T')[0];
+
+  const computeMinPickupDate = () => {
+    const now = new Date();
+    let d = new Date(now);
+    const day = d.getDay();
+    const hour = d.getHours();
+
+    if (day === 6) {
+      d.setDate(d.getDate() + 2); // sábado -> lunes
+    } else if (day === 0) {
+      d.setDate(d.getDate() + (hour >= 19 ? 2 : 1)); // domingo
+    } else {
+      d.setDate(d.getDate() + (hour >= 19 ? 2 : 1)); // lunes-viernes
+      if (d.getDay() === 6) d.setDate(d.getDate() + 2); // cae en sábado
+      if (d.getDay() === 0) d.setDate(d.getDate() + 1); // cae en domingo
+    }
+    d.setHours(0, 0, 0, 0);
+    return d;
+    };
+
+  useEffect(() => {
+    setMinPickupDate(getFormattedDate(computeMinPickupDate()));
+  }, []);
 
   // Cargar permisos del usuario
   const loadUserPermissions = async () => {
@@ -456,6 +485,8 @@ export default function Catalog() {
   const totalItems = selectedCart.reduce((sum, item) => sum + (item.cantidad || 0), 0);
 
   const handleSubmitRequest = async () => {
+        if (isSubmittingRequest) return;
+
     if (!canMakeRequests()) {
       handlePermissionError('make_request');
       return;
@@ -466,6 +497,11 @@ export default function Catalog() {
       return;
     }
 
+       if (!pickupDate || !returnDate) {
+      setError('Selecciona fechas de recolección y entrega.');
+      return;
+    }
+
     let docenteIdToUse = userPermissions.rol === 'docente' ? usuario.id : parseInt(selectedDocenteId);
     if (userPermissions.rol !== 'docente' && !docenteIdToUse) {
       setError('Debes seleccionar un docente encargado.');
@@ -473,9 +509,11 @@ export default function Catalog() {
     }
 
     try {
+      setIsSubmittingRequest(true);
       const selectedDocente = docentes.find((doc) => doc.id === docenteIdToUse);
       if (!selectedDocente) {
         setError('Docente seleccionado no válido.');
+         setIsSubmittingRequest(false);
         return;
       }
 
@@ -489,6 +527,8 @@ export default function Catalog() {
           })),
           motivo: 'Solicitud desde catálogo',
           fecha_solicitud: new Date().toISOString().split('T')[0],
+          fecha_recoleccion: pickupDate,
+          fecha_devolucion: returnDate,
           aprobar_automatico: userPermissions.rol === 'docente',
           docente_id: docenteIdToUse,
           nombre_alumno: userPermissions.rol === 'alumno' ? formatName(usuario.nombre) : null,
@@ -496,14 +536,18 @@ export default function Catalog() {
       });
 
       setSelectedCart([]);
+         setPickupDate('');
+      setReturnDate('');
       setShowRequestModal(false);
       setSelectedDocenteId(
-       userPermissions.rol === 'docente' ? usuario.id.toString() : ''
+        userPermissions.rol === 'docente' ? usuario.id.toString() : ''
       );
       router.push('/solicitudes');
     } catch (err) {
       console.error('Error al enviar solicitud:', err);
       setError('Error al enviar la solicitud: ' + (err.response?.data?.error || err.message));
+   } finally {
+      setIsSubmittingRequest(false);
     }
   };
 
@@ -2066,6 +2110,34 @@ export default function Catalog() {
                     Esta solicitud será revisada por el docente seleccionado antes de ser aprobada.
                   </div>
                 )}
+                <div className="mt-4">
+                  <label className="form-label">Fecha de recolección *</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    min={minPickupDate}
+                    value={pickupDate}
+                    onChange={(e) => {
+                      setPickupDate(e.target.value);
+                      if (returnDate && e.target.value > returnDate) {
+                        setReturnDate('');
+                      }
+                    }}
+                  />
+                  <small className="text-muted">
+                    Debes solicitar con al menos 24 horas de anticipación. Solicitudes después de las 7 PM se procesarán un día hábil adicional.
+                  </small>
+                </div>
+                <div className="mt-3">
+                  <label className="form-label">Fecha de entrega *</label>
+                  <input
+                    type="date"
+                    className="form-control"
+                    min={pickupDate || minPickupDate}
+                    value={returnDate}
+                    onChange={(e) => setReturnDate(e.target.value)}
+                  />
+                </div>
               </div>
               <div className="modal-footer-custom">
                 <button
@@ -2077,9 +2149,13 @@ export default function Catalog() {
                 <button
                   className="btn-create-vale"
                   onClick={handleSubmitRequest}
-                  disabled={!canMakeRequests() || (userPermissions.rol !== 'docente' && !selectedDocenteId)}
+                disabled={
+                    !canMakeRequests() ||
+                    (userPermissions.rol !== 'docente' && !selectedDocenteId) ||
+                    isSubmittingRequest
+                  }
                 >
-                  Confirmar
+                {isSubmittingRequest ? 'Enviando...' : 'Confirmar'}
                 </button>
               </div>
             </div>
