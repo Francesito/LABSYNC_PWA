@@ -1769,6 +1769,19 @@ const rechazarSolicitud = async (req, res) => {
 
 
 
+// Cancelar solicitudes cuya fecha de recolección ya pasó
+const cancelarSolicitudesVencidas = async () => {
+  try {
+    const [result] = await pool.query(
+      "UPDATE Solicitud SET estado = 'cancelado' WHERE estado IN ('pendiente','aprobada') AND fecha_recoleccion < CURDATE()"
+    );
+    if (result.affectedRows > 0) {
+      console.log(`⏰ Canceladas ${result.affectedRows} solicitudes vencidas`);
+    }
+  } catch (error) {
+    console.error('Error al cancelar solicitudes vencidas:', error);
+  }
+};
 
 // ELIMINAR SOLICITUDES VIEJAS
 const eliminarSolicitudesViejas = async () => {
@@ -1802,6 +1815,7 @@ crearSolicitud,
   obtenerSolicitudes,
   eliminarSolicitudesViejasHandler,
   eliminarSolicitudesViejas,
+  cancelarSolicitudesVencidas,
 
   // Funciones para alumnos
   obtenerMisSolicitudes,
