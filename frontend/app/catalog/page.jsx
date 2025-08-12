@@ -1276,7 +1276,7 @@ export default function Catalog() {
         >
           Cancelar
         </button>
-    {(() => {
+  {(() => {
   const delta = parseInt(adjustAmount, 10);
   const newStock =
     materialToAdjust && !isNaN(delta) ? materialToAdjust.cantidad + delta : null;
@@ -1284,27 +1284,45 @@ export default function Catalog() {
     adjustAmount === '' || isNaN(delta) || newStock < 0 || !canModifyStock();
 
   return (
-    <button
-      className="btn-adjust"
-      onClick={handleAdjustSubmit}
-      disabled={disableGuardar}
-      style={{ width: 'auto', padding: '0.625rem 1.25rem' }}
-    >
-      Guardar
-    </button>
-  );
-})()}
-<button
-  className="btn-remove mt-2"
-  onClick={handleDeleteMaterial}
-  style={{ background: '#ef4444', marginTop: '0.5rem' }}
->
-  Eliminar Material
-</button>
+    <div className="modal-footer-custom">
+      <div className="footer-actions">
+        {/* Izquierda: Cancelar */}
+        <div className="footer-col-left">
+          <button
+            type="button"
+            className="btn-secondary-custom btn-w-sm"
+            onClick={() => setShowAdjustModal(false)}
+          >
+            Cancelar
+          </button>
+        </div>
+
+        {/* Centro: Guardar */}
+        <div className="footer-col-center">
+          <button
+            className="btn-adjust btn-w-md"
+            onClick={handleAdjustSubmit}
+            disabled={disableGuardar}
+          >
+            Guardar
+          </button>
+        </div>
+
+        {/* Derecha: Eliminar */}
+        <div className="footer-col-right">
+          <button
+            type="button"
+            className="btn-danger btn-w-sm"
+            onClick={handleDeleteMaterial}
+          >
+            Eliminar
+          </button>
+        </div>
       </div>
     </div>
-  </div>
-)}
+  );
+})()}
+
 
       {showDetailModal && selectedMaterial && (
         <div className="modal-overlay">
