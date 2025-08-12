@@ -72,6 +72,17 @@ function normalizarAdeudo(a) {
   };
 }
 
+const parseDate = (str) => {
+  if (!str) return null;
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+const formatDate = (str) => {
+  const date = parseDate(str);
+  return date ? date.toLocaleDateString() : 'Sin fecha';
+};
+
 export default function Adeudos() {
   const { usuario } = useAuth();
   const [adeudos, setAdeudos] = useState([]);
@@ -120,10 +131,11 @@ export default function Adeudos() {
   }, [usuario, router]);
 
   const isOverdue = (dateString) => {
-    if (!dateString) return false;
+   const dueDate = parseDate(dateString);
+    if (!dueDate) return false;
     const today = new Date();
-    const dueDate = new Date(dateString);
-    return dueDate < today;
+     // Comparar solo fecha, sin hora
+    return dueDate < new Date(today.getFullYear(), today.getMonth(), today.getDate());
   };
 
   if (loading) {
