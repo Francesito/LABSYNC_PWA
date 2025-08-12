@@ -57,7 +57,7 @@ export default function Catalog() {
   const LOW_STOCK_THRESHOLD = 50;
   const CLOUDINARY_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || 'tu-cloud-name';
 
-   const getFormattedDate = (d) => d.toISOString().split('T')[0];
+    const getFormattedDate = (d) => d.toISOString().split('T')[0];
 
   const computeMinPickupDate = () => {
     const now = new Date();
