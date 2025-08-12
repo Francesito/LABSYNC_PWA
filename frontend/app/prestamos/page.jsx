@@ -9,6 +9,24 @@ import {
   actualizarAdeudo
 } from '../../lib/api';
 
+const parseDate = (str) => {
+  if (!str) return null;
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(y, m - 1, d);
+};
+
+const formatDate = (str) => {
+  const date = parseDate(str);
+  return date ? date.toLocaleDateString() : 'Sin fecha';
+};
+
+const isOverdue = (str) => {
+  const date = parseDate(str);
+  if (!date) return false;
+  const today = new Date();
+  return date < new Date(today.getFullYear(), today.getMonth(), today.getDate());
+};
+
 export default function Prestamos() {
   const { usuario } = useAuth();
   const [prestamos, setPrestamos] = useState([]);
@@ -42,6 +60,8 @@ const loadPrestamos = async () => {
             solicitud_id: item.solicitud_id,
             folio: item.folio,
             nombre_alumno: item.nombre_alumno,
+            profesor: item.profesor,
+            fecha_entrega: item.fecha_entrega,
           };
         }
         return acc;
@@ -157,36 +177,44 @@ const handleSave = async () => {
 
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filtered.map((sol, index) => (
-            <div
-              key={sol.solicitud_id}
-              onClick={() => openModal(sol.solicitud_id)}
-              className="bg-white rounded-xl shadow-sm hover:shadow-xl cursor-pointer transition-all duration-300 hover:-translate-y-1 animate-fadeInUp"
-              style={{ animationDelay: `${index * 100}ms` }}
-            >
-              <div className="p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <div className="p-3 bg-slate-600 rounded-xl">
-                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
+          {filtered.map((sol, index) => {
+            const overdue = isOverdue(sol.fecha_entrega);
+            const nombre = sol.nombre_alumno || sol.profesor;
+            return (
+              <div
+                key={sol.solicitud_id}
+                onClick={() => openModal(sol.solicitud_id)}
+                className={`bg-white rounded-xl shadow-sm hover:shadow-xl cursor-pointer transition-all duration-300 hover:-translate-y-1 animate-fadeInUp ${overdue ? 'border-2 border-red-500' : ''}`}
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <div className="p-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <div className="p-3 bg-slate-600 rounded-xl">
+                      <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    </div>
+                    <div className="text-slate-400">
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
                   </div>
-                  <div className="text-slate-400">
-                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="text-2xl font-bold text-slate-800">
-                    {sol.folio}
-                  </div>
-                  <div className="flex items-center space-x-2 text-slate-600">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                    </svg>
-                    <span className="text-sm">{sol.nombre_alumno}</span>
+
+                    <div className="space-y-3">
+                    <div className="text-2xl font-bold text-slate-800">
+                      {sol.folio}
+                    </div>
+                    <div className="flex items-center space-x-2 text-slate-600">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                      </svg>
+                      <span className="text-sm">{nombre}</span>
+                    </div>
+                    <div className="text-sm text-slate-600">Devolver: {formatDate(sol.fecha_entrega)}</div>
+                    {overdue && (
+                      <div className="text-xs text-red-600 font-semibold">Vencido</div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -261,25 +289,26 @@ const handleSave = async () => {
                     <div>
                       <span className="block text-xs text-slate-500 uppercase font-medium">Fecha Entrega</span>
                       <span className="block font-bold text-lg text-slate-800">
-                        {new Date(detalle.fecha_entrega).toLocaleDateString()}
+                        {formatDate(detalle.fecha_entrega)}
                       </span>
                     </div>
                   </div>
                 </div>
-
-                <div className="bg-slate-50 rounded-xl p-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-slate-600 rounded-xl">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <span className="block text-xs text-slate-500 uppercase font-medium">Solicitante</span>
-                      <span className="block font-bold text-lg text-slate-800">{detalle.nombre_alumno}</span>
+ {detalle.nombre_alumno && (
+                  <div className="bg-slate-50 rounded-xl p-6">
+                    <div className="flex items-center space-x-3">
+                      <div className="p-2 bg-slate-600 rounded-xl">
+                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                        </svg>
+                      </div>
+                      <div>
+                        <span className="block text-xs text-slate-500 uppercase font-medium">Solicitante</span>
+                        <span className="block font-bold text-lg text-slate-800">{detalle.nombre_alumno}</span>
+                      </div>
                     </div>
                   </div>
-                </div>
+                )}
 
                 {detalle.profesor && (
                   <div className="bg-slate-50 rounded-xl p-6">
