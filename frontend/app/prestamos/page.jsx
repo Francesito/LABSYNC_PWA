@@ -215,7 +215,6 @@ const handleSave = async () => {
                     {overdue && (
                       <div className="text-xs text-red-600 font-semibold">Vencido</div>
                     )}
-                  </div>
                 </div>
               </div>
             </div>
