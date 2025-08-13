@@ -359,7 +359,7 @@ export default function Chat() {
   // Loading inicial mientras se verifican permisos
   if (!usuario || loadingPermisos) {
     return (
-      <div className="ml-64 bg-gray-100 min-h-screen">
+      <div className="bg-gray-100 min-h-screen lg:ml-64">
         <div className="flex items-center justify-center h-screen">
           <div className="bg-white rounded-lg shadow-lg p-8 text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-500 mx-auto mb-4"></div>
@@ -375,7 +375,7 @@ export default function Chat() {
   // Mostrar mensaje de acceso denegado si no tiene permisos
   if (!permisos || !permisos.acceso_chat) {
     return (
-      <div className="ml-64 bg-gray-100 min-h-screen">
+      <div className="bg-gray-100 min-h-screen lg:ml-64">
         <div className="flex items-center justify-center h-screen">
           <div className="bg-white rounded-lg shadow-lg p-8 text-center max-w-md">
             <svg className="w-16 h-16 text-red-400 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -397,7 +397,7 @@ export default function Chat() {
   }
 
   return (
-    <div className="ml-64 bg-gray-100 min-h-screen">
+   <div className="bg-gray-100 min-h-screen lg:ml-64">
       <div className="flex h-screen bg-gray-100">
         {/* Panel de contactos - Estilo WhatsApp */}
         <div className="w-1/3 bg-white border-r border-gray-200 flex flex-col">
