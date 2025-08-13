@@ -122,7 +122,7 @@ export async function registrarDevolucion(solicitudId, itemsDevueltos) {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No hay token de autenticación');
  const { data } = await API.put(
-    `/solicitud/recibir-devolucion/${solicitudId}`,
+    `/solicitudes/recibir-devolucion/${solicitudId}`,
     { items_devueltos: itemsDevueltos },
     {
       headers: {
