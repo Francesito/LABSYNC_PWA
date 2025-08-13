@@ -256,6 +256,7 @@ export default function SolicitudesPage() {
   const [almAlumnos, setAlmAlumnos] = useState([]); // almacén: tabla 1
   const [almDocentes, setAlmDocentes] = useState([]); // almacén: tabla 2
   const [procesando, setProcesando] = useState(null);
+  const [filterDate, setFilterDate] = useState('');
 
   useEffect(() => {
     if (usuario === null) return;
@@ -471,6 +472,12 @@ by[key].items.push({
     return e;
   }
 
+  const filterByDate = (arr) =>
+    filterDate ? arr.filter(s => s.fecha_solicitud === filterDate) : arr;
+
+  const filteredAlmAlumnos = filterByDate(almAlumnos);
+  const filteredAlmDocentes = filterByDate(almDocentes);
+  
   /** PDF */
   const descargarPDF = async (vale) => {
     const doc = new jsPDF();
@@ -663,9 +670,26 @@ by[key].items.push({
       {/* ALMACÉN */}
       {usuario?.rol === 'almacen' && (
         <>
+          <div className="mb-4 flex items-center gap-2">
+            <label className="text-sm font-medium text-gray-700">Filtrar por fecha:</label>
+            <input
+              type="date"
+              value={filterDate}
+              onChange={e => setFilterDate(e.target.value)}
+              className="border border-gray-300 rounded-md px-2 py-1 text-sm"
+            />
+            {filterDate && (
+              <button
+                onClick={() => setFilterDate('')}
+                className="text-xs text-blue-600 hover:underline"
+              >
+                Limpiar
+              </button>
+            )}
+          </div>
           <TablaSolicitudes
             titulo="Solicitudes de alumnos"
-            data={almAlumnos}
+            data={filteredAlmAlumnos}
             loading={loading}
             showSolicitante
             showEncargado
@@ -679,7 +703,7 @@ by[key].items.push({
 
           <TablaSolicitudes
             titulo="Solicitudes de docentes"
-            data={almDocentes}
+            data={filteredAlmDocentes}
             loading={loading}
             showSolicitante
             showEncargado={false}
