@@ -3,11 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '../../lib/auth';
-import {
-  obtenerPrestamosEntregados,
-  obtenerDetalleSolicitud,
-  actualizarAdeudo
-} from '../../lib/api';
+  import {
+    obtenerPrestamosEntregados,
+    obtenerDetalleSolicitud,
+    registrarDevolucion
+  } from '../../lib/api';
 
 const parseDate = (str) => {
   if (!str) return null;
