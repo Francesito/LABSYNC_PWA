@@ -22,7 +22,7 @@
 }
 
 .header-section {
-  background: linear-gradient(135deg, #00627c 0%, #0078a0 100%);
+  background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
   color: white;
   padding: 1.5rem;
   display: flex;
@@ -140,7 +140,7 @@
 .search-input:focus,
 .filter-select:focus {
   outline: none;
-  border-color: #00627c;
+   border-color: #4b5563
   box-shadow: 0 0 0 2px rgba(0, 98, 124, 0.1);
 }
 
@@ -167,7 +167,7 @@
 .material-card.clickable:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
-  border-color: #00627c;
+ border-color: #4b5563;
 }
 
 .material-card.non-clickable {
@@ -271,7 +271,7 @@
 }
 
 .quantity-input:focus {
-  border-color: #00627c;
+  border-color: #4b5563;
   box-shadow: 0 0 0 2px rgba(0, 98, 124, 0.1);
   outline: none;
 }
@@ -302,7 +302,7 @@
 }
 
 .btn-add-to-cart {
-  background: #00627c;
+  background: #4b5563;
   border: none;
   border-radius: 6px;
   color: white;
@@ -340,7 +340,7 @@
 }
 
 .cart-header {
-  background: linear-gradient(135deg, #00627c 0%, #0078a0 100%);
+  background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
   color: white;
   padding: 1.25rem;
 }
@@ -415,7 +415,7 @@
 }
 
 .btn-create-vale {
-  background: #00627c;
+  background: #4b5563;
   border: none;
   border-radius: 6px;
   color: white;
@@ -491,7 +491,7 @@
 }
 
 .modal-header-custom {
-  background: linear-gradient(135deg, #00627c 0%, #0078a0 100%);
+  background: linear-gradient(135deg, #4b5563 0%, #6b7280 100%);
   color: white;
   padding: 1.25rem;
   border-bottom: none;
@@ -545,7 +545,7 @@
   width: 40px;
   height: 40px;
   border: 3px solid #e5e7eb;
-  border-top: 3px solid #00627c;
+   border-top: 3px solid #4b5563;
   border-radius: 50%;
   animation: spin 1s linear infinite;
 }
@@ -602,7 +602,7 @@
 }
 
 .retry-button {
-  background: #00627c;
+  background: #4b5563;
   color: white;
   border: none;
   border-radius: 6px;
@@ -684,7 +684,7 @@
 
 .request-item .fw-bold {
   font-weight: 700;
-  color: #00627c;
+  color: #4b5563;
   font-size: 0.875rem;
 }
 
@@ -743,7 +743,7 @@
 
 .form-control:focus {
   outline: none;
-  border-color: #00627c;
+  border-color: #4b5563;
   box-shadow: 0 0 0 2px rgba(0, 98, 124, 0.1);
 }
 
