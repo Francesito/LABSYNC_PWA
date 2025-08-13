@@ -89,6 +89,7 @@ const loadPrestamos = async () => {
   const openModal = async solicitud_id => {
     try {
       const det = await obtenerDetalleSolicitud(solicitud_id);
+      det.items = det.items.map(i => ({ ...i, devolver: 0 }));
       setDetalle(det);
       setSelectedSolicitud(solicitud_id);
       setShowModal(true);
@@ -107,11 +108,16 @@ const loadPrestamos = async () => {
 const handleSave = async () => {
   setSaving(true);
   try {
-    const entregados = detalle.items
-      .filter(item => item.entregado)
-      .map(item => item.item_id);
+   const devoluciones = detalle.items
+      .filter(item => item.devolver > 0)
+      .map(item => ({ item_id: item.item_id, cantidad_devuelta: item.devolver }));
 
-    await actualizarAdeudo(selectedSolicitud, entregados);
+   if (devoluciones.length === 0) {
+      setSaving(false);
+      return;
+    }
+
+    await registrarDevolucion(selectedSolicitud, devoluciones);
 
     // recarga la lista y comprueba si el préstamo sigue existiendo
     const grouped = await loadPrestamos();
@@ -121,6 +127,7 @@ const handleSave = async () => {
 
     // si aún existe, recarga detalle; y si ya no hay ítems, cierra también
     const nuevoDetalle = await obtenerDetalleSolicitud(selectedSolicitud);
+    nuevoDetalle.items = nuevoDetalle.items.map(i => ({ ...i, devolver: 0 }));
     if (nuevoDetalle.items.length === 0) {
       return closeModal();
     }
@@ -364,17 +371,18 @@ const handleSave = async () => {
                         {detalle.items.map((item, index) => (
                           <tr key={item.item_id} className="hover:bg-slate-50 transition-colors duration-200">
                             <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="flex items-center">
-                                <input
-                                  type="checkbox"
-                                  value={item.item_id}
-                                  onChange={e => {
-                                    item.entregado = e.target.checked;
-                                    setDetalle({ ...detalle });
-                                  }}
-                                  className="h-5 w-5 text-slate-600 focus:ring-slate-500 rounded transition-colors duration-200"
-                                />
-                              </div>
+                            <input
+                                type="number"
+                                min="0"
+                                max={item.cantidad}
+                                value={item.devolver}
+                                onChange={e => {
+                                  const val = parseInt(e.target.value || '0', 10);
+                                  item.devolver = Math.min(Math.max(val, 0), item.cantidad);
+                                  setDetalle({ ...detalle });
+                                }}
+                                className="w-20 border border-slate-300 rounded-md px-2 py-1 text-sm"
+                              />
                             </td>
                             <td className="px-6 py-4 whitespace-nowrap">
                               <div className="flex items-center space-x-3">
