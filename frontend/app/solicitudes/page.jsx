@@ -577,7 +577,7 @@ by[key].items.push({
 
   // --- RENDER POR ROL ---
   return (
-    <div className="ml-64 p-8 bg-gray-50 min-h-screen">
+  <div className="p-4 sm:p-6 lg:p-8 bg-gray-50 min-h-screen lg:ml-64">
       {/* Header */}
       <div className="mb-8 flex items-center gap-4">
         <div className="w-12 h-12 bg-slate-900 rounded-xl flex items-center justify-center">
