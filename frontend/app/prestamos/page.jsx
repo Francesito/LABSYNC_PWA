@@ -144,7 +144,8 @@ const handleSave = async () => {
   return (
    <div className="min-h-screen bg-slate-50 p-4 lg:ml-64">
       {/* Header */}
-    <div className="bg-slate-800 text-white px-4 py-8 lg:px-8 lg:py-12"
+    <div
+        className="bg-slate-800 text-white px-4 py-8 lg:px-8 lg:py-12">
         <div className="flex items-center space-x-4">
           <div className="p-3 bg-slate-700 rounded-xl">
             <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
