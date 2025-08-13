@@ -133,3 +133,17 @@ export async function registrarDevolucion(solicitudId, itemsDevueltos) {
   );
   return data;
 }
+
+
+// --- Generación de reportes en PDF (admin) ---
+export async function generarReporte(tipoReporte) {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No hay token de autenticación');
+
+  const response = await API.get(`/reportes/${tipoReporte}`, {
+    headers: { Authorization: `Bearer ${token}` },
+    responseType: 'blob'
+  });
+
+  return response.data;
+}
