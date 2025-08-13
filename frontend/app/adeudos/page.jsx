@@ -142,15 +142,15 @@ export default function Adeudos() {
 
   if (loading) {
     return (
-      <div className="ml-64 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
+      <div className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-4 sm:p-6 lg:ml-64">
         <LoadingSpinner />
       </div>
     );
   }
 
   return (
-    <div className="ml-64 bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen">
-      <div className="p-6 max-w-7xl mx-auto">
+    <div className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-4 sm:p-6 lg:ml-64">
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-2">
