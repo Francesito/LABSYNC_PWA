@@ -8,10 +8,16 @@
   background: #f8fafc;
   min-height: 100vh;
   padding: 1.5rem;
-  margin-left: 16rem;
+  margin-left: 0;
   transition: margin-left 0.3s ease;
   max-width: none;
   width: 100%;
+}
+
+@media (min-width: 1200px) {
+  .catalog-container {
+    margin-left: 16rem;
+  }
 }
 
 .main-card {
@@ -521,9 +527,21 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  margin-left: 16rem;
+   margin-left: 0;
   background: #f8fafc;
   font-family: 'Inter', system-ui, sans-serif;
+}
+
+@media (min-width: 1200px) {
+  .loading-container {
+    margin-left: 16rem;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .loading-container {
+    margin-left: 14rem;
+  }
 }
 
 .loading-content {
@@ -567,9 +585,21 @@
   justify-content: center;
   align-items: center;
   height: 100vh;
-  margin-left: 16rem;
+  margin-left: 0;
   background: #f8fafc;
   font-family: 'Inter', system-ui, sans-serif;
+}
+
+@media (min-width: 1200px) {
+  .error-container {
+    margin-left: 16rem;
+  }
+}
+
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .error-container {
+    margin-left: 14rem;
+  }
 }
 
 .error-content {
@@ -967,7 +997,7 @@
 }
 
 /* Medium to Large screens (992px to 1199px) */
-@media (min-width: 992px) and (max-width: 1199px) {
+@media (min-width: 1024px) and (max-width: 1199px) {
   .catalog-container {
     margin-left: 14rem;
     padding: 1.25rem;
