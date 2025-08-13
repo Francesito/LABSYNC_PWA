@@ -118,12 +118,12 @@ export async function obtenerDetalleSolicitud(solicitudId) {
 }
 
 // --- Ajustar adeudo tras devolución parcial (almacenista) ---
-export async function actualizarAdeudo(solicitudId, entregados) {
+export async function registrarDevolucion(solicitudId, itemsDevueltos) {
   const token = localStorage.getItem('token');
   if (!token) throw new Error('No hay token de autenticación');
-  const { data } = await API.post(
-    `/adeudos/ajustar/${solicitudId}`,
-    { entregados },
+ const { data } = await API.put(
+    `/solicitud/recibir-devolucion/${solicitudId}`,
+    { items_devueltos: itemsDevueltos },
     {
       headers: {
         Authorization: `Bearer ${token}`,
