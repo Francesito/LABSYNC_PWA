@@ -530,48 +530,58 @@ const entregarMateriales = async (req, res) => {
 
 const recibirDevolucion = async (req, res) => {
   const { id } = req.params;
-  const { items_devueltos } = req.body; // Array con {item_id, cantidad_devuelta}
+  const { items_devueltos } = req.body; // [{ item_id, cantidad_devuelta }]
 
   const connection = await pool.getConnection();
   
   try {
     await connection.beginTransaction();
 
-    // Procesar cada item devuelto
     for (const item of items_devueltos) {
       const { item_id, cantidad_devuelta } = item;
-      
-      // Obtener información del item
-      const [itemInfo] = await connection.query(
-        'SELECT material_id, tipo, cantidad, cantidad_devuelta FROM SolicitudItem WHERE id = ?',
-        [item_id]
+
+      const [rows] = await connection.query(
+        `SELECT si.material_id, si.tipo, si.cantidad, si.cantidad_devuelta, a.cantidad_pendiente
+           FROM SolicitudItem si
+           JOIN Adeudo a ON a.solicitud_item_id = si.id AND a.solicitud_id = ?
+          WHERE si.id = ?`,
+        [id, item_id]
       );
+      if (!rows.length) continue;
 
-      if (itemInfo.length === 0) continue;
+  const { material_id, tipo, cantidad, cantidad_devuelta: ya_devuelta, cantidad_pendiente } = rows[0];
+      if (cantidad_devuelta > cantidad_pendiente) {
+        await connection.rollback();
+        return res.status(400).json({ error: 'Cantidad devuelta mayor que pendiente' });
+      }
 
-      const { material_id, tipo, cantidad, cantidad_devuelta: ya_devuelta } = itemInfo[0];
-      const nueva_cantidad_devuelta = ya_devuelta + cantidad_devuelta;
-
-      // Actualizar cantidad devuelta
+      const nuevaDevuelta = ya_devuelta + cantidad_devuelta;
       await connection.query(
         'UPDATE SolicitudItem SET cantidad_devuelta = ? WHERE id = ?',
-        [nueva_cantidad_devuelta, item_id]
+         [nuevaDevuelta, item_id]
       );
 
-      // Actualizar stock según el tipo de material
-      if (tipo === 'liquido') {
+     const nuevaPendiente = cantidad_pendiente - cantidad_devuelta;
+      if (nuevaPendiente > 0) {
         await connection.query(
-          'UPDATE MaterialLiquido SET cantidad_disponible_ml = cantidad_disponible_ml + ? WHERE id = ?',
-          [cantidad_devuelta, material_id]
+          'UPDATE Adeudo SET cantidad_pendiente = ? WHERE solicitud_id = ? AND solicitud_item_id = ?',
+          [nuevaPendiente, id, item_id]
         );
-      } else if (tipo === 'solido') {
+      } else {
         await connection.query(
-          'UPDATE MaterialSolido SET cantidad_disponible_g = cantidad_disponible_g + ? WHERE id = ?',
-          [cantidad_devuelta, material_id]
+           'DELETE FROM Adeudo WHERE solicitud_id = ? AND solicitud_item_id = ?',
+          [id, item_id]
         );
-      } else if (tipo === 'equipo') {
+      }
+
+      if (tipo === 'equipo') {
         await connection.query(
           'UPDATE MaterialEquipo SET cantidad_disponible_u = cantidad_disponible_u + ? WHERE id = ?',
+          [cantidad_devuelta, material_id]
+        );
+         } else if (tipo === 'laboratorio') {
+        await connection.query(
+          'UPDATE MaterialLaboratorio SET cantidad_disponible = cantidad_disponible + ? WHERE id = ?',
           [cantidad_devuelta, material_id]
         );
       }
