@@ -401,7 +401,8 @@ export default function Configuracion() {
 
   return (
     <div className="flex min-h-screen bg-gradient-to-br from-gray-50 to-gray-100">
-     <main className="flex-1 p-4 sm:p-6 lg:p-8 lg:ml-64"
+    <main
+        className="flex-1 p-4 sm:p-6 lg:p-8 lg:ml-64">
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
