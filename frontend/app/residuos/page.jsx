@@ -69,7 +69,7 @@ export default function ResiduosPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+ <div className="min-h-screen bg-gray-50 p-4 sm:p-6 lg:ml-64">
       <h1 className="text-3xl font-bold mb-6 text-center">
         Bitácora de Residuos Peligrosos
       </h1>
