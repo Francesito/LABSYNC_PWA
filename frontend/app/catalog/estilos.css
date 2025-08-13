@@ -140,7 +140,7 @@
 .search-input:focus,
 .filter-select:focus {
   outline: none;
-   border-color: #4b5563
+   border-color: #4b5563;
   box-shadow: 0 0 0 2px rgba(0, 98, 124, 0.1);
 }
 
