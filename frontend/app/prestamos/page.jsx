@@ -204,7 +204,7 @@ const handleSave = async () => {
               <div
                 key={sol.solicitud_id}
                 onClick={() => openModal(sol.solicitud_id)}
-                className={`bg-white rounded-xl shadow-md hover:shadow-lg cursor-pointer transition-shadow duration-200 border ${overdue ? 'border-red-300 bg-red-50' : 'border-slate-200'}`}
+                className={`bg-white rounded-xl shadow-md hover:shadow-lg cursor-pointer transition-shadow duration-200 border-2 ${overdue ? 'border-red-500 bg-red-50' : 'border-slate-200'}`}
               >
                 <div className="p-6">
                   <div className="flex items-center justify-between mb-6">
@@ -257,232 +257,217 @@ const handleSave = async () => {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal Mejorado y Compacto */}
       {showModal && (
         <div className="fixed inset-0 flex items-center justify-center z-50 bg-black bg-opacity-50">
-          <div className="bg-white rounded-xl shadow-2xl w-11/12 lg:w-4/5 max-w-5xl max-h-[90vh] overflow-hidden">
+          <div className="bg-white rounded-xl shadow-2xl w-11/12 lg:w-3/4 xl:w-2/3 max-w-4xl max-h-[85vh] overflow-hidden">
             {/* Header del Modal */}
-            <div className="bg-slate-600 text-white px-8 py-6">
+            <div className="bg-slate-600 text-white px-6 py-4">
               <div className="flex justify-between items-center">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-slate-500 rounded-xl">
-                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
                   </div>
-                  <h2 className="text-2xl font-bold">Detalle del Préstamo</h2>
+                  <h2 className="text-xl font-bold">Detalle del Préstamo</h2>
                 </div>
                 <button 
                   onClick={closeModal} 
                   className="text-slate-300 hover:text-white hover:bg-slate-700 rounded-xl p-2"
                 >
-                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
                 </button>
               </div>
             </div>
 
-            <div className="p-8 overflow-y-auto max-h-[calc(90vh-120px)]">
+            <div className="p-6 overflow-y-auto max-h-[calc(85vh-100px)]">
               {/* Loading state en el modal */}
               {!detalle ? (
-                <div className="flex justify-center items-center py-20">
+                <div className="flex justify-center items-center py-16">
                   <div className="text-center">
-                    <div className="animate-spin rounded-full h-12 w-12 border-4 border-slate-200 border-t-slate-600 mx-auto mb-4"></div>
+                    <div className="animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-slate-600 mx-auto mb-3"></div>
                     <p className="text-slate-600">Cargando detalles del préstamo...</p>
                   </div>
                 </div>
               ) : (
                 <>
-                  {/* Info Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-slate-50 rounded-xl p-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-slate-500 rounded-xl">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2C7 1.44772 7.44772 1 8 1H16C16.5523 1 17 1.44772 17 2V4M7 4H5C4.44772 4 4 4.44772 4 5V19C4 19.5523 4.44772 20 5 20H19C19.5523 20 20 19.5523 20 19V5C20 4.44772 19.5523 4 19 4H17M7 4H17" />
-                      </svg>
-                    </div>
-                    <div>
-                      <span className="block text-xs text-slate-500 uppercase font-medium">Folio</span>
-                      <span className="block font-bold text-lg text-slate-800">{detalle.folio}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="bg-slate-50 rounded-xl p-6">
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-slate-500 rounded-xl">
-                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a4 4 0 118 0v4m-4 8a4 4 0 01-4-4V7a4 4 0 118 0v4a4 4 0 01-4 4z" />
-                      </svg>
-                    </div>
-                    <div>
-                      <span className="block text-xs text-slate-500 uppercase font-medium">Fecha Entrega</span>
-                      <span className="block font-bold text-lg text-slate-800">
-                        {formatDate(detalle.fecha_devolucion)}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-            {detalle.nombre_alumno && (
-                  <>
-                    <div className="bg-slate-50 rounded-xl p-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-slate-600 rounded-xl">
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  {/* Info Cards Compactas en una sola fila */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="p-1 bg-slate-500 rounded-lg">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 4V2C7 1.44772 7.44772 1 8 1H16C16.5523 1 17 1.44772 17 2V4M7 4H5C4.44772 4 4 4.44772 4 5V19C4 19.5523 4.44772 20 5 20H19C19.5523 20 20 19.5523 20 19V5C20 4.44772 19.5523 4 19 4H17M7 4H17" />
                           </svg>
                         </div>
-                        <div>
-                          <span className="block text-xs text-slate-500 uppercase font-medium">Solicitante</span>
-                          <span className="block font-bold text-lg text-slate-800">{detalle.nombre_alumno}</span>
+                        <div className="min-w-0">
+                          <span className="block text-xs text-slate-500 uppercase font-medium">Folio</span>
+                          <span className="block font-bold text-sm text-slate-800 truncate">{detalle.folio}</span>
                         </div>
                       </div>
-                      </div>
-                    <div className="bg-slate-50 rounded-xl p-6">
-                      <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-slate-600 rounded-xl">
-                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-3-3h-4m-4 0H7a3 3 0 00-3 3v2h6m4 0v-2a3 3 0 00-3-3H9m4 0V9a4 4 0 10-8 0v6m8-6a4 4 0 118 0v6" />
+                    </div>
+
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <div className="flex items-center space-x-2">
+                        <div className="p-1 bg-slate-500 rounded-lg">
+                          <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3a4 4 0 118 0v4m-4 8a4 4 0 01-4-4V7a4 4 0 118 0v4a4 4 0 01-4 4z" />
                           </svg>
                         </div>
-                        <div>
-                          <span className="block text-xs text-slate-500 uppercase font-medium">Grupo</span>
-                          <span className="block font-bold text-lg text-slate-800">{detalle.grupo}</span>
+                        <div className="min-w-0">
+                          <span className="block text-xs text-slate-500 uppercase font-medium">Fecha</span>
+                          <span className="block font-bold text-sm text-slate-800 truncate">
+                            {formatDate(detalle.fecha_devolucion)}
+                          </span>
                         </div>
                       </div>
                     </div>
-                     </>
-                )}
 
-                {detalle.nombre_alumno && detalle.profesor && (
-                  <div className="bg-slate-50 rounded-xl p-6">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-slate-500 rounded-xl">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
-                        </svg>
+                    {detalle.nombre_alumno && (
+                      <div className="bg-slate-50 rounded-lg p-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="p-1 bg-slate-500 rounded-lg">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-xs text-slate-500 uppercase font-medium">Alumno</span>
+                            <span className="block font-bold text-sm text-slate-800 truncate">{detalle.nombre_alumno}</span>
+                          </div>
+                        </div>
                       </div>
-                      <div>
-                        <span className="block text-xs text-slate-500 uppercase font-medium">Profesor</span>
-                        <span className="block font-bold text-lg text-slate-800">{detalle.profesor}</span>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Tabla de materiales */}
-              <form onSubmit={e => { e.preventDefault(); handleSave(); }}>
-                <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-slate-200">
-                  <div className="bg-slate-50 px-6 py-4">
-                    <h3 className="text-lg font-semibold text-slate-800 flex items-center space-x-2">
-                      <svg className="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                      </svg>
-                      <span>Materiales por Devolver</span>
-                    </h3>
-                  </div>
-
-                  <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-slate-50">
-                        <tr>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Cantidad a Devolver
-                          </th>
-                          <th className="px-6 py-4 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Material
-                          </th>
-                          <th className="px-6 py-4 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Cantidad Total
-                          </th>
-                          <th className="px-6 py-4 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">
-                            Unidad
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-200">
-                        {detalle.items.map((item) => (
-                          <tr key={item.item_id} className="hover:bg-slate-50">
-                            <td className="px-6 py-4">
-                              <div className="flex items-center space-x-2">
-                                <input
-                                  type="number"
-                                  min="0"
-                                  max={item.cantidad}
-                                  value={item.devolver}
-                                  onChange={e => {
-                                    const val = parseInt(e.target.value || '0', 10);
-                                    item.devolver = Math.min(Math.max(val, 0), item.cantidad);
-                                    setDetalle({ ...detalle });
-                                  }}
-                                  className="w-20 border border-slate-300 rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
-                                />
-                                <span className="text-sm text-slate-500">de {item.cantidad}</span>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4">
-                              <div className="flex items-center space-x-3">
-                                <div className="p-2 bg-slate-100 rounded-xl">
-                                  <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
-                                  </svg>
-                                </div>
-                                <div>
-                                  <div className="text-sm font-medium text-slate-900">
-                                    {formatMaterialName(item.nombre_material)}
-                                  </div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <span className="text-sm font-medium text-slate-900">{item.cantidad}</span>
-                            </td>
-                            <td className="px-6 py-4 text-right">
-                              <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
-                                {item.tipo === 'liquido' ? 'ml' : item.tipo === 'solido' ? 'g' : 'u'}
-                              </span>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-
-                {/* Botones de acción */}
-                <div className="flex justify-end space-x-4 mt-8">
-                  <button
-                    type="button"
-                    onClick={closeModal}
-                    className="px-6 py-3 rounded-xl text-slate-700 hover:bg-slate-100 font-medium border border-slate-300"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="px-6 py-3 bg-slate-600 text-white rounded-xl hover:bg-slate-700 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2"
-                  >
-                    {saving ? (
-                      <>
-                        <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
-                        <span>Guardando...</span>
-                      </>
-                    ) : (
-                      <>
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        <span>Guardar</span>
-                      </>
                     )}
-                  </button>
-                </div>
-              </form>
+
+                    {detalle.profesor && (
+                      <div className="bg-slate-50 rounded-lg p-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="p-1 bg-slate-500 rounded-lg">
+                            <svg className="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 14l9-5-9-5-9 5 9 5z" />
+                            </svg>
+                          </div>
+                          <div className="min-w-0">
+                            <span className="block text-xs text-slate-500 uppercase font-medium">Profesor</span>
+                            <span className="block font-bold text-sm text-slate-800 truncate">{detalle.profesor}</span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Formulario Compacto */}
+                  <form onSubmit={e => { e.preventDefault(); handleSave(); }}>
+                    <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-slate-200">
+                      <div className="bg-slate-50 px-4 py-3 border-b border-slate-200">
+                        <h3 className="text-md font-semibold text-slate-800 flex items-center space-x-2">
+                          <svg className="w-4 h-4 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                          </svg>
+                          <span>Materiales por Devolver</span>
+                        </h3>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full">
+                          <thead className="bg-slate-50">
+                            <tr>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Devolver
+                              </th>
+                              <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Material
+                              </th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Total
+                              </th>
+                              <th className="px-4 py-3 text-center text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                Unidad
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-slate-200">
+                            {detalle.items.map((item) => (
+                              <tr key={item.item_id} className="hover:bg-slate-50">
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center space-x-2">
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max={item.cantidad}
+                                      value={item.devolver}
+                                      onChange={e => {
+                                        const val = parseInt(e.target.value || '0', 10);
+                                        item.devolver = Math.min(Math.max(val, 0), item.cantidad);
+                                        setDetalle({ ...detalle });
+                                      }}
+                                      className="w-16 border border-slate-300 rounded-md px-2 py-1 text-sm text-center focus:outline-none focus:ring-2 focus:ring-slate-400 focus:border-transparent"
+                                    />
+                                    <span className="text-xs text-slate-500">/{item.cantidad}</span>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="p-1 bg-slate-100 rounded-lg">
+                                      <svg className="w-3 h-3 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
+                                      </svg>
+                                    </div>
+                                    <div className="min-w-0">
+                                      <div className="text-sm font-medium text-slate-900 truncate">
+                                        {formatMaterialName(item.nombre_material)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="text-sm font-medium text-slate-900">{item.cantidad}</span>
+                                </td>
+                                <td className="px-4 py-3 text-center">
+                                  <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+                                    {item.tipo === 'liquido' ? 'ml' : item.tipo === 'solido' ? 'g' : 'u'}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    {/* Botones de acción compactos */}
+                    <div className="flex justify-end space-x-3 mt-6">
+                      <button
+                        type="button"
+                        onClick={closeModal}
+                        className="px-5 py-2 rounded-lg text-slate-700 hover:bg-slate-100 font-medium border border-slate-300 text-sm"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        type="submit"
+                        disabled={saving}
+                        className="px-5 py-2 bg-slate-600 text-white rounded-lg hover:bg-slate-700 font-medium shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center space-x-2 text-sm"
+                      >
+                        {saving ? (
+                          <>
+                            <div className="animate-spin rounded-full h-3 w-3 border-2 border-white border-t-transparent"></div>
+                            <span>Guardando...</span>
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                            </svg>
+                            <span>Guardar</span>
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </form>
                 </>
               )}
             </div>
