@@ -18,11 +18,7 @@ function AuthenticatedLayout({ children }) {
   return (
     <div className="flex">
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-      <main
-        className={`flex-1 p-3 md:p-4 animate-fade-in transition-all duration-300 ${
-          isSidebarOpen ? 'ml-64' : 'ml-0'
-        }`}
-      >
+     <main className="flex-1 p-3 md:p-4 animate-fade-in transition-all duration-300">
         <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 md:p-4 min-vh-100">
           {children}
         </div>
