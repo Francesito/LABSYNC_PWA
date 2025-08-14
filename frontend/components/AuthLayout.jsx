@@ -1,3 +1,4 @@
+//frontend/components/AuthLayout.js
 'use client';
 
 import { AuthProvider, useAuth } from '../lib/auth';
