@@ -95,7 +95,7 @@ const getLiquidos = async (req, res) => {
     // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+     imagen_url: material.imagen_url || ''
     }));
     
     res.json(materialsWithValidImages);
@@ -121,7 +121,7 @@ const getSolidos = async (req, res) => {
     // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+     imagen_url: material.imagen_url || ''
     }));
     
     res.json(materialsWithValidImages);
@@ -146,7 +146,7 @@ const getEquipos = async (req, res) => {
     // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+      imagen_url: material.imagen_url || ''
     }));
     
     res.json(materialsWithValidImages);
@@ -187,7 +187,7 @@ const getLaboratorio = async (req, res) => {
     // Usar directamente la URL de la base de datos
     const materialsWithValidImages = rows.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg'
+    imagen_url: material.imagen_url || ''
     }));
     
     res.json(materialsWithValidImages);
@@ -953,27 +953,25 @@ const getMaterials = async (req, res) => {
       FROM MaterialEquipo
     `);
 
-    const placeholderUrl = 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
-
     // Usar URLs directamente de la base de datos
     const liquidosConImagen = liquidos.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || placeholderUrl
+     imagen_url: material.imagen_url || ''
     }));
     
     const solidosConImagen = solidos.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || placeholderUrl
+    imagen_url: material.imagen_url || ''
     }));
     
     const laboratorioConImagen = laboratorio.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || placeholderUrl
+   imagen_url: material.imagen_url || ''
     }));
     
     const equiposConImagen = equipos.map(material => ({
       ...material,
-      imagen_url: material.imagen_url || placeholderUrl
+     imagen_url: material.imagen_url || ''
     }));
 
     const materials = [...liquidosConImagen, ...solidosConImagen, ...laboratorioConImagen, ...equiposConImagen];
@@ -1007,7 +1005,7 @@ const getMaterialById = async (req, res) => {
     material.tipo = tipo;
     
     // Usar la URL de la base de datos directamente
-    material.imagen_url = material.imagen_url || 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+    material.imagen_url = material.imagen_url || '';
 
     res.json(material);
   } catch (error) {
