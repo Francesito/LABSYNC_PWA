@@ -1,22 +1,22 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
-  images: {
-    domains: ['res.cloudinary.com'], // 👈 NECESARIO para que cargue imágenes externas
+  experimental: {
+    appDir: true, // si usas app directory
   },
+  // Configuración PWA
   async headers() {
     return [
       {
-        source: '/(.*)',
+        source: '/manifest.json',
         headers: [
           {
-            key: 'Access-Control-Allow-Origin',
-            value: '*',
+            key: 'Cache-Control',
+            value: 'public, max-age=31536000, immutable',
           },
         ],
       },
     ];
   },
-};
+}
 
-module.exports = nextConfig;
+module.exports = nextConfig
