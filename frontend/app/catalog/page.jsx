@@ -358,7 +358,7 @@ export default function Catalog() {
         console.error('[Error] Verificando imagen:', error);
       }
     }
-    return 'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg';
+   return '';
   };
 
   const parseRiesgos = (riesgosString) => {
@@ -887,13 +887,10 @@ export default function Catalog() {
                         }}
                       >
                         <img
-                          src={material.imagen_url}
+                          src={material.imagen_url || ''}
                           alt={material.nombre}
                           className="material-image"
-                          onError={(e) =>
-                            (e.target.src =
-                              'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg')
-                          }
+                          onError={(e) => (e.target.style.display = 'none')}
                         />
                         <div className="material-card-content">
                           <div className="material-card-name">{formatName(material.nombre)}</div>
@@ -1340,14 +1337,11 @@ export default function Catalog() {
               )}
 
               <img
-                src={selectedMaterial.imagen_url}
+                src={selectedMaterial.imagen_url || ''}
                 alt={formatName(selectedMaterial.nombre)}
                 className="detail-image"
                 loading="lazy"
-                onError={(e) =>
-                  (e.target.src =
-                    'https://res.cloudinary.com/dgte7l2cg/image/upload/v1/materiales-laboratorio/placeholder/material_placeholder.jpg')
-                }
+                onError={(e) => (e.target.style.display = 'none')}
               />
               <h5 className="mt-4">Información</h5>
               <p className="text-muted">
