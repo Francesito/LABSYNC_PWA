@@ -1,3 +1,4 @@
+//frontend/app/adeudos/page.jsx
 'use client';
 
 import { useState, useEffect } from 'react';
