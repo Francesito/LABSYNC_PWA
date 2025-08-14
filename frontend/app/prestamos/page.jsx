@@ -318,9 +318,9 @@ const handleSave = async () => {
                           </svg>
                         </div>
                         <div className="min-w-0">
-                          <span className="block text-xs text-slate-500 uppercase font-medium">Fecha</span>
+                         <span className="block text-xs text-slate-500 uppercase font-medium">Recolección</span>
                           <span className="block font-bold text-sm text-slate-800 truncate">
-                            {formatDate(detalle.fecha_devolucion)}
+                         {formatDate(detalle.fecha_recoleccion)}
                           </span>
                         </div>
                       </div>
