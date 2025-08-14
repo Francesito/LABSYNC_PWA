@@ -2,7 +2,6 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../lib/auth';
-import { useState } from 'react';
 export default function Sidebar({ isOpen, setIsOpen }) {
   const router = useRouter();
   const { usuario, setUsuario } = useAuth();
@@ -142,7 +141,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   };
 
   return (
-      <>
+     <>
       <aside
         className={`w-64 h-screen flex flex-col fixed top-0 left-0 z-20 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
         style={{ backgroundColor: '#4b5563' }}
@@ -158,7 +157,8 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               clipRule="evenodd"
             />
           </svg>
-        </button>  
+        </button>
+
         
       {/* Header */}
       <div className="p-6 border-b border-gray-600">
@@ -218,7 +218,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <span className="font-medium">Cerrar Sesión</span>
         </button>
       </div>
-   </aside>
+</aside>
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
