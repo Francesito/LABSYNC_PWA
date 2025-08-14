@@ -64,12 +64,7 @@ export default function Register() {
   };
 
   return (
-    <div className="min-vh-100 d-flex font-sans position-relative" style={{
-      backgroundImage: 'url(/background.jpg)',
-      backgroundSize: 'cover',
-      backgroundPosition: 'center',
-      backgroundRepeat: 'no-repeat'
-    }}>
+    <div className="min-vh-100 d-flex font-sans position-relative auth-bg">
       <div className="row w-100 m-0 position-relative" style={{ zIndex: 2 }}>
         {/* Sección derecha - Formulario */}
         <div className="col-12 col-md-6 offset-md-6 d-flex flex-column justify-content-center p-4 p-md-5">
@@ -229,6 +224,18 @@ export default function Register() {
       </div>
 
       <style jsx>{`
+      .auth-bg {
+          background-image: linear-gradient(135deg, #dbeafe 0%, #fbcfe8 100%);
+          background-size: cover;
+          background-position: center;
+          background-repeat: no-repeat;
+        }
+        @media (min-width: 768px) {
+          .auth-bg {
+            background-image: url('/background.jpg');
+          }
+        }
+        
         .form-control:focus {
           background-color: #ffffff !important;
           border-color: #000000 !important;
