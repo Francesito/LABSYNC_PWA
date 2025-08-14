@@ -15,13 +15,6 @@
 }
 
 /* Sidebar dinámico para la página del catálogo */
-.sidebar-open .catalog-container { margin-left: 16rem; }
-.sidebar-closed .catalog-container { margin-left: 0; }
-
-/* Ajuste para sidebar un poco más angosto en 1024–1199px (coincide con tu diseño previo) */
-@media (min-width: 1024px) and (max-width: 1199px) {
-  .sidebar-open .catalog-container { margin-left: 14rem; }
-}
 
 .main-card {
   background: white;
@@ -535,11 +528,6 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-.sidebar-open .loading-container { margin-left: 16rem; }
-@media (min-width: 1024px) and (max-width: 1199px) {
-  .sidebar-open .loading-container { margin-left: 14rem; }
-}
-.sidebar-closed .loading-container { margin-left: 0; }
 
 
 .loading-content {
@@ -588,11 +576,6 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-.sidebar-open .error-container { margin-left: 16rem; }
-@media (min-width: 1024px) and (max-width: 1199px) {
-  .sidebar-open .error-container { margin-left: 14rem; }
-}
-.sidebar-closed .error-container { margin-left: 0; }
 
 
 .error-content {
