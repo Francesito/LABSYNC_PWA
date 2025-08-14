@@ -326,23 +326,38 @@ const handleSave = async () => {
                   </div>
                 </div>
 
-                {detalle.nombre_alumno && (
-                  <div className="bg-slate-50 rounded-xl p-6">
-                    <div className="flex items-center space-x-3">
-                      <div className="p-2 bg-slate-500 rounded-xl">
-                        <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
+            {detalle.nombre_alumno && (
+                  <>
+                    <div className="bg-slate-50 rounded-xl p-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-slate-600 rounded-xl">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="block text-xs text-slate-500 uppercase font-medium">Solicitante</span>
+                          <span className="block font-bold text-lg text-slate-800">{detalle.nombre_alumno}</span>
+                        </div>
                       </div>
-                      <div>
-                        <span className="block text-xs text-slate-500 uppercase font-medium">Solicitante</span>
-                        <span className="block font-bold text-lg text-slate-800">{detalle.nombre_alumno}</span>
+                      </div>
+                    <div className="bg-slate-50 rounded-xl p-6">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-slate-600 rounded-xl">
+                          <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-3-3h-4m-4 0H7a3 3 0 00-3 3v2h6m4 0v-2a3 3 0 00-3-3H9m4 0V9a4 4 0 10-8 0v6m8-6a4 4 0 118 0v6" />
+                          </svg>
+                        </div>
+                        <div>
+                          <span className="block text-xs text-slate-500 uppercase font-medium">Grupo</span>
+                          <span className="block font-bold text-lg text-slate-800">{detalle.grupo}</span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                     </>
                 )}
 
-                {detalle.profesor && (
+                {detalle.nombre_alumno && detalle.profesor && (
                   <div className="bg-slate-50 rounded-xl p-6">
                     <div className="flex items-center space-x-3">
                       <div className="p-2 bg-slate-500 rounded-xl">
