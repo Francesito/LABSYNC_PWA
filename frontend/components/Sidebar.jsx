@@ -158,7 +158,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               clipRule="evenodd"
             />
           </svg>
-        </button>
+        </button>  
         
       {/* Header */}
       <div className="p-6 border-b border-gray-600">
@@ -218,7 +218,7 @@ export default function Sidebar({ isOpen, setIsOpen }) {
           <span className="font-medium">Cerrar Sesión</span>
         </button>
       </div>
-      </aside>
+   </aside>
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
