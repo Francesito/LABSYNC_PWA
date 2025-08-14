@@ -14,18 +14,24 @@ function AuthenticatedLayout({ children }) {
     return children;
   }
 
-  // Para páginas autenticadas, usar flex layout
-  return (
-    <div className={`flex ${isSidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
-      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
-     <main className="flex-1 w-full overflow-x-hidden p-3 md:p-4 animate-fade-in transition-all duration-300">
-        <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 md:p-4 min-vh-100">
-          {children}
-        </div>
-      </main>
-    </div>
-  );
-}
+    // Para páginas autenticadas, mostrar el sidebar fijo
+    return (
+      <>
+        <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+        <main
+          className="w-full overflow-x-hidden p-3 md:p-4 animate-fade-in transition-all duration-300"
+          style={{
+            marginLeft: isSidebarOpen ? '16rem' : '0',
+            width: isSidebarOpen ? 'calc(100% - 16rem)' : '100%'
+          }}
+        >
+          <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 md:p-4 min-vh-100">
+            {children}
+          </div>
+        </main>
+      </>
+    );
+  }
 
 export default function Layout({ children }) {
   return (
