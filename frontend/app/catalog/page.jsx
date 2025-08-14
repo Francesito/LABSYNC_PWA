@@ -30,6 +30,7 @@ export default function Catalog() {
   const [pickupDate, setPickupDate] = useState('');
   const [returnDate, setReturnDate] = useState('');
   const [minPickupDate, setMinPickupDate] = useState('');
+  const [maxPickupDate, setMaxPickupDate] = useState('');
   const [isSubmittingRequest, setIsSubmittingRequest] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newMaterial, setNewMaterial] = useState({
@@ -78,8 +79,19 @@ export default function Catalog() {
     return d;
     };
 
+    const computeWeekEnd = (date) => {
+    const d = new Date(date);
+    const day = d.getDay();
+    const diff = (5 - day + 7) % 7;
+    d.setDate(d.getDate() + diff);
+    return d;
+  };
+  
   useEffect(() => {
-    setMinPickupDate(getFormattedDate(computeMinPickupDate()));
+    const minDate = computeMinPickupDate();
+    setMinPickupDate(getFormattedDate(minDate));
+    const weekEnd = computeWeekEnd(minDate);
+    setMaxPickupDate(getFormattedDate(weekEnd));
   }, []);
 
   // Cargar permisos del usuario
@@ -1189,10 +1201,13 @@ export default function Catalog() {
                   type="date"
                   className="form-control"
                   min={minPickupDate}
+                  max={maxPickupDate}
                   value={pickupDate}
                   onChange={(e) => {
-                    setPickupDate(e.target.value);
-                    if (returnDate && e.target.value > returnDate) {
+                   let v = e.target.value;
+                    if (v && v > maxPickupDate) v = maxPickupDate;
+                    setPickupDate(v);
+                    if (returnDate && v > returnDate) {
                       setReturnDate('');
                     }
                   }}
@@ -1207,8 +1222,12 @@ export default function Catalog() {
                   type="date"
                   className="form-control"
                   min={pickupDate || minPickupDate}
+                  max={maxPickupDate}
                   value={returnDate}
-                  onChange={(e) => setReturnDate(e.target.value)}
+                 onChange={(e) => {
+                    const v = e.target.value;
+                    if (!v || v <= maxPickupDate) setReturnDate(v);
+                  }}
                 />
               </div>
             </div>
