@@ -151,7 +151,7 @@ export default function Adeudos() {
 
   return (
     <div className="bg-gradient-to-br from-gray-50 to-gray-100 min-h-screen p-4 sm:p-6">
-      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+      <div className="p-4 sm:p-6">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center space-x-3 mb-2">
