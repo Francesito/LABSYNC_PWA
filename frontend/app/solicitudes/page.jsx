@@ -19,6 +19,8 @@ const EstadoBadge = ({ estado }) => {
     'entregada':            { bg: 'bg-green-100', text: 'text-green-800', icon: '✓'  },
     'rechazada':            { bg: 'bg-red-100',   text: 'text-red-800',   icon: '✗'  },
     'cancelado':            { bg: 'bg-gray-100',  text: 'text-gray-800',  icon: '❌' },
+     'eliminación automática por falta de recolección': { bg: 'bg-red-100', text: 'text-red-800', icon: '⚠️' },
+    'eliminacion automatica por falta de recoleccion': { bg: 'bg-red-100', text: 'text-red-800', icon: '⚠️' }, // fallback sin tildes
     'pendiente':            { bg: 'bg-yellow-100',text: 'text-yellow-800',icon: '⏳' } // fallback
   };
   const safe = (estado || '').toLowerCase().trim();
@@ -105,7 +107,8 @@ function TablaSolicitudes({
     estado: columnasFijas.estado ?? true,
     acciones: columnasFijas.acciones ?? true,
   };
-
+const todayStr = new Date().toLocaleDateString('en-CA');
+  
   return (
     <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden mb-8">
       <div className="px-6 py-4 border-b border-gray-200 flex items-center justify-between">
@@ -163,7 +166,7 @@ function TablaSolicitudes({
                   )}
 
                   {columnas.fecha && (
-                    <Td>{new Date(s.fecha_solicitud).toLocaleDateString('es-MX')}</Td>
+                    <Td>{new Date((s.fecha_recoleccion || s.fecha_solicitud)).toLocaleDateString('es-MX')}</Td>
                   )}
 
                   {columnas.grupo && <Td>{s.grupo || ''}</Td>}
@@ -201,7 +204,8 @@ function TablaSolicitudes({
 
                         {/* Almacén: Entregar cuando UI = entrega pendiente */}
                         {usuario?.rol === 'almacen' &&
-                          s.estado === 'entrega pendiente' && (
+                          s.estado === 'entrega pendiente' &&
+                          (s.fecha_recoleccion || '').split('T')[0] === todayStr && (
                             <Btn
                               color="blue"
                               onClick={() => onAccion(s.id, 'entregar', 'entregada')}
@@ -257,6 +261,18 @@ export default function SolicitudesPage() {
   const [almDocentes, setAlmDocentes] = useState([]); // almacén: tabla 2
   const [procesando, setProcesando] = useState(null);
   const [filterDate, setFilterDate] = useState('');
+  const [minFilterDate, setMinFilterDate] = useState('');
+  const [maxFilterDate, setMaxFilterDate] = useState('');
+
+  useEffect(() => {
+    const today = new Date();
+    const day = today.getDay();
+    const friday = new Date(today);
+    const diff = (5 - day + 7) % 7;
+    friday.setDate(today.getDate() + diff);
+    setMinFilterDate(today.toISOString().split('T')[0]);
+    setMaxFilterDate(friday.toISOString().split('T')[0]);
+  }, []);
 
   useEffect(() => {
     if (usuario === null) return;
@@ -349,6 +365,7 @@ function agrupar(rows, rolVista, gruposMap) {
         nombre_alumno: item.nombre_alumno || '',
         profesor: item.profesor || '',
         fecha_solicitud: item.fecha_solicitud,
+        fecha_recoleccion: item.fecha_recoleccion,
         estado: estadoUI,
         rawEstado,
         isDocenteRequest: isDocenteReq,
@@ -401,6 +418,7 @@ by[key].items.push({
       if (e === 'entregado') return 'entregada';
       if (e === 'rechazada') return 'rechazada';
       if (e === 'cancelado') return 'cancelado';
+       if (e === 'sin recoleccion') return 'eliminación automática por falta de recolección';
       // Cualquier otro (incluido 'aprobada' y un posible 'pendiente') se ve como entrega pendiente
       return 'entrega pendiente';
     }
@@ -417,6 +435,8 @@ by[key].items.push({
         return 'rechazada';
       case 'cancelado':
         return 'cancelado';
+      case 'sin recoleccion':
+        return 'eliminación automática por falta de recolección';
       default:
         return 'pendiente';
     }
@@ -469,11 +489,14 @@ by[key].items.push({
     if (e === 'entregada')                return 'entregado';
     if (e === 'rechazada')                return 'rechazada';
     if (e === 'cancelado')                return 'cancelado';
+    if (e === 'eliminación automática por falta de recolección' || e === 'eliminacion automatica por falta de recoleccion') return 'sin recoleccion';
     return e;
   }
 
   const filterByDate = (arr) =>
-    filterDate ? arr.filter(s => s.fecha_solicitud === filterDate) : arr;
+   filterDate
+      ? arr.filter(s => (s.fecha_recoleccion || '').split('T')[0] === filterDate)
+      : arr;
 
   const filteredAlmAlumnos = filterByDate(almAlumnos);
   const filteredAlmDocentes = filterByDate(almDocentes);
@@ -675,7 +698,14 @@ by[key].items.push({
             <input
               type="date"
               value={filterDate}
-              onChange={e => setFilterDate(e.target.value)}
+              min={minFilterDate}
+              max={maxFilterDate}
+              onChange={e => {
+                const v = e.target.value;
+                if (!v || (v >= minFilterDate && v <= maxFilterDate)) {
+                  setFilterDate(v);
+                }
+              }}
               className="border border-gray-300 rounded-md px-2 py-1 text-sm"
             />
             {filterDate && (
