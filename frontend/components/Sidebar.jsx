@@ -2,10 +2,12 @@
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../lib/auth';
+import { useState } from 'react';
 
 export default function Sidebar() {
   const router = useRouter();
   const { usuario, setUsuario } = useAuth();
+   const [isOpen, setIsOpen] = useState(true);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -142,7 +144,24 @@ export default function Sidebar() {
   };
 
   return (
-    <aside className="w-64 h-screen flex flex-col fixed z-20" style={{ backgroundColor: '#4b5563' }}>
+     <>
+      <aside
+        className={`w-64 h-screen flex flex-col fixed z-20 relative transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
+        style={{ backgroundColor: '#4b5563' }}
+      >
+        <button
+          onClick={() => setIsOpen(false)}
+          className="absolute top-4 -right-6 bg-gray-600 text-white rounded-full p-1 md:hidden"
+        >
+          <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M12.293 4.293a1 1 0 011.414 1.414L9.414 10l4.293 4.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+        
       {/* Header */}
       <div className="p-6 border-b border-gray-600">
         <div className="flex items-center gap-4">
@@ -202,5 +221,20 @@ export default function Sidebar() {
         </button>
       </div>
     </aside>
+      {!isOpen && (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="fixed top-4 left-0 z-20 bg-gray-600 text-white rounded-r-md p-2 md:hidden"
+        >
+          <svg className="w-4 h-4 transform rotate-180" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M12.293 4.293a1 1 0 011.414 1.414L9.414 10l4.293 4.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5z"
+              clipRule="evenodd"
+            />
+          </svg>
+        </button>
+      )}
+    </>
   );
 }
