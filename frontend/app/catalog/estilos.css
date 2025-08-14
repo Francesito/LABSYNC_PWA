@@ -14,10 +14,13 @@
   width: 100%;
 }
 
-@media (min-width: 1200px) {
-  .catalog-container {
-    margin-left: 16rem;
-  }
+/* Sidebar dinámico para la página del catálogo */
+.sidebar-open .catalog-container { margin-left: 16rem; }
+.sidebar-closed .catalog-container { margin-left: 0; }
+
+/* Ajuste para sidebar un poco más angosto en 1024–1199px (coincide con tu diseño previo) */
+@media (min-width: 1024px) and (max-width: 1199px) {
+  .sidebar-open .catalog-container { margin-left: 14rem; }
 }
 
 .main-card {
@@ -532,17 +535,12 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-@media (min-width: 1200px) {
-  .loading-container {
-    margin-left: 16rem;
-  }
-}
-
+.sidebar-open .loading-container { margin-left: 16rem; }
 @media (min-width: 1024px) and (max-width: 1199px) {
-  .loading-container {
-    margin-left: 14rem;
-  }
+  .sidebar-open .loading-container { margin-left: 14rem; }
 }
+.sidebar-closed .loading-container { margin-left: 0; }
+
 
 .loading-content {
   text-align: center;
@@ -590,17 +588,12 @@
   font-family: 'Inter', system-ui, sans-serif;
 }
 
-@media (min-width: 1200px) {
-  .error-container {
-    margin-left: 16rem;
-  }
-}
-
+.sidebar-open .error-container { margin-left: 16rem; }
 @media (min-width: 1024px) and (max-width: 1199px) {
-  .error-container {
-    margin-left: 14rem;
-  }
+  .sidebar-open .error-container { margin-left: 14rem; }
 }
+.sidebar-closed .error-container { margin-left: 0; }
+
 
 .error-content {
   text-align: center;
