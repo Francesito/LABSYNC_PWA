@@ -16,17 +16,18 @@ function AuthenticatedLayout({ children }) {
 
   // Para páginas autenticadas, usar el layout con sidebar
   return (
-    <div className="d-flex">
-     <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
+  <>
+      <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <main
-        className="flex-grow-1 p-3 p-md-4 transition-all duration-300"
-        style={{ marginLeft: isSidebarOpen ? '16rem' : '0' }}
+        className={`flex-grow-1 p-3 md:p-4 transition-all duration-300 ${
+          isSidebarOpen ? 'lg:ml-64' : ''
+        }`}
       >
-        <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 p-md-4 min-vh-100">
+        <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 md:p-4 min-vh-100">
           {children}
         </div>
       </main>
-    </div>
+     </>
   );
 }
 
