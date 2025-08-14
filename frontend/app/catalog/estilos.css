@@ -968,7 +968,7 @@
   .catalog-container {
     margin-left: auto;
     margin-right: auto;
-    padding-left: 18rem;
+    padding-left: 0;  
     max-width: none;
     width: 100%;
   }
@@ -992,7 +992,7 @@
 /* Medium to Large screens (992px to 1199px) */
 @media (min-width: 1024px) and (max-width: 1199px) {
   .catalog-container {
-    margin-left: 14rem;
+    margin-left: 0;     
     padding: 1.25rem;
     max-width: none;
     width: 100%;
