@@ -1783,13 +1783,13 @@ const rechazarSolicitud = async (req, res) => {
 const cancelarSolicitudesVencidas = async () => {
   try {
     const [result] = await pool.query(
-      "UPDATE Solicitud SET estado = 'cancelado' WHERE estado IN ('pendiente','aprobada') AND fecha_recoleccion < CURDATE()"
+      "UPDATE Solicitud SET estado = 'sin recoleccion' WHERE estado IN ('pendiente','aprobada') AND fecha_recoleccion < CURDATE()"
     );
     if (result.affectedRows > 0) {
-      console.log(`⏰ Canceladas ${result.affectedRows} solicitudes vencidas`);
+     console.log(`⏰ Marcadas ${result.affectedRows} solicitudes por falta de recolección`);
     }
   } catch (error) {
-    console.error('Error al cancelar solicitudes vencidas:', error);
+ console.error('Error al marcar solicitudes vencidas:', error);
   }
 };
 
@@ -1797,8 +1797,9 @@ const cancelarSolicitudesVencidas = async () => {
 const eliminarSolicitudesViejas = async () => {
   try {
     const [result] = await pool.query(`
-      DELETE FROM Solicitud 
+    DELETE FROM Solicitud
       WHERE fecha_solicitud < DATE_SUB(CURDATE(), INTERVAL 7 DAY)
+      OR (estado = 'sin recoleccion' AND fecha_recoleccion < DATE_SUB(CURDATE(), INTERVAL 1 DAY))
     `);
     console.log(`🗑️ Limpieza automática: ${result.affectedRows} solicitudes eliminadas`);
   } catch (error) {
