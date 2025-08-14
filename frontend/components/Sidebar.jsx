@@ -6,7 +6,6 @@ import { useState } from 'react';
 export default function Sidebar({ isOpen, setIsOpen }) {
   const router = useRouter();
   const { usuario, setUsuario } = useAuth();
-   const [isOpen, setIsOpen] = useState(true);
 
   const handleLogout = () => {
     localStorage.removeItem('token');
