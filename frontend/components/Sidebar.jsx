@@ -143,10 +143,16 @@ export default function Sidebar({ isOpen, setIsOpen }) {
 
   return (
      <>
-      <aside
-        className={`w-64 h-screen flex flex-col fixed top-0 left-0 z-20 transform transition-transform duration-300 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}
-        style={{ backgroundColor: '#4b5563' }}
-      >
+  <aside
+  className="h-screen flex flex-col overflow-hidden transition-all duration-300"
+  style={{
+    backgroundColor: '#4b5563',
+    width: isOpen ? '16rem' : '0',     // 16rem = w-64 cuando está abierto, 0 cuando está oculto
+    flexShrink: 0,                      // que el ancho sea reservado en el layout
+    position: 'relative'                // ya NO es fixed
+  }}
+>
+
         <button
           onClick={() => setIsOpen(false)}
           className="absolute top-4 -right-6 bg-gray-600 text-white rounded-full p-1"
