@@ -1,4 +1,4 @@
-//backend/controllers/materialController.js
+  //backend/controllers/materialController.js
 
 const pool = require('../config/db');
 const jwt = require('jsonwebtoken');
@@ -1068,6 +1068,7 @@ const getSolicitudDetalle = async (req, res) => {
             s.nombre_alumno,
             s.profesor,
             s.folio,
+            s.fecha_recoleccion,
             si.id  AS item_id,
             si.material_id,
             si.tipo,
@@ -1097,19 +1098,20 @@ LEFT JOIN MaterialLaboratorio mlab
 
     // 1) Cabecera de la solicitud
     const [solRows] = await pool.query(
-      `SELECT 
+      `SELECT
          s.id AS id,
          s.id AS solicitud_id,
          s.folio,
          s.nombre_alumno,
          s.profesor,
-          s.fecha_devolucion AS fecha_devolucion,
+          s.fecha_recoleccion AS fecha_recoleccion,
+         s.fecha_devolucion AS fecha_devolucion,
          g.nombre AS grupo_nombre
        FROM Solicitud s
        LEFT JOIN Adeudo a ON a.solicitud_id = s.id
        LEFT JOIN Grupo g  ON s.grupo_id = g.id
        WHERE s.id = ?
-       GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre, s.fecha_devolucion`,
+      GROUP BY s.id, s.folio, s.nombre_alumno, s.profesor, g.nombre, s.fecha_recoleccion, s.fecha_devolucion`,
       [id]
     );
     if (!solRows.length) {
@@ -1140,6 +1142,7 @@ LEFT JOIN MaterialLaboratorio mlab
       folio: sol.folio,
       nombre_alumno: sol.nombre_alumno,
       profesor: sol.profesor,
+      fecha_recoleccion: sol.fecha_recoleccion,
     fecha_devolucion: sol.fecha_devolucion,
       grupo: sol.grupo_nombre || 'No especificado',
       items: items.map(i => ({
