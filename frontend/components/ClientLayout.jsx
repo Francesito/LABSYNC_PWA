@@ -1,3 +1,4 @@
+//frontend/components/ClientLayout.jsx
 'use client';
 
 import { useAuth } from '../lib/auth';
