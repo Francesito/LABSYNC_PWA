@@ -19,7 +19,9 @@ export default function ClientLayout({ children }) {
     <>
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <main
-        className={`w-full p-3 md:p-4 animate-fade-in transition-all duration-300`}
+        className={`w-full p-3 md:p-4 animate-fade-in transition-all duration-300 ${
+          isSidebarOpen ? 'ml-64' : 'ml-0'
+        }`}
       >
         <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 md:p-4 min-vh-100">
           {children}
