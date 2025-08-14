@@ -1,6 +1,5 @@
 //frontend/components/AuthLayout.js
 'use client';
-
 import { AuthProvider, useAuth } from '../lib/auth';
 import Sidebar from './Sidebar';
 import { useState } from 'react';
@@ -17,18 +16,16 @@ function AuthenticatedLayout({ children }) {
 
   // Para páginas autenticadas, usar el layout con sidebar
   return (
- <>
+    <>
       <Sidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       <main
-        className={`w-full p-3 md:p-4 transition-all duration-300 ${
-          isSidebarOpen ? 'lg:ml-64' : 'lg:ml-0'
-        }`}
+        className={`w-full p-3 md:p-4 transition-all duration-300`}
       >
         <div className="container-fluid bg-white bg-opacity-95 rounded-4 shadow-lg p-3 md:p-4 min-vh-100">
           {children}
         </div>
       </main>
-     </>
+    </>
   );
 }
 
