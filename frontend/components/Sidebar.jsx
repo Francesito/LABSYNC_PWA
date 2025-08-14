@@ -142,21 +142,13 @@ export default function Sidebar({ isOpen, setIsOpen }) {
   };
 
   return (
-     <>
-  <aside
-  className="h-screen flex flex-col overflow-hidden transition-all duration-300"
-  style={{
-    backgroundColor: '#4b5563',
-    width: isOpen ? '16rem' : '0',     // 16rem = w-64 cuando está abierto, 0 cuando está oculto
-    flexShrink: 0,                      // que el ancho sea reservado en el layout
-    position: 'relative'                // ya NO es fixed
-  }}
->
-
-        <button
-          onClick={() => setIsOpen(false)}
-          className="absolute top-4 -right-6 bg-gray-600 text-white rounded-full p-1"
-        >
+ <>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="fixed top-4 z-50 bg-gray-600 text-white rounded-full p-1 transition-all duration-300"
+        style={{ left: isOpen ? '16rem' : '0.5rem' }}
+      >
+        {isOpen ? (
           <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
             <path
               fillRule="evenodd"
@@ -164,9 +156,25 @@ export default function Sidebar({ isOpen, setIsOpen }) {
               clipRule="evenodd"
             />
           </svg>
-        </button>
+           ) : (
+          <svg className="w-4 h-4 transform rotate-180" fill="currentColor" viewBox="0 0 20 20">
+            <path
+              fillRule="evenodd"
+              d="M12.293 4.293a1 1 0 011.414 1.414L9.414 10l4.293 4.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5z"
+              clipRule="evenodd"
+            />
+          </svg>
+        )}
+      </button>
 
-        
+         <aside
+        className="fixed top-0 left-0 h-screen flex flex-col overflow-y-auto transition-all duration-300"
+        style={{
+          backgroundColor: '#4b5563',
+          width: isOpen ? '16rem' : '0',
+          zIndex: 40,
+        }}
+      >
       {/* Header */}
       <div className="p-6 border-b border-gray-600">
         <div className="flex items-center gap-4">
@@ -226,20 +234,6 @@ export default function Sidebar({ isOpen, setIsOpen }) {
         </button>
       </div>
 </aside>
-      {!isOpen && (
-        <button
-          onClick={() => setIsOpen(true)}
-          className="fixed top-4 left-0 z-20 bg-gray-600 text-white rounded-r-md p-2"
-        >
-          <svg className="w-4 h-4 transform rotate-180" fill="currentColor" viewBox="0 0 20 20">
-            <path
-              fillRule="evenodd"
-              d="M12.293 4.293a1 1 0 011.414 1.414L9.414 10l4.293 4.293a1 1 0 01-1.414 1.414l-5-5a1 1 0 010-1.414l5-5z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-      )}
     </>
   );
 }
