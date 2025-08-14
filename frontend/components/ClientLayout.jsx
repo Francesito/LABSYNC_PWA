@@ -29,3 +29,4 @@ export default function ClientLayout({ children }) {
       </main>
     </div>
   );
+}
